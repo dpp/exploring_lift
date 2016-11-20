@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-E.html#Next">Previous: Appendix E</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-G.html#prev">Next: Appendix G</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-F">F</a> Sending Email<a class="Label" name="cha:Sending-Email"> </a>
+</h1>
+<div class="Unindented">
+Sending email is a common enough task (user registration, notifications, etc) within a web application that we’ve decided to cover it here. Although email isn’t Lift’s primary focus, Lift does provide some facilities to simplify email transmission.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-F.1">F.1</a> Setup
+</h2>
+<div class="Unindented">
+Configuration of the mailer is handled in a few different ways. The <tt>net.liftweb.util.Mailer</tt> object defines a <tt>hostFunc</tt> function var, <span class="formula">() ⇒ <i>String</i></span>, that is used to compute the hostname of your SMTP server to be used for transmission. The default value is a function that looks up the <tt>mail.smtp.host</tt> system property and uses that String. If that property isn’t defined then the mailer defaults to <tt>localhost</tt>. Setting the system property is the simplest way to change your SMTP relay, although you could also define your own function to return a custom hostname and assign it to <tt>Mailer.hostFunc</tt>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-F.2">F.2</a> Sending Emails
+</h2>
+<div class="Unindented">
+The mailer interface is simple but covers a wide variety of cases. The <tt>Mailer</tt> object defines a number of case classes that correspond to the components of an RFC822 email. The addressing and subject cases classes, <tt>From</tt>, <tt>To</tt>, <tt>CC</tt>, <tt>BCC</tt>, <tt>ReplyTo</tt> and <tt>Subject</tt> should all be self-explanatory. For the body of the email you have three main options:
+</div>
+<div class="Description">
+<span class="Description-entry">PlainMailBodyType</span> Represents a plain-text email body based on a given String
+</div>
+<div class="Description">
+<span class="Description-entry">XHTMLMailBodyType</span> Represents an XHTML email body based on a given NodeSeq
+</div>
+<div class="Description">
+<span class="Description-entry">XHTMLPlusImages</span> Similar to XHTMLMailBodyType, but in addition to the NodeSeq, you can provide one or more PlusImageHolder instances that represent images to be attached to the email (embedded images, so to speak)
+</div>
+<div class="Unindented">
+The <tt>Mailer.sendMail</tt> function is used to generate and send an email. It takes three arguments: the <tt>From</tt> sender address, the <tt>Subject</tt> of the email, and a varargs list of recipient addresses and body components. The mailer creates MIME/Multipart messages, so you can send more than one body (i.e. plain text and XHMTL) if you would like. Listing <a class="Reference" href="index-F.html#lst:Sending-a-two-part-email">F.2↓</a> shows an example of sending an email to a group of recipients in both plain text and XHTML format. The Mailer object defines some implicit conversions to PlainMailBodyType and XHTMLMailBodyType, which we use here. We also have to do a little List trickery to be able to squeeze multiple arguments into the final vararg argument since Scala doesn’t support mixing regular values and coerced sequences in vararg arguments.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Sending a two-part email<a class="Label" name="lst:Sending-a-two-part-email"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.util.Mailer
+import Mailer._
+...
+val myRecips : List[String] = ...
+val plainContent : String = "..."
+val xhtmlContent : NodeSeq = ...
+​
+Mailer.sendMail(From("no-reply@foo.com"), Subject("Just a test"),
+                (plainContent :: xhtmlContent :: myRecips.map(To(_))) : _*)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When you call <tt>sendMail</tt> you’re actually sending a message to an actor in the background that will handle actual mail delivery; because of this, you shouldn’t expect to see a synchronous relay of the message through your SMTP server.
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-E.html#Next">Previous: Appendix E</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-G.html#prev">Next: Appendix G</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

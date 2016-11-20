@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-3.html#Next">Previous: Chapter 3</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-5.html#prev">Next: Chapter 5</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-4">4</a> Templates in Lift
+</h1>
+<div class="Unindented">
+An XHTML page, being the central component of a web application, is likewise the central component of Lift’s request processing. In Lift, we go a step further and utilize a flexible yet powerful templating engine that allows us to compose an XHTML<a class="IndexReference" name="entry-XHTML-0" href="index-Index.html#index-XHTML">↓</a> page not only out of one or more XML<a class="IndexReference" name="entry-XML-0" href="index-Index.html#index-XML">↓</a> files, but also from methods that can programmaticaly generate template XML. Additionally, Lift 2.2<a class="IndexReference" name="entry-Lift-2.2-0" href="index-Index.html#index-Lift-2.2">↓</a> brings designer-friendly templates (Section <a class="Reference" href="index-4.html#sec:Designer-Friendly-Templates">4.2↓</a>) and HTML5 support (Section <a class="Reference" href="index-4.html#sec:HTML5-Support">4.3↓</a>). Designer-friendly templates, in particular, can simplify working with a designer because they allow templates to be fully valid XHTML or HTML5.
+</div>
+<div class="Indented">
+In this chapter we’ll discuss template capabilities and syntax, including built-in tags provided by Lift that perform special template processing (Section <a class="Reference" href="index-4.html#sec:ArchTags">4.5↓</a>). We will also cover how you can write your own View classes, Scala code that can programmatically generate template XML (Section <a class="Reference" href="index-4.html#sec:Views">4.4↓</a>). We’ll finish up the chapter with some discussion on miscellaneous templating functionality.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.1">4.1</a> Template XML<a class="Label" name="sec:Templates"> </a>
+</h2>
+<div class="Unindented">
+Templates<a class="IndexReference" name="entry-Templates-0" href="index-Index.html#index-Templates">↓</a> form the backbone of Lift’s flexibility and power. A template is an XML document that contains Lift-specific tags, see <a class="Reference" href="index-4.html#sec:ArchTags">4.5↓</a>, as well as whatever content you want returned to the user. 
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+A note on nomenclature: typically when people discuss “templates” in books or on the mailing list they’re talking about XML files. We’ll cover programmatic generation of template XML in Section <a class="Reference" href="index-4.html#sec:Views">4.4↓</a>.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Lift includes several built-in XML tags for specific actions. These utilize prefixed XML elements and are of the form <tt>&lt;lift:tag_name/&gt;</tt>. Lift also allows you to define your own tags, which are called <i>snippets</i><a class="IndexReference" name="entry-snippets-0" href="index-Index.html#index-snippets">↓</a> (Chapter <a class="Reference" href="index-5.html#cha:Snippets">5↓</a>). These user-defined tags are linked to Scala methods and these methods can process the XML contents of the snippet tag, or can generate their own content from scratch. A simple template is shown in Listing <a class="Reference" href="index-4.html#lst:Sample-template">4.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Sample Template<a class="Label" name="lst:Sample-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;head&gt;&lt;title&gt;Hello!&lt;/title&gt;&lt;/head&gt;
+  &lt;lift:Hello.world /&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Notice the tags that are of the form <tt>&lt;lift:name&gt;</tt> which in this case are <tt>&lt;lift:surround&gt;</tt> and <tt>&lt;lift:snippet&gt;. </tt>These are two examples of Lift-specific tags. We’ll discuss all of the tags that users will use in Section <a class="Reference" href="index-4.html#sec:ArchTags">4.5↓</a>, but let’s briefly discuss the two shown here. We use the built-in <tt>&lt;lift:surround&gt;<a class="IndexReference" name="entry-lift:surround-0" href="index-Index.html#index-lift:surround">↓</a></tt> tag (Section <a class="Reference" href="index-4.html#sub:surround-tag">4.5.17↓</a>) to make Lift embed our current template inside the “default” template. We also use <tt>&lt;lift:snippet&gt;</tt> tag (aliased to Hello.world) to execute a snippet that we defined. In this instance, we execute the method <tt>world</tt> in the class <tt>Hello </tt>to generate some content.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.1.1">4.1.1</a> Locating Template XML
+</h3>
+<div class="Unindented">
+During request processing, Lift first tries to match against the <tt>LiftRules.viewDispatch<a class="IndexReference" name="entry-viewDispatch-1" href="index-Index.html#index-viewDispatch">↓</a><a class="IndexReference" name="entry-Views-Explicit-dispatch-1" href="index-Index.html#index-Views-Explicit-dispatch">↓</a></tt> function to see if an explicit View method is defined for the request. If there isn’t a <tt>viewDispatch</tt> match, then Lift next tries to locate a file in the template directory tree (typically in a WAR archive) that matches the request. Lift tries several suffixes (html, xhtml, htm, and no suffix) and also tries to match based on the client’s <tt>Accept-Language</tt> header. The pattern Lift uses is:
+</div>
+<pre class="LyX-Code">
+&lt;path to template&gt;[_&lt;language tag&gt;][.&lt;suffix&gt;]
+</pre>
+<div class="Unindented">
+Because Lift will implicitly search for suffixes, it’s best to leave the suffix off of your links within the web app. If you have a link with an href of <tt>/test/template.xhtml</tt>, it will only match that file, but if you use <tt>/test/template</tt> for the href and you have the following templates in your web app:
+</div>
+<ul>
+<li>
+<tt>/test/template.xhtml</tt>
+</li>
+<li>
+<tt>/test/template_es_ES.xhtml (Spanish localized for Spain)</tt>
+</li>
+<li>
+<tt>/test/template_ja.xhtml</tt>
+</li>
+
+</ul>
+<div class="Unindented">
+then Lift will use the appropriate template based on the user’s requested language if a corresponding template is available. For more information regarding internationalization please see Appendix <a class="Reference" href="index-D.html#cha:Internationalization">D↓</a>. In addition to normal templates, your application can make use of hidden templates<a class="IndexReference" name="entry-hidden-templates-0" href="index-Index.html#index-hidden-templates">↓</a>. These are templates that are located under the <tt>/templates-hidden</tt> directory of your web app. Technically, Lift hides files in any directory ending in “-hidden”, but templates-hidden is somewhat of a de facto standard. Like the <tt>WEB-INF</tt> directory, the contents cannot be directly requested by clients. They can, however, be used by other templates through mechanisms such as the <tt>&lt;lift:surround&gt;</tt> and <tt>&lt;lift:embed&gt;</tt> tags (Section <a class="Reference" href="index-4.html#sub:embed-tag">4.5.7↓</a>). If a static file can’t be located then Lift will attempt to locate a View class (Section <a class="Reference" href="index-4.html#sec:Views">4.4↓</a>) that will process the request. If Lift cannot locate an appropriate template based on the request path then it will return a 404 to the user.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.1.2">4.1.2</a> Processing Template XML
+</h3>
+<div class="Unindented">
+Once Lift has located the correct template, the next step is to process the contents. It is important to understand that Lift processes XML tags recursively, from the outermost tag to the innermost tag. That means that in our example Listing <a class="Reference" href="index-4.html#lst:Sample-template">4.1↑</a>, the surround tag gets processed first. In this case the surround loads the default template and embeds our content at the appropriate location. The next tag to be processed is the <tt>&lt;lift:Hello.world/&gt;</tt> snippet. This tag is essentially an alias for the lift:snippet tag (specifically, <tt>&lt;lift:snippet type=“Hello:world”&gt;</tt>) , and will locate the Hello class and execute the world method on it. If you omit the “method” part of the type and only specify the class (<tt>&lt;lift:Hello&gt;</tt> or <tt>&lt;lift:snippet type=“Hello”&gt;</tt>), then Lift will attempt to call the <tt>render</tt> method of the class.
+</div>
+<div class="Indented">
+To give a more complex example that illustrates the order of tag processing, consider Listing <a class="Reference" href="index-4.html#lst:A-Recursive-Tag">4.1.2↓</a>. In this example we have several nested snippet tags, starting with <tt>&lt;A.snippet /&gt;</tt>. Listing <a class="Reference" href="index-4.html#lst:Recursive-Tag-Snippets">4.1.2↓</a> shows the backing code for this example. Snippets are covered in more detail in Chapter <a class="Reference" href="index-5.html#cha:Snippets">5↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Recursive Tag Processing Example<a class="Label" name="lst:A-Recursive-Tag"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:A.snippet&gt;
+  &lt;p&gt;Hello, &lt;A:name /&gt;!&lt;/p&gt;
+  &lt;p&gt;
+    &lt;lift:B.snippet&gt;
+      &lt;B:title /&gt;
+      &lt;lift:C.snippet /&gt;
+    &lt;/lift:B.snippet&gt;
+  &lt;/p&gt;
+&lt;/lift:A.snippet&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The first thing that happens is that the contents of the <tt>&lt;lift:A.snippet&gt;</tt> tag are passed as a <tt>NodeSeq</tt> argument to the <tt>A.snippet</tt> method. In the <tt>A.snippet</tt> method we bind<a class="IndexReference" name="entry-bind-0" href="index-Index.html#index-bind">↓</a>, or replace, the <tt>&lt;A:name /&gt;</tt> tag with an XML Text node of “The A snippet”. The rest of the input is left as-is and is returned to Lift for more processing. Lift examines the returned <tt>NodeSeq</tt> for more lift tags and finds the <tt>&lt;lift:B.snippet&gt;</tt> tag. The contents of the <tt>&lt;lift:B.snippet&gt;</tt> tag are passed as a <tt>NodeSeq</tt> argument to the <tt>B.snippet</tt> method, where the <tt>&lt;B.title /&gt;</tt> tag is bound with the XML Text node “The B snippet”. The rest of the contents are left unchanged and the transformed <tt>NodeSeq</tt> is returned to Lift, which scans for and finds the <tt>&lt;lift:C.snippet /&gt;</tt> tag. Since there are no child elements for the <tt>&lt;lift:C.snippet /&gt;</tt> tag, the <tt>C.snippet</tt> method is invoked with an empty <tt>NodeSeq</tt> and the <tt>C.snippet</tt> returns the Text node “The C snippet”.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Recursive Tag Snippets Code<a class="Label" name="lst:Recursive-Tag-Snippets"> </a>
+</div>
+<pre class="listing brush: scala">... standard Lift imports ...
+class A {
+  def snippet (xhtml : NodeSeq) : NodeSeq = 
+    bind("A", xhtml, "name" -&gt; Text("The A snippet"))
+}
+class B {
+  def snippet (xhtml : NodeSeq) : NodeSeq =
+    bind("B", xhtml, "title" -&gt; Text("The B snippet"))
+}
+class C {
+  def snippet (xhtml : NodeSeq) : NodeSeq = Text("The C snippet")
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+While the contents of the <tt>A.snippet</tt> tag are passed to the <tt>A.snippet</tt> method, there’s no requirement that the contents are actually used. For example, consider what would happen if we swapped the B and C snippet tags in our template, as shown in Listing <a class="Reference" href="index-4.html#lst:The-Swapped-Recursive">4.1.2↓</a>. In this example, the <tt>C.snippet</tt> method is called before the <tt>B.snippet</tt> method. Since our <tt>C.snippet</tt> method returns straight XML that doesn’t contain the B snippet tag, the B snippet will never be executed! We’ll cover how the <tt>eager_eval</tt> tag attribute can be used to reverse this behavior in Section <a class="Reference" href="index-5.html#sub:Eager-Eval">5.3.4↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Swapped Recursive Snippet Template<a class="Label" name="lst:The-Swapped-Recursive"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:A.snippet&gt;
+  &lt;p&gt;Hello, &lt;A:name /&gt;!&lt;/p&gt;
+  &lt;p&gt;
+    &lt;lift:C.snippet&gt;
+      &lt;lift:B.snippet&gt;
+        &lt;B:title /&gt;
+      &lt;/lift:B.snippet&gt;
+    &lt;/lift:C.snippet&gt;
+  &lt;/p&gt;
+&lt;/lift:A.snippet&gt;
+&lt;!-- After the A and C snippets have been processed: --&gt;
+&lt;p&gt;Hello, The A snippet&lt;/p&gt;
+&lt;p&gt;The C snippet&lt;/p&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, templates are a nice way of setting up your layout and then writing a few methods to fill in the XML fragments that make up your web applications. They provide a simple way to generate a uniform look for your site, particularly if you assemble your templates using the surround and embed tags. If you’d like programmatic control over the template XML used for a particular request, you’ll want to use a View, which is discussed in the next section.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.2">4.2</a> Designer-Friendly Templates<a class="Label" name="sec:Designer-Friendly-Templates"> </a><a class="IndexReference" name="entry-Templates-Designer-friendly-0" href="index-Index.html#index-Templates-Designer-friendly">↓</a><a class="IndexReference" name="entry-Designer-friendly-templates-0" href="index-Index.html#index-Designer-friendly-templates">↓</a>
+</h2>
+<div class="Unindented">
+New in Lift 2.2 is the ability to use fully valid XHTML (or HTML5, which we’ll discuss in Section <a class="Reference" href="index-4.html#sec:HTML5-Support">4.3↓</a>) for your templates. There are a number of features involved in designer-friendly templates (or DFTs for short), so let’s go through each one.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.2.1">4.2.1</a> Determining the Content Element<a class="IndexReference" name="entry-Templates-content-element-0" href="index-Index.html#index-Templates-content-element">↓</a>
+</h3>
+<div class="Unindented">
+In XML-based templates, the entire XML file is considered to hold the contents of the template. In DFTs, we want to be able to include the full XHTML or HTML5 markup, including tags like <tt>&lt;DOCTYPE&gt;</tt>, <tt>&lt;html/&gt;</tt>, etc. without necessarily including all of that in the output of the template (for example, in an embedded template). Lift supports choosing a child element of the template to represent the actual contents via the use of one of two related mechanisms.
+</div>
+<div class="Indented">
+The first mechanism is to put a <tt>lift:content_id</tt> attribute on the HTML element, as shown in Listing <a class="Reference" href="index-4.html#lst:Assigning-a-Content-ID-HTML">4.2.1↓</a>. The drawback to this approach is that you have to specify the “lift” namespace in the html tag or you might get validation errors.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Assigning a Content ID on the HTML element<a class="Label" name="lst:Assigning-a-Content-ID-HTML"> </a>
+</div>
+<pre class="listing brush: html">&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"&gt;
+ &lt;html xmlns="http://www.w3.org/1999/xhtml" 
+       xmlns:lift="http://liftweb.net" 
+       lift:content_id="real_content"&gt;
+   &lt;head&gt;
+	&lt;title&gt;Not really&lt;/title&gt;
+   &lt;/head&gt;
+   &lt;body&gt;
+     &lt;div id="real_content"&gt;
+       &lt;h1&gt;Welcome to your project!&lt;/h1&gt;
+     &lt;/div&gt;
+   &lt;/body&gt;
+ &lt;/html&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The second, safer approach, is to specific the <tt>lift:content_id</tt> marker as part of the body element’s <tt>class</tt> attribute, as shown in Listing <a class="Reference" href="index-4.html#lst:Assigning-a-Content-ID-Body">4.2.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Assigning a Content ID in the Body class<a class="Label" name="lst:Assigning-a-Content-ID-Body"> </a>
+</div>
+<pre class="listing brush: html">&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"&gt;
+ &lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+   &lt;head&gt;
+	&lt;title&gt;Not really&lt;/title&gt;
+   &lt;/head&gt;
+   &lt;body class="lift:content_id=real_content"&gt;
+     &lt;div id="real_content"&gt;
+       &lt;h1&gt;Welcome to your project!&lt;/h1&gt;
+     &lt;/div&gt;
+   &lt;/body&gt;
+ &lt;/html&gt;
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.2.2">4.2.2</a> Invoking Snippets Via the Class Attribute<a class="IndexReference" name="entry-Snippets-invoking-via-class-attributes-0" href="index-Index.html#index-Snippets-invoking-via-class-attributes">↓</a>
+</h3>
+<div class="Unindented">
+In XML-based templates, Lift looks for tags with the “lift” prefix to process. In DFTs, the <tt>class</tt> attribute is used instead for invocation. This form of invocation is discussed in more detail in Section <a class="Reference" href="index-5.html#sec:The-Snippet-Tag">5.1 on page 1↓</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.2.3">4.2.3</a> Binding via CSS transforms<a class="IndexReference" name="entry-Binding-with-CSS-0" href="index-Index.html#index-Binding-with-CSS">↓</a>
+</h3>
+<div class="Unindented">
+Lift 2.2 introduces a new feature for binding values into snippet markup by using CSS id and class attributes instead of prefixed XML elements. This support is detailed in Section <a class="Reference" href="index-5.html#sub:CSS-Selector-Transforms">5.3.2 on page 1↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.3">4.3</a> HTML5 Support<a class="Label" name="sec:HTML5-Support"> </a><a class="IndexReference" name="entry-HTML5-0" href="index-Index.html#index-HTML5">↓</a><a class="IndexReference" name="entry-HTML-Version-5-0" href="index-Index.html#index-HTML-Version-5">↓</a><a class="IndexReference" name="entry-Templates-HTML5-0" href="index-Index.html#index-Templates-HTML5">↓</a>
+</h2>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.4">4.4</a> Views<a class="Label" name="sec:Views"> </a><a class="IndexReference" name="entry-Views-1" href="index-Index.html#index-Views">↓</a>
+</h2>
+<div class="Unindented">
+We just discussed Templates and saw that through a combination of an XML file, Lift tags, and Scala code we can respond to requests made by a user. You can also generate an XHTML response entirely in code using a View. Custom dispatch is a similar method which can be used to programmatically return any kind of response (not just XHTML), and is covered in more depth in Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↑</a>.
+</div>
+<div class="Indented">
+A view function is a normal Scala method of type <span class="formula">() ⇒ <i>scala</i>.<i>xml</i>.<i>NodeSeq</i></span><a class="IndexReference" name="entry-NodeSeq-0" href="index-Index.html#index-NodeSeq">↓</a>. The <tt>NodeSeq</tt> that’s returned from a view is processed for template tags in the same way that XML loaded from a static file would be. As we showed in Section <a class="Reference" href="index-3.html#sec:The-Rendering-Process">3.5↑</a>, there are two ways that a View can be invoked. The first is by defining a partial function for <tt>LiftRules.viewDispatch<a class="IndexReference" name="entry-viewDispatch-2" href="index-Index.html#index-viewDispatch">↓</a><a class="IndexReference" name="entry-Views-Explicit-dispatch-2" href="index-Index.html#index-Views-Explicit-dispatch">↓</a></tt>, which allows you to dispatch to any statically-available method (i.e. on an <tt>object</tt>, not a <tt>class</tt>), or to a <tt>LiftView</tt> (explained in a moment) object for any arbitrary request path. The second way that a View can be invoked is by reflection: if the first element of the request path matches the class name of the View (as defined in Section <a class="Reference" href="index-3.html#sub:Class-Resolution">3.2.1↑</a>), then the second element is used to look up the View function depending on which trait the View class implements. For performance reasons, explicit dispatch via <tt>LiftRules.viewDispatch</tt> is recommended because reflection incurs a significant cost for each request. When you use <tt>LiftRules.viewDispatch</tt>, you need to provide an instance of <tt>scala.lang.Either</tt> to differentiate the dispatch type: a <tt>scala.lang.Left</tt> indicates a method returning a <tt>Box[NodeSeq]</tt>, while a <tt>scala.lang.Right</tt> indicates a <tt>LiftView</tt> object. If you want to dispatch a request to a <tt>LiftView</tt> object, the match in the <tt>LiftRules.viewDispatch</tt> is made on all path components except the last one (e.g. <tt>List.init</tt>), and that object’s <tt>dispatch</tt> method is checked against the last component of the path to further determine which method on the object will handle the request. Listing <a class="Reference" href="index-4.html#lst:Explicit-View-Dispatch">4.4↓</a> shows how we can define an RSS view as a feed using explicit dispatch. Note that we use extraction on the requested path in this case to provide account-specific feeds and a security token to prevent feed browsing.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Explicit View Dispatch<a class="Label" name="lst:Explicit-View-Dispatch"> </a>
+</div>
+<pre class="listing brush: scala">// In Boot.boot:
+LiftRules.viewDispatch.append {
+  // This is an explicit dispatch to a particular method based on the path
+  case List("Expenses", "recent", acctId, authToken) =&gt;
+    Left(() =&gt; Full(RSSView.recent(acctId, authToken)))
+​
+  // This is a dispatch via the same LiftView object. The path
+  // "/Site/news" will match this dispatch because of our dispatch
+  // method defined in RSSView. The path "/Site/stuff/news" will not
+  // match because the dispatch will be attempted on List("Site","stuff")
+  case List("Site") =&gt; Right(RSSView)
+}
+​
+// Define the View object:
+object RSSView extends LiftView {
+  def dispatch = {
+    case "news" =&gt; siteNews
+  }
+​
+  def recent(acctId : String, authToken : String)() : NodeSeq = {
+     // User auth, account retrieval here
+     ...
+     &lt;lift:surround with="rss" at="content"&gt;
+       ...
+     &lt;/lift:surround&gt;
+  }
+​
+  // Display a general RSS feed for the entire site
+  def siteNews() : NodeSeq = { ... }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+If you want to use reflection for dispatch<a class="IndexReference" name="entry-Views-Implicit-dispatch-0" href="index-Index.html#index-Views-Implicit-dispatch">↓</a><a class="IndexReference" name="entry-Views-Reflection-dispatch-0" href="index-Index.html#index-Views-Reflection-dispatch">↓</a> then there are two traits that you can use when implementing a view class: one is the <tt>LiftView</tt><a class="IndexReference" name="entry-LiftView-0" href="index-Index.html#index-LiftView">↓</a> trait, the other is the <tt>InsecureLiftView</tt><a class="IndexReference" name="entry-InsecureLiftView-0" href="index-Index.html#index-InsecureLiftView">↓</a> trait, both under the <tt>net.liftweb.http</tt> package. As you may be able to tell from the names, we would prefer that you extend the <tt>LiftView</tt> trait. The <tt>InsecureLiftView</tt> determines method dispatch by turning a request path into a class and method name. For example, if we have a path <tt>/MyStuff/enumerate</tt>, then Lift will look for a class called <tt>MyStuff</tt> in the view subpackage (class resolution is covered in Section <a class="Reference" href="index-3.html#sub:Class-Resolution">3.2.1↑</a>) and if it finds <tt>MyStuff</tt> and it has a method called <tt>enumerate</tt>, then Lift will execute the <tt>enumerate</tt> method and return its result to the user. The main concern here is that Lift uses reflection<a class="IndexReference" name="entry-reflection-0" href="index-Index.html#index-reflection">↓</a> to get the method with <tt>InsecureLiftView</tt>, so it can access any method in the class, even ones that you don’t intend to make public. A better way to invoke a View is to extend the <tt>LiftView</tt> trait, which defines a dispatch partial function. This dispatch function maps a string (the “method name”) to a function that will return a <tt>NodeSeq</tt>. Listing <a class="Reference" href="index-4.html#lst:Dispatch-in-LiftView">4.4↓</a> shows a custom <tt>LiftView</tt> class where the path <tt>/ExpenseView/enumerate</tt> will map to the <tt>ExpenseView.doEnumerate</tt> method. If a user attempts to go to <tt>/ExpenseView/privateMethod</tt> they’ll get a 404 because <tt>privateMethod</tt> is not defined in the dispatch method. If, however, our <tt>ExpenseView</tt> class implemented the <tt>InsecureLiftView</tt> trait and someone visited <tt>/ExpenseView/privateMethod</tt>, we would lose our hard drive (on Unix at least).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Dispatch in LiftView<a class="Label" name="lst:Dispatch-in-LiftView"> </a>
+</div>
+<pre class="listing brush: scala">class ExpenseView extends LiftView {
+  override def dispatch = {
+    case "enumerate" =&gt; doEnumerate _
+  }
+​
+  def doEnumerate () : NodeSeq = {  
+    ...
+    &lt;lift:surround with="default" at="content"&gt;
+     { expenseItems.toTable }
+    &lt;/lift:surround&gt;
+  }
+​
+  def privateMethod () : NodeSeq = {
+    Runtime.getRuntime.exec("rm -rf /")
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+A major difference between Views and other programmatic rendering approaches (such as Custom Dispatch) is that the <tt>NodeSeq</tt> returned from the View method is processed for template tags including <tt>surrounds</tt> and <tt>includes</tt>, just as it would be for a snippet. That means that you can use the full power of the templating system from within your View, as shown in Listing <a class="Reference" href="index-4.html#lst:Dispatch-in-LiftView">4.4↑</a>’s <tt>doEnumerate</tt> method.
+</div>
+<div class="Indented">
+Since you can choose not to include any of the pre-defined template XHTML, you can easily generate any XML-based content, such as Atom or RSS feeds, using a View.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.5">4.5</a> Tags<a class="Label" name="sec:ArchTags"> </a>
+</h2>
+<div class="Unindented">
+In the earlier sections on Templates and Views we briefly touched on some of Lift’s built-in tags, namely, <tt>&lt;lift:snippet/&gt;</tt> and <tt>&lt;lift:surround</tt>/&gt;. In this section we’ll go into more detail on those tags as well as cover the rest of Lift’s tags.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.1">4.5.1</a> a<a class="Label" name="sub:a-tag"> </a><a class="IndexReference" name="entry-Tags-a-0" href="index-Index.html#index-Tags-a">↓</a><a class="IndexReference" name="entry-SHtml-a-0" href="index-Index.html#index-SHtml-a">↓</a><a class="IndexReference" name="entry-AJAX-anchor-tag-0" href="index-Index.html#index-AJAX-anchor-tag">↓</a>
+</h3>
+<div class="Unindented">
+The <tt>&lt;lift:a/&gt;</tt> tag is used internally by <tt>SHtml.a</tt> to create an anchor tag that will call an AJAX function when clicked. This tag is generally not used directly by developers. See Section <a class="Reference" href="index-11.html#sub:AJAX-Generators-in-detail">11.4 on page 1↓</a> for more details.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.2">4.5.2</a> bind<a class="Label" name="sub:bind-tag"> </a><a class="IndexReference" name="entry-Tags-bind-0" href="index-Index.html#index-Tags-bind">↓</a><a class="IndexReference" name="entry-binding-1" href="index-Index.html#index-binding">↓</a>
+</h3>
+<pre class="LyX-Code">
+Usage: &lt;lift:bind name=”binding_name” /&gt;
+</pre>
+<div class="Unindented">
+The <tt>&lt;lift:bind/&gt;</tt> tag is used as a placeholder for insertion of content within included templates when using the <tt>&lt;lift:surround/&gt; and</tt> <tt>&lt;lift:embed/&gt;</tt> tags. See Section <a class="Reference" href="index-4.html#sec:Binding">4.7↓</a> for examples and discussion.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.3">4.5.3</a> bind-at<a class="Label" name="sub:bind-at-tag"> </a><a class="IndexReference" name="entry-Tags-bind-at-0" href="index-Index.html#index-Tags-bind-at">↓</a><a class="IndexReference" name="entry-binding-2" href="index-Index.html#index-binding">↓</a>
+</h3>
+<pre class="LyX-Code">
+Usage: &lt;lift:bind-at name=”binding_name”&gt;contents&lt;/lift:bind-at&gt;
+</pre>
+<div class="Unindented">
+The <tt>&lt;lift:bind-at/&gt;</tt> tag is used to replace named <tt>&lt;lift:bind/&gt;</tt> tags within <tt>&lt;lift:surround/&gt;</tt> and <tt>&lt;lift:embed/&gt;</tt> tags. See Section <a class="Reference" href="index-4.html#sec:Binding">4.7↓</a> for examples and discussion.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.4">4.5.4</a> children<a class="Label" name="sub:children-tag"> </a><a class="IndexReference" name="entry-Tags-children-0" href="index-Index.html#index-Tags-children">↓</a><a class="IndexReference" name="entry-children-0" href="index-Index.html#index-children">↓</a>
+</h3>
+<pre class="LyX-Code">
+Usage: &lt;lift:children&gt;...multiple xml nodes here...&lt;/lift:children&gt;
+</pre>
+<div class="Unindented">
+The purpose of the <tt>&lt;lift:children/&gt;</tt> tag is to allow you to create fragment templates with more than one root element that still parse as valid XML. For example, Listing <a class="Reference" href="index-4.html#lst:A-Non-Conforming-XML">4.5.4↓</a> shows a template that we might want to embed into other templates. The problem is that XML requires a single root element, and in this case we have two.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Non-Conforming XML Fragment<a class="Label" name="lst:A-Non-Conforming-XML"> </a>
+</div>
+<pre class="listing brush: xml">&lt;div&gt;First Div&lt;/div&gt;
+&lt;div&gt;Second Div&lt;/div&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+By using the <tt>&lt;lift:children/&gt;</tt> tag, as shown in Listing <a class="Reference" href="index-4.html#lst:A-Conforming-XML">4.5.4↓</a>, we have a valid XML file. Lift essentially replaces the <tt>&lt;lift:children/&gt;</tt> tag with its contents.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Conforming XML Fragment<a class="Label" name="lst:A-Conforming-XML"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:children&gt;
+&lt;div&gt;First Div&lt;/div&gt;
+&lt;div&gt;Second Div&lt;/div&gt;
+&lt;/lift:children&gt;
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.5">4.5.5</a> comet<a class="Label" name="sub:comet-tag"> </a><a class="IndexReference" name="entry-Tags-comet-0" href="index-Index.html#index-Tags-comet">↓</a><a class="IndexReference" name="entry-Comet-0" href="index-Index.html#index-Comet">↓</a>
+</h3>
+<pre class="LyX-Code">
+<tt>Usage: &lt;lift:comet type="ClassName" name=”optional”/&gt;</tt>
+</pre>
+<div class="Unindented">
+The <tt>&lt;lift:comet/&gt;</tt> tag embeds a Comet actor into your page. The class of the Comet actor is specified by the <tt>type</tt> attribute. The <tt>name</tt> attribute tells Lift to create a unique instance of the Comet actor; for example, you could have one Comet actor for site updates and another for admin messages. The contents of the tag are used by the Comet actor to bind a response. Listing <a class="Reference" href="index-4.html#lst:Ledger-Entry-Comet">4.5.5↓</a> shows an example of a Comet binding that displays expense entries as they’re added. Comet is covered in more detail in Chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Account Entry Comet<a class="Label" name="lst:Ledger-Entry-Comet"> </a>
+</div>
+<pre class="listing brush: xml">&lt;div class="accountUpdates"&gt;
+  &lt;lift:comet type="AccountMonitor"&gt;
+    &lt;ul&gt;&lt;account:entries&gt;
+      &lt;li&gt;&lt;entry:time/&gt; : &lt;entry:user /&gt; : &lt;entry:amount /&gt;&lt;/li&gt;
+    &lt;/account:entries&gt;&lt;/ul&gt;
+  &lt;/lift:comet&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As we mention in the <tt>embed</tt> tag documentation, mixing Comet with AJAX responses can be a bit tricky due to the embedded JavaScript that Comet uses.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.6">4.5.6</a> CSS<a class="Label" name="sub:CSS-tag"> </a><a class="IndexReference" name="entry-Tags-CSS-0" href="index-Index.html#index-Tags-CSS">↓</a><a class="IndexReference" name="entry-CSS-0" href="index-Index.html#index-CSS">↓</a>
+</h3>
+<pre class="LyX-Code">
+Usage: &lt;lift:CSS.blueprint /&gt;
+       &lt;lift:CSS.fancyType /&gt;
+</pre>
+<div class="Unindented">
+The <tt>&lt;lift:CSS/&gt;</tt> tag is used to insert the blueprint<span class="FootOuter"><span class="SupFootMarker"> [S] </span><span class="HoverFoot"><span class="SupFootMarker"> [S] </span><a class="FlexURL" href="http://www.blueprintcss.org/">http://www.blueprintcss.org/</a></span></span> and (optionally) fancyType <span class="FootOuter"><span class="SupFootMarker"> [T] </span><span class="HoverFoot"><span class="SupFootMarker"> [T] </span><a class="FlexURL" href="http://anthonygthomas.com/2010/02/15/blueprint-optional-fancy-type-plugin/">http://anthonygthomas.com/2010/02/15/blueprint-optional-fancy-type-plugin/</a></span></span> CSS stylesheets
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.7">4.5.7</a> embed<a class="IndexReference" name="entry-embed-0" href="index-Index.html#index-embed">↓</a><a class="Label" name="sub:embed-tag"> </a> <a class="IndexReference" name="entry-Tags-embed-0" href="index-Index.html#index-Tags-embed">↓</a>
+</h3>
+<pre class="LyX-Code">
+Usage:<tt> &lt;lift:embed what="template_name" /&gt;</tt>
+</pre>
+<div class="Unindented">
+The <tt>embed</tt> tag allows you to embed a template within another template. This can be used to assemble your pages from multiple smaller templates, and it also allows you to access templates from JavaScript commands (Chapter <a class="Reference" href="index-10.html#cha:Lift-and-Javascript">10↓</a>). As with the <tt>surround</tt> tag, the template name can be either the base filename or a fully-qualified path.
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+<span class="small">Note that if you use the embed tag to access templates from within a JsCmd (typically an AJAX call), any JavaScript in the embedded template won’t be executed. This includes, but is not limited to, Comet widgets.</span>
+</div>
+
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.8">4.5.8</a> form
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.9">4.5.9</a> HTML5
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.10">4.5.10</a> ignore
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.11">4.5.11</a> lazy-load
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.12">4.5.12</a> loc
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.13">4.5.13</a> Menu
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.14">4.5.14</a> Msgs
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.15">4.5.15</a> SkipDocType
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.16">4.5.16</a> snippet
+</h3>
+<div class="Unindented">
+The snippet tag is covered in detail in Section <a class="Reference" href="index-5.html#sec:The-Snippet-Tag">5.1 on page 1↓</a>, part of the chapter on snippets.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.17">4.5.17</a> surround<a class="IndexReference" name="entry-surround-0" href="index-Index.html#index-surround">↓</a><a class="IndexReference" name="entry-Tags-surround-0" href="index-Index.html#index-Tags-surround">↓</a><a class="Label" name="sub:surround-tag"> </a>
+</h3>
+<pre class="LyX-Code">
+Usage:<tt> &lt;lift:surround with="template_name" at=”binding”&gt;</tt>
+<tt>         children</tt>
+<tt>       &lt;/lift:surround&gt;</tt>
+</pre>
+<div class="Unindented">
+The <tt>surround</tt> tag surrounds the child nodes with the named template. The child nodes are inserted into the named template at the binding point specified by the <tt>at</tt> parameter (we’ll cover the bind tag in Section <a class="Reference" href="index-4.html#sub:bind-tag">4.5.2↑</a>). Typically, templates that will be used to surround other templates are incomplete by themselves, so we usually store them in the <tt>&lt;app root&gt;/templates-hidden</tt> subdirectory so that they can’t be accessed directly. Having said that, “incomplete” templates may be placed in any directory that templates would normally go in. The most common usage of <tt>surround</tt> is to permit you to use a “master” template for your site CSS, menu, etc. An example use of <tt>surround</tt> is shown in Listing <a class="Reference" href="index-4.html#lst:Surrounding-your-page">4.5.17↓</a>. We’ll show the counterpart master template in the section on the bind tag. Note also that the surrounding template name can be either a fully-qualified path (i.e. “/templates-hidden/default”), or just the base filename (“default”). In the latter case, Lift will search all subdirectories of the app root for the template. By default, Lift will use “/templates-hidden/default” if you don’t specify a <tt>with</tt> attribute, so Listings <a class="Reference" href="index-4.html#lst:Surrounding-your-page">4.5.17↓</a> and <a class="Reference" href="index-4.html#lst:Surrounding-with-the-default-template">4.5.17↓</a> are equivalent.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Surrounding Your Page<a class="Label" name="lst:Surrounding-your-page"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;p&gt;Welcome to PocketChange!&lt;/p&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Surrounding with the default template<a class="Label" name="lst:Surrounding-with-the-default-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround at="content"&gt;
+  &lt;p&gt;Welcome to PocketChange!&lt;/p&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that you can use multiple surround templates for different functionality, and surrounds can be nested. For example, you might want to have a separate template for your administrative pages that adds a menu to your default template. In that case, your <tt>admin.html</tt> could look like Listing <a class="Reference" href="index-4.html#lst:Adding-an-Admin-menu">4.5.17↓</a>. As you can see, we’ve named our bind point in the admin template “content” so that we keep things consistent for the rest of our templates. So if, for example, we were going to nest the template in Listing <a class="Reference" href="index-4.html#lst:Surrounding-your-page">4.5.17↑</a> above into the <tt>admin.html</tt> template in Listing <a class="Reference" href="index-4.html#lst:Adding-an-Admin-menu">4.5.17↓</a>, all we’d need to do is change it’s <tt>with</tt> attribute from “default” to “admin.”
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding an Admin Menu<a class="Label" name="lst:Adding-an-Admin-menu"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:Admin.menu /&gt;
+  &lt;lift:bind name="content" /&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+<span class="small">You cannot have a hidden template with the same name as a sub-directory of your webapp directory. For example, if you had an admin.html template in /templates-hidden, you could not also have an admin directory. </span>
+</div>
+
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.18">4.5.18</a> tail
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.19">4.5.19</a> TestCond
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.20">4.5.20</a> with-param
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.21">4.5.21</a> with-resource-id
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.22">4.5.22</a> VersionInfo
+</h3>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-4.5.23">4.5.23</a> XmlGroup
+</h3>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.6">4.6</a> Head and Tail Merge<a class="Label" name="sec:Head-Tail-Merge"> </a>
+</h2>
+<div class="Unindented">
+Another feature of Lift’s template processing is the ability to merge the HTML <tt>head</tt><a class="IndexReference" name="entry-head-0" href="index-Index.html#index-head">↓</a> element in a template with the <tt>head</tt> element in the surrounding template. In our example, Listing <a class="Reference" href="index-4.html#lst:Sample-template">4.1↑</a>, notice that we’ve specified a <tt>head</tt> tag inside the template. Without the head merge, this <tt>head</tt> tag would show up in the default template where our template gets bound. Lift is smart about this, though, and instead takes the content of the <tt>head</tt> element and merges it into the outer template’s <tt>head</tt> element. This means that you can use a <tt>surround</tt> tag to keep a uniform default template, but still do things such as changing the title of the page, adding scripts or special CSS, etc. For example, if you have a table in a page that you’d like to style with jQuery’s TableSorter, you could add a head element to insert the appropriate script:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using Head Merge<a class="Label" name="lst:Using-Head-Merge"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="foo"&gt;
+&lt;head&gt;&lt;script src="/scripts/tablesorter.js" type="text/javascript" /&gt;&lt;head&gt;
+...
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In this manner, you’ll import TableSorter for this template alone.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-4.7">4.7</a> Binding<a class="Label" name="sec:Binding"> </a>
+</h2>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-3.html#Next">Previous: Chapter 3</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-5.html#prev">Next: Chapter 5</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

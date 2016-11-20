@@ -1,0 +1,1892 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-7.html#Next">Previous: Chapter 7</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-Part-II.html#prev">Next: Part II</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-8">8</a> The Mapper and Record Frameworks<a class="Label" name="cha:mapper_and_record"> </a>
+</h1>
+<div class="Unindented">
+In our experience, most webapps end up needing to store user data somewhere. Once you start working with user data, though, you start dealing with issues like coding up input forms, validation<a class="IndexReference" name="entry-validation-0" href="index-Index.html#index-validation">↓</a>, persistence, etc. to handle the data. That’s where the Mapper and Record frameworks come in. These frameworks provides a scaffolding for all of your data manipulation needs. Mapper is the original Lift persistence framework, and it is closely tied to JDBC for its storage. Record is a new refactorization of Mapper that is backing-store agnostic at its core, so it doesn’t matter whether you want to save your data to JDBC, JPA, or even something such as XML. With Record, selecting the proper driver will be as simple as hooking the proper traits into your class.
+</div>
+<div class="Indented">
+<div class="Framed" style="width: 100%;">
+The Record framework is relatively new to Lift. <strike>The plan is to move to Record as the primary ORM framework for Lift sometime post-1.0.</strike> Because Record is still under active design and development, and because of its current “moving target” status, this chapter is mostly going to focus on Mapper. We will, however, provide a few comparitive examples of Record functionality to give you a general feel for the flavor of the changes. In any case, Mapper will not go away even when record comes out, so you can feel secure that any code using Mapper will be viable for quite a while.
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-8.1">8.1</a> Introduction to Mapper and MetaMapper
+</h2>
+<div class="Unindented">
+Let’s start by discussing the relationship between the Mapper<a class="IndexReference" name="entry-Mapper-0" href="index-Index.html#index-Mapper">↓</a> and MetaMapper<a class="IndexReference" name="entry-MetaMapper-0" href="index-Index.html#index-MetaMapper">↓</a> traits (and the corresponding Record<a class="IndexReference" name="entry-Record-0" href="index-Index.html#index-Record">↓</a> and MetaRecord<a class="IndexReference" name="entry-MetaRecord-0" href="index-Index.html#index-MetaRecord">↓</a>). Mapper provides the <i>per-instance</i> functionality for your class, while MetaMapper handles the <i>global</i> operations for your class and provides a common location to define per-class static specializations of things like field order, form generation, and HTML representation. In fact, many of the Mapper methods actually delegate to methods on MetaMapper. In addition to Mapper and MetaMapper, there is a third trait, MappedField, that provides the per-field functionality for your class. In Record, the trait is simply called “Field”. The MappedField trait lets you define the individual validators as well as filters to transform the data and the field name. Under Record, Field adds some functionality such as tab order and default error messages for form input handling.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.1">8.1.1</a> Adding Mapper to Your Project
+</h3>
+<div class="Unindented">
+Since Mapper is a separate module, you need to add the following dependency to your pom.xml to access it:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mapper POM Dependency
+</div>
+<pre class="listing brush: xml">&lt;project ...&gt;
+  ...
+  &lt;dependencies&gt;
+    ...
+    &lt;dependency&gt;
+      &lt;groupId&gt;net.liftweb&lt;/groupId&gt;
+      &lt;artifactId&gt;lift-mapper&lt;/artifactId&gt;
+      &lt;version&gt;1.0&lt;/version&gt; &lt;!-- or 1.1-SNAPSHOT, etc --&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+  ...
+&lt;/project&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+You’ll also need the following import in any Scala code that uses Mapper:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mapper Imports
+</div>
+<pre class="listing brush: scala">import _root_.net.liftweb.mapper._
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.2">8.1.2</a> Setting Up the Database Connection
+</h3>
+<div class="Unindented">
+The first thing you need to do is to define the database connection. We do this by defining an object called <tt>DBVendor</tt> (but you can call it whatever you want). This object extends the net.liftweb.mapper.ConnectionManager trait and must implement two methods: newConnection and releaseConnection. You can make this as sophisticated as you want, with pooling, caching, etc., but for now, Listing <a class="Reference" href="index-8.html#lst:Setting-up-the-database">8.1.2↓</a> shows a basic implementation to set up a PostgreSQL driver.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting Up the Database<a class="Label" name="lst:Setting-up-the-database"> </a>
+</div>
+<pre class="listing brush: scala">.. standard Lift imports ...
+import _root_.net.liftweb.mapper._
+import _root_.java.sql._
+​
+object DBVendor extends ConnectionManager {
+  // Force load the driver
+  Class.forName("org.postgresql.Driver")
+  // define methods
+  def newConnection(name : ConnectionIdentifier) = {
+    try {
+      Full(DriverManager.getConnection(
+           "jdbc:postgresql://localhost/mydatabase",
+           "root", "secret"))
+    } catch {
+      case e : Exception =&gt; e.printStackTrace; Empty
+    }
+  }
+  def releaseConnection (conn : Connection) { conn.close }
+}
+​
+class Boot {
+  def boot {
+    ...
+    DB.defineConnectionManager(DefaultConnectionIdentifier, DBVendor)
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+A few items to note:
+</div>
+<ol>
+<li>
+The <tt>name</tt> parameter for newConnection can be used if you need to have connections to multiple distinct databases. One specialized case of this is when you’re doing DB sharding (horizontal scaling). Multiple database usage is covered in more depth in Section <a class="Reference" href="index-8.html#sub:Multiple-Databases">8.3.1↓</a>
+</li>
+<li>
+The newConnection method needs to return a <tt>Box[java.sql.Connection]</tt>. Returning <tt>Empty</tt> indicates failure
+</li>
+<li>
+The releaseConnection method exists so that you have complete control over the lifecycle of the connection. For instance, if you were doing connection pooling yourself you would return the connection to the available pool rather than closing it
+</li>
+<li>
+The <tt>DB.defineConnectionManager</tt> call is what binds our manager into Mapper. Without it your manager will never get called
+</li>
+
+</ol>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.3">8.1.3</a> Constructing a Mapper-enabled Class<a class="Label" name="sub:Constructing-a-Mapper-enabled-class"> </a>
+</h3>
+<div class="Unindented">
+Now that we’ve covered some basic background, we can start constructing some Mapper classes to get more familiar with the framework. We’ll start with a simple example of a class for an expense transaction from our PocketChange application with the following fields:
+</div>
+<ul>
+<li>
+Date
+</li>
+<li>
+Description: a string with a max length of 100 chars
+</li>
+<li>
+Amount: a decimal value with a precision of 16 digits and two decimal places
+</li>
+<li>
+A reference to the Account that owns the transaction
+</li>
+
+</ul>
+<div class="Unindented">
+Given these requirements we can declare our <tt>Expense</tt> class as shown in Listing <a class="Reference" href="index-8.html#lst:Entry-class-mapper">8.1.3↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Expense Class in Mapper<a class="Label" name="lst:Entry-class-mapper"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.math.MathContext
+​
+class Expense extends LongKeyedMapper[Expense] with IdPK {
+  def getSingleton = Expense
+  object dateOf extends MappedDateTime(this)
+  object description extends MappedString(this,100)
+  object amount extends MappedDecimal(this, MathContext.DECIMAL64, 2)
+  object account extends MappedLongForeignKey(this, Account)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+For comparison, the Record version is shown in Listing <a class="Reference" href="index-8.html#lst:Entry-class-record">8.1.3↓</a>. This example already shows some functionality that hasn’t been ported over to Record from Mapper; among other things, the <tt>IdPK</tt> trait, and foreign key fields (many to one mappings) are missing. The other minor differences are that the <tt>getSingleton</tt> method has been renamed to <tt>meta</tt>, and the Field traits use different names under the Record framework (i.e. <tt>DateTimeField</tt> vs <tt>MappedDateTime</tt>).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Entry Class in Record<a class="Label" name="lst:Entry-class-record"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.math.MathContext
+import _root_.net.liftweb.record._
+​
+class Expense extends KeyedRecord[Expense,Long] {
+  def meta = Expense
+  def primaryKey = id
+  object id extends LongField(this) with KeyField[Long,Expense]
+  object dateOf extends DateTimeField(this)
+  object description extends StringField(this, 100)
+  object amount extends DecimalField(this, MathContext.DECIMAL64, 2)
+  object account extends LongField(this)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, we’ve set <tt>Expense</tt> to extend the <tt>LongKeyedMapper</tt> and <tt>IdPK</tt> traits and we’ve added the fields required by our class. We would like to provide a primary key for our entity; while not strictly necessary, having a synthetic primary key often helps with CRUD operations. The <tt>LongKeyedMapper</tt> trait accomplishes two objectives: it tells Lift that we want a primary key defined and that the key should be a long. This is basically a shortcut for using the <tt>KeyedMapper[Long,Expense]</tt><a class="IndexReference" name="entry-KeyedMapper-0" href="index-Index.html#index-KeyedMapper">↓</a> trait. When you use the <tt>KeyedMapper</tt> trait you need to provide an implementation for the <tt>primaryKeyField</tt> def, which must match the type of the <tt>KeyedMapper</tt> trait and be a subtype of <tt>IndexedField</tt><a class="IndexReference" name="entry-IndexedField-0" href="index-Index.html#index-IndexedField">↓</a>. The <tt>IdPK</tt> trait handles the implementation, but note that <tt>IdPK</tt> currently only supports <tt>Long</tt> keys. Mapper supports both indexed <tt>Longs</tt> and <tt>Strings</tt>, so if you want <tt>Strings</tt> you’ll need to explicitly use <tt>KeyedMapper[String,...]</tt> and provide the field definition yourself. It’s possible to use some other type for your primary key, but you’ll need to roll your own (Section <a class="Reference" href="index-8.html#sub:Defining-Custom-Field-types-mapper">8.2.7↓</a>). Technically <tt>Int</tt> indexes are supported as well, but there is no corresponding trait for an <tt>Int</tt> foreign key. That means that if you use an <tt>Int</tt> for the primary key, you may not be able to add a relationship to another object (Section <a class="Reference" href="index-8.html#sub:Object-Relationships">8.1.4↓</a>), unless you write your own. Record is a little more flexible in primary key selection because it uses, in effect, a marker trait (<tt>KeyField</tt>) to indicate that a particular field is a key field. One thing to note is that in the Mapper framework, the table name<a class="IndexReference" name="entry-table-name-0" href="index-Index.html#index-table-name">↓</a> for your entity defaults to the name of the class (Expense, in our case). If you want to change this, then you just need to override the <tt>dbTableName</tt><a class="IndexReference" name="entry-dbTableName-0" href="index-Index.html#index-dbTableName">↓</a> def in your MetaMapper object.
+</div>
+<div class="Indented">
+Looking at these examples, you’ve probably noticed that the fields are defined as objects rather than instance members (vars). The basic reason for this is that the MetaMapper needs access to fields for its validation and form functionality; it is more difficult to cleanly define these properties in the MetaMapper if it had to access member vars on each instance since a MetaMapper instance is itself an object. Also note that <tt>MappedDecimal</tt> is a custom field type<span class="FootOuter"><span class="SupFootMarker"> [C] </span><span class="HoverFoot"><span class="SupFootMarker"> [C] </span>The authors are working on adding this to the core library soon after Lift 1.0</span></span>, which we’ll cover in Section <a class="Reference" href="index-8.html#sub:Defining-Custom-Field-types-mapper">8.2.7↓</a>.
+</div>
+<div class="Indented">
+In order to tie all of this together, we need to define a matching <tt>LongKeyedMetaMapper</tt><a class="IndexReference" name="entry-KeyedMetaMapper-0" href="index-Index.html#index-KeyedMetaMapper">↓</a> object as the singleton for our entity, as shown in Listing <a class="Reference" href="index-8.html#lst:EntryMeta-object">8.1.3↓</a>. The Meta object (whether MetaMapper or MetaRecord) is where you define most behavior that is common across all of your instances. In our examples, we’ve decided to name the meta object and instance class the same. We don’t feel that this is unclear because the two together are what really define the ORM behavior for a “type.”
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+EntryMeta object<a class="Label" name="lst:EntryMeta-object"> </a>
+</div>
+<pre class="listing brush: scala">object Expense extends Expense with LongKeyedMetaMapper[Expense] {
+  override def fieldOrder = List(dateOf, description, amount)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In this instance, we’re simply defining the order of fields as they’ll be displayed in XHTML<a class="IndexReference" name="entry-XHTML-1" href="index-Index.html#index-XHTML">↓</a> and forms<a class="IndexReference" name="entry-form-0" href="index-Index.html#index-form">↓</a> by overriding the <tt>fieldOrder</tt> method. The default behavior is an empty list, which means no fields are involved in display or form generation. Generally, you will want to override <tt>fieldOrder</tt> because this is not very useful. If you don’t want a particular field to show up in forms or XHTML output, simply omit it from the fieldOrder<a class="IndexReference" name="entry-fieldOrder-0" href="index-Index.html#index-fieldOrder">↓</a> list.
+</div>
+<div class="Indented">
+Because fields aren’t actually instance members, operations on them are slightly different than with a regular var. The biggest difference is how we set fields: we use the apply method. In addition, field access can be chained so that you can set multiple field values in one statement, as shown in Listing <a class="Reference" href="index-8.html#lst:Setting-field-values">8.1.3↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting Field Values<a class="Label" name="lst:Setting-field-values"> </a>
+</div>
+<pre class="listing brush: scala">myEntry.dateOf(new Date).description("A sample entry")
+myEntry.amount(BigDecimal("127.20"))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The underlying value of a given field can be retrieved with the <tt>is</tt> method (the <tt>value</tt> method in Record) as shown in Listing <a class="Reference" href="index-8.html#lst:Accessing-field-values">8.1.3↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Accessing Field Values in Record<a class="Label" name="lst:Accessing-field-values"> </a>
+</div>
+<pre class="listing brush: scala">// mapper
+val tenthOfAmount = myEntry.amount.is / 10
+val formatted = String.format("%s : %s",
+                              myEntry.description.is,
+                              myEntry.amount.is.toString)
+// record
+if (myEntry.description.value == "Doughnuts") {
+  println("Diet ruined!")
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.4">8.1.4</a> Object Relationships<a class="Label" name="sub:Object-Relationships"> </a>
+</h3>
+<div class="Unindented">
+Often it’s appropriate to have relationships between different entities. The archetypical example of this is the parent-child relationship. In SQL, a relationship can be defined with a foreign key that associates one table to another based on the primary key of the associated table. As we showed in Listing <a class="Reference" href="index-8.html#lst:Entry-class-mapper">8.1.3↑</a>, there is a corresponding <tt>MappedForeignKey</tt> trait, with concrete implementations for Long and String foreign keys. Once we have this defined, accessing the object via the relationship is achieved by using the <tt>obj</tt> method on the foreign key field. Note that the <tt>obj</tt> method returns a <tt>Box</tt>, so you need to do some further processing with it before you can use it. With the foreign key functionality you can easily do one-to-many and many-to-one<a class="IndexReference" name="entry-many-to-one-0" href="index-Index.html#index-many-to-one">↓</a> relationships (depending on where you put the foreign key). One-to-many<a class="IndexReference" name="entry-one-to-many-0" href="index-Index.html#index-one-to-many">↓</a> relationships can be achieved using helper methods on the “one” side that delegate to queries. We’ll cover queries in a moment, but Listing <a class="Reference" href="index-8.html#lst:Accessing-Foreign-Objects">8.1.4↓</a> shows examples of two sides of the same relationship.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Accessing Foreign Objects<a class="Label" name="lst:Accessing-Foreign-Objects"> </a>
+</div>
+<pre class="listing brush: scala">class Expense extends LongKeyedMapper[Expense] with IdPK {
+ ...
+  object account extends MappedLongForeignKey(this, Account)
+  def accountName = 
+    Text("My account is " + (account.obj.map(_.name.is) openOr "Unknown"))
+}
+​
+class Account ... {
+  ...
+  def entries = Expense.findAll(By(Expense.account, this.id))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+If you want to do many-to-many<a class="IndexReference" name="entry-many-to-many-0" href="index-Index.html#index-many-to-many">↓</a> mappings you’ll need to provide your own “join” class with foreign keys to both of your mapped entities. An example would be if we wanted to have tags (categories) for our ledger entries and wanted to be able to have a given entry have multiple tags (e.g., you purchase a book for your mother’s birthday, so it has the tags Gift, Mom, and Books). First we define the <tt>Tag</tt> entity, as shown in Listing<a class="Reference" href="index-8.html#lst:Tag-Entity">8.1.4↓</a> .
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Tag Entity<a class="Label" name="lst:Tag-Entity"> </a>
+</div>
+<pre class="listing brush: scala">class Tag extends LongKeyedMapper[Tag] with IdPK {
+  def getSingleton = Tag
+  object name extends MappedString(this,100)
+}
+object Tag extends Tag with LongKeyedMetaMapper[Tag] {
+  override def fieldOrder = List(name)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Next, we define our join entity, as shown in Listing <a class="Reference" href="index-8.html#lst:Join-Entity">8.1.4↓</a>. It’s a <tt>LongKeyedMapper</tt> just like the rest of the entities, but it only contains foreign key fields to the other entities.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Join Entity<a class="Label" name="lst:Join-Entity"> </a>
+</div>
+<pre class="listing brush: scala">class ExpenseTag extends LongKeyedMapper[ExpenseTag] with IdPK {
+  def getSingleton = ExpenseTag
+  object tag extends MappedLongForeignKey(this,Tag)
+  object expense extends MappedLongForeignKey(this,Expense)
+}
+​
+object ExpenseTag extends ExpenseTag with LongKeyedMetaMapper[ExpenseTag] {
+  def join (tag : Tag, tx : Expense) = 
+    this.create.tag(tag).expense(tx).save
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+To use the join entity, you’ll need to create a new instance and set the appropriate foreign keys to point to the associated instances. As you can see, we’ve defined a convenience method on our <tt>Expense</tt> meta object to do just that. To make the many-to-many<a class="IndexReference" name="entry-many-to-many-1" href="index-Index.html#index-many-to-many">↓</a> accessible as a field on our entities, we can use the HasManyThrough trait, as shown in Listing <a class="Reference" href="index-8.html#lst:HasManyThrough-for-Many-to-Many">8.1.4↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+HasManyThrough for Many-to-Many Relationships<a class="Label" name="lst:HasManyThrough-for-Many-to-Many"> </a>
+</div>
+<pre class="listing brush: scala">class Expense ... {
+  object tags extends HasManyThrough(this, Tag, 
+    ExpenseTag, ExpenseTag.tag, ExpenseTag.expense)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+A similar field could be set up on the <tt>Tag</tt> entity to point to entries. It’s important to note a few items:
+</div>
+<ul>
+<li>
+The only way to add new entries is to directly construct the ExpenseTag instances and save them (either directly or via a helper method). You can’t make any modifications via the HasManyThrough trait
+</li>
+<li>
+Although the field is defined as a query, the field is actually lazy and only runs once. That means if you query it and then add some new ExpenseTag instances, they won’t show up in the field contents
+</li>
+
+</ul>
+<div class="Unindented">
+If you want a way to retrieve the joined results such that it pulls fresh from the database each time, you can instead define a helper join method as shown in Section<a class="Reference" href="index-8.html#sub:helper-joins">8.1.11 on page 1↓</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.5">8.1.5</a> Indexing
+</h3>
+<div class="Unindented">
+It’s often helpful to add indexes to a database to improve performance. Mapper makes it easy to do most simple indexing simply by overriding the <tt>dbIndexed_?</tt> <a class="IndexReference" name="entry-dbIndexed_?-0" href="index-Index.html#index-dbIndexed_?">↓</a> def on the field. Listing <a class="Reference" href="index-8.html#lst:Indexing-a-field">8.1.5↓</a> shows how we would add an index to our <tt>Expense.account</tt> field.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Indexing a Field<a class="Label" name="lst:Indexing-a-field"> </a>
+</div>
+<pre class="listing brush: scala">class Expense ... {
+  object account extends ... {
+    override def dbIndexed_? = true
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Mapper provides for more complex indexing via the <tt>MetaMapper.dbIndexes</tt> def combined with the <tt>Index</tt>, <tt>IndexField</tt> and <tt>BoundedIndexField</tt> case classes. Listing <a class="Reference" href="index-8.html#lst:More-complex-indices">8.1.5↓</a> shows some examples of how we might create more complex indices.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+More Complex Indices<a class="Label" name="lst:More-complex-indices"> </a>
+</div>
+<pre class="listing brush: scala">object Expense extends ... {
+  // equivalent to the previous listing
+  override dbIndexes = Index(IndexField(account)) :: Nil
+  // equivalent to "create index ... on transaction_t (account, description(10))"
+  override dbIndexes = Index(IndexField(account), 
+                             BoundedIndexField(description,10))
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.6">8.1.6</a> Schema Mapping<a class="Label" name="sub:Schema-Mapping"> </a>
+</h3>
+<div class="Unindented">
+The Mapper framework makes it easy not only to define domain objects, but also to create the database schema to go along with those objects. The <tt>Schemifier</tt><a class="IndexReference" name="entry-Schemifier-0" href="index-Index.html#index-Schemifier">↓</a> object is what does all of the work for you: you simply pass in the <tt>MetaMapper</tt> objects that you want the schema created for and it does the rest. Listing <a class="Reference" href="index-8.html#lst:Using-Schemifier">8.1.6↓</a> shows how we could use <tt>Schemifier</tt> to set up the database for our example objects. The first argument controls whether an actual write will be performed on the database. If false, <tt>Schemifier</tt> will log all of the DDL statements that it would like to apply, but no changes will be made to the database. The second argument is a logging function (logging is covered in Appendix <a class="Reference" href="index-E.html#cha:Logging-in-Lift">E↓</a>). The remaining arguments are the <tt>MetaMapper</tt> objects that you would like to have schemified. You need to be careful to remember to include all of the objects, otherwise the tables won’t be created.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using Schemifier<a class="Label" name="lst:Using-Schemifier"> </a>
+</div>
+<pre class="listing brush: scala">Schemifier.schemify(true, Log.infoF _, User, Expense, Account, Tag, ExpenseTag)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As we mentioned in Section <a class="Reference" href="index-8.html#sub:Constructing-a-Mapper-enabled-class">8.1.3↑</a>, you can override the default table name for a given Mapper class via the <tt>dbTableName</tt> def in the corresponding MetaMapper. The default table name is the name of the Mapper class, except when the class name is also an SQL reserved word; in this case, a “_t” is appended to the table name. You can also override individual column names on a per-field basis by overriding the <tt>dbColumnName</tt><a class="IndexReference" name="entry-dbColumnName-0" href="index-Index.html#index-dbColumnName">↓</a> def in the field itself. Like tables, the default column name for a field will be the same as the field name as long as it’s not an SQL reserved word; in this case a “_c” is appended to the column name. Listing <a class="Reference" href="index-8.html#lst:Custom-column-name">8.1.6↓</a> shows how we could make our <tt>ExpenseTag.expense</tt> field map to “expense_id”.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting a Custom Column Name<a class="Label" name="lst:Custom-column-name"> </a>
+</div>
+<pre class="listing brush: scala">class ExpenseTag ... {
+  object expense extends ... {
+    override def dbColumnName = "expense_id"
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.7">8.1.7</a> Persistence Operations on an Entity<a class="Label" name="sub:Persistence-Operations-on-entity"> </a>
+</h3>
+<div class="Unindented">
+Now that we’ve defined our entity we probably want to use it in the real world to load and store data. There are several operations on <tt>MetaMapper</tt> that we can use :
+</div>
+<div class="Description">
+<span class="Description-entry">create</span> Creates a new instance of the entity
+</div>
+<div class="Description">
+<span class="Description-entry">save</span> Saves an instance to the database.
+</div>
+<div class="Description">
+<span class="Description-entry">delete</span> Deletes the given entity instance
+</div>
+<div class="Description">
+<span class="Description-entry">count</span> Returns the number of instances of the given entity. An optional query criteria list can be used to narrow the entities being counted
+</div>
+<div class="Description">
+<span class="Description-entry">countByInsecureSQL</span> Similar to count, except a raw SQL string can be used to perform the count. The count value is expected to be in the first column and row of the returned result set. An example would be
+</div>
+<ul>
+<li class="nested">
+<pre class="LyX-Code">
+Expense.countByInsecureSQL(“select count(amount) “ +
+  “from Expense where amount &gt; 20”, ...)
+</pre>
+<div class="Unindented">
+We’ll cover the <tt>IHaveValidatedThisSQL</tt> parameter in a moment.
+</div>
+
+</li>
+
+</ul>
+<div class="Unindented">
+There are also quite a few methods available for retrieving instances from the database. Each of these methods comes in two varieties: one that uses the default database connection, and one that allows you to specify the connection<a class="IndexReference" name="entry-Mapper-multiple-databases-0" href="index-Index.html#index-Mapper-multiple-databases">↓</a> to use (Section <a class="Reference" href="index-8.html#lst:Multi-database-Connection-Manager">8.3.1 on page 1↓</a>). The latter typically has “DB” appended to the method name. The query methods on <tt>MetaMapper</tt> are:
+</div>
+<div class="Description">
+<span class="Description-entry">findAll</span> Retrieves a list of instances from the database. The method is overloaded to take an optional set of query criteria parameters; these will be covered in detail in their own section, <a class="Reference" href="index-8.html#sub:Querying-for-Entities">8.1.8↓</a>.
+</div>
+<div class="Description">
+<span class="Description-entry">findAllByInsecureSQL</span> Retrieves a list of instances based on a raw SQL query. The query needs to return columns for all mapped fields. Usually you can use the <tt>BySQL</tt> QueryParameter to cover most of the same functionality.
+</div>
+<div class="Description">
+<span class="Description-entry">findAllByPreparedStatement</span> Similar to <tt>findAllByInsecureSQL</tt> except that prepared statements are used, which usually means that the driver will handle properly escaping arguments in the query string.
+</div>
+<div class="Description">
+<span class="Description-entry">findAllFields</span> This allows you to do a normal query returning only certain fields from your Mapper instance. For example, if you only wanted the amount from the transaction table you would use this method. Note that any fields that aren’t specified in the query will return their default value. Generally, this method is only useful for read access to data because saving any retrieved instances could overwrite real data.
+</div>
+<div class="Description">
+<span class="Description-entry">findMap*</span> These methods provide the same functionality as the non-Map methods, but take an extra function argument that transforms an entity into a <tt>Box[T]</tt>, where <tt>T</tt> is an arbitrary type. An example would be getting a list of descriptions of our transactions:
+</div>
+<ul>
+<li class="nested">
+<pre class="LyX-Code">
+Expense.findMap(entry =&gt; Full(entry.description.is))
+</pre>
+
+</li>
+
+</ul>
+<div class="Unindented">
+The <tt>KeyedMapperClass</tt> adds the <tt>find</tt> method, which can be used to locate a single entity based on its primary key. In general these operations will be supported in both Record and Mapper. However, because Record isn’t coupled tightly to a JDBC backend some of the find methods may not be supported directly and there may be additional methods not available in Mapper for persistence. For this reason, this section will deal specifically with Mapper’s persistence operations.
+</div>
+<h4 class="Subsubsection-">
+<a class="toc" name="toc-Subsubsection--1"></a>Creating an Instance
+</h4>
+<div class="Unindented">
+Once we have a <tt>MetaMapper</tt> object defined we can use it to create objects using the <tt>create<a class="IndexReference" name="entry-create-0" href="index-Index.html#index-create">↓</a></tt> method. You generally don’t want to use the “new” operator because the framework has to set up internal data for the instance such as field owner, etc. This is important to remember, since nothing will prevent you from creating an instance manually: you may just get errors when you go to use the instance. The <tt>join</tt> method in Listing <a class="Reference" href="index-8.html#lst:Join-Entity">8.1.4↑</a> shows an example of create usage.
+</div>
+<h4 class="Subsubsection-">
+<a class="toc" name="toc-Subsubsection--2"></a>Saving an Instance
+</h4>
+<div class="Unindented">
+Saving an instance is as easy as calling the <tt>save</tt> method on the instance you want to save. Optionally, you can call the <tt>save</tt> method on the Meta object, passing in the instance you want to save. The <tt>save</tt> method uses the the <tt>saved_?</tt> and <tt>clean_?</tt> flags to determine whether an insert or update is required to persist the current state to the database, and returns a boolean to indicate whether the save was successful or not. The <tt>join</tt> method in Listing <a class="Reference" href="index-8.html#lst:Join-Entity">8.1.4↑</a> shows an example of <tt>save</tt> usage.
+</div>
+<h4 class="Subsubsection-">
+<a class="toc" name="toc-Subsubsection--3"></a>Deleting an Instance<a class="Label" name="sub:Deleting-an-Instance"> </a>
+</h4>
+<div class="Unindented">
+There are several ways to delete instances. The simplest way is to call the <tt>delete_!</tt> method on the instance you’d like to remove. An alternative is to call the <tt>delete_!</tt> method on the Meta object, passing in the instance to delete. In either case, the <tt>delete_!</tt> method returns a boolean indicating whether the delete was successful or not. Listing <a class="Reference" href="index-8.html#lst:Example-deletion">3 on page 1↓</a> shows an example of deleting instances.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Example Deletion<a class="Label" name="lst:Example-deletion"> </a>
+</div>
+<pre class="listing brush: scala">if (! myExpense.delete_!) S.error("Couldn’t delete the expense!")
+//or
+if (! (Expense delete_! myExpense)) S.error(...)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Another approach to deleting entities is to use the <tt>bulkDelete_!!</tt> method on <tt>MetaMapper</tt>. This method allows you to specify query parameters to control which entities are deleted. We will cover query parameters in Section <a class="Reference" href="index-8.html#sub:Querying-for-Entities">8.1.8↓</a> (an example is in Listing <a class="Reference" href="index-8.html#lst:Bulk-Deletion">8.1.9 on page 1↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.8">8.1.8</a> Querying for Entities<a class="Label" name="sub:Querying-for-Entities"> </a>
+</h3>
+<div class="Unindented">
+There are a variety of methods on <tt>MetaMapper</tt> for querying for instances of a given entity. The simplest method is <tt>findAll</tt><a class="IndexReference" name="entry-findAll-0" href="index-Index.html#index-findAll">↓</a> called with no parameters. The “bare” <tt>findAll</tt> returns a <tt>List</tt> of all of the instances of a given entity loaded from the database. Note that each <tt>findAll...</tt> method has a corresponding method that takes a database connection for sharding or multiple database usage (see sharding in Section <a class="Reference" href="index-8.html#sub:Multiple-Databases">8.3.1↓</a>). Of course, for all but the smallest datasets, pulling the entire model to get one entity from the database is inefficient and slow. Instead, the <tt>MetaMapper</tt> provides “flag” objects to control the query. 
+</div>
+<div class="Indented">
+The ability to use fine-grained queries to select data is a fundamental feature of relational databases, and Mapper provides first-class support for constructing queries in a manner that is not only easy to use, but type-safe. This means that you can catch query errors at compile time instead of runtime. The basis for this functionality is the <tt>QueryParam</tt> trait, which has several concrete implementations that are used to construct the actual query. The <tt>QueryParam</tt> implementations can be broken up into two main groups:
+</div>
+<ol>
+<li>
+Comparison - These are typically items that would go in the where clause of an SQL query. They are used to refine the set of instances that will be returned
+</li>
+<li>
+Control - These are items that control things like sort order and pagination of the results
+</li>
+
+</ol>
+<div class="Unindented">
+Although Mapper provides a large amount of the functionality in SQL, some features are not covered directly or at all. In some cases we can define helper methods to make querying easier, particularly for joins (Section <a class="Reference" href="index-8.html#sub:helper-joins">8.1.11↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.9">8.1.9</a> Comparison QueryParams
+</h3>
+<div class="Unindented">
+The simplest <tt>QueryParam</tt> to refine your query is the <tt>By</tt><a class="IndexReference" name="entry-By-0" href="index-Index.html#index-By">↓</a> object and its related objects. <tt>By</tt> is used for a direct value comparison of a given field: essentially an “=” in SQL. For instance, Listing <a class="Reference" href="index-8.html#lst:Retrieving-by-account">8.1.9↓</a> shows how we can get all of the expenses for a given account.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Retrieving by Account ID<a class="Label" name="lst:Retrieving-by-account"> </a>
+</div>
+<pre class="listing brush: scala">val myEntries = Expense.findAll(By(Expense.account, myAccount.id))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that our By criterion is comparing the <tt>Expense.account</tt> field to the primary key (<tt>id</tt> field) of our account instead of to the account instance itself. This is because the <tt>Expense.account</tt> field is a <tt>MappedForeignKey</tt> field, which uses the type of the key instead of the type of the entity as its underlying value. In this instance, that means that any queries using <tt>Expense.account</tt> need to use a <tt>Long</tt> to match the underlying type. Besides <tt>By</tt>, the other basic clauses are:
+</div>
+<ul>
+<li>
+<tt>NotBy</tt><a class="IndexReference" name="entry-NotBy-0" href="index-Index.html#index-NotBy">↓</a> - Selects entities whose queried field is not equal to the given value
+</li>
+<li>
+<tt>By_&gt;</tt><a class="IndexReference" name="entry-By_&gt;-0" href="index-Index.html#index-By_&gt;">↓</a>- Selects entities whose queried field is larger than the given value
+</li>
+<li>
+<tt>By_&lt;</tt><a class="IndexReference" name="entry-By_&lt;-0" href="index-Index.html#index-By_&lt;">↓</a>- Selects entities whose queried field is less than the given value
+</li>
+<li>
+<tt>ByList</tt><a class="IndexReference" name="entry-ByList-0" href="index-Index.html#index-ByList">↓</a> - Selects entities whose queried field is equal to one of the values in the given List. This corresponds to the “field IN (x,y,z)” syntax in SQL.
+</li>
+<li>
+<tt>NullRef</tt><a class="IndexReference" name="entry-NullRef-0" href="index-Index.html#index-NullRef">↓</a> - Selects entities whose queried field is NULL
+</li>
+<li>
+<tt>NotNullRef</tt><a class="IndexReference" name="entry-NotNullRef-0" href="index-Index.html#index-NotNullRef">↓</a> - Select entities whose queried field is not NULL
+</li>
+<li>
+<tt>Like</tt><a class="IndexReference" name="entry-Like-0" href="index-Index.html#index-Like">↓</a> - Select entities whose queried field is like the given string. As in SQL, the percent sign is used as a wildcard
+</li>
+
+</ul>
+<div class="Unindented">
+In addition to the basic clauses there are some slightly more complex ways to control the query. The first of these is <tt>ByRef</tt><a class="IndexReference" name="entry-ByRef-0" href="index-Index.html#index-ByRef">↓</a>, which selects entities whose queried field is equal to the value of another query field <i>on the same entity</i>. A contrived example would be if we define a tree structure in our table and root nodes are marked as having themselves as parents:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+An Example of ByRef<a class="Label" name="lst:An-example-of-byref"> </a>
+</div>
+<pre class="listing brush: scala">// select all root nodes from the forest
+TreeNode.findAll(ByRef(TreeNode.parent,TreeNode.id))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The related <tt>NotByRef</tt> tests for inequality between two query fields.
+</div>
+<div class="Indented">
+Getting slightly more complex, we come to the <tt>In</tt><a class="IndexReference" name="entry-In-0" href="index-Index.html#index-In">↓</a> <tt>QueryParameter</tt>, which is used just like an “IN” clause with a subselect in an SQL statement. For example, let’s say we wanted to get all of the entries that belong to tags that start with the letter “c”. Listing <a class="Reference" href="index-8.html#lst:Using-In">8.1.9↓</a> shows the full breakdown.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using In<a class="Label" name="lst:Using-In"> </a>
+</div>
+<pre class="listing brush: scala">val cExpenses = 
+  ExpenseTag.findAll(
+    In(ExpenseTag.tag,
+       Tag.id,
+       Like(Tag.name, "c%"))).map(_.expense.obj.open_!).removeDuplicates
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that we use the <tt>List.removeDuplicates</tt> method to make sure that the List contains unique entities. This requires overriding the <tt>equals</tt> and <tt>hashCode</tt> methods on the Expense class, which we show in Listing <a class="Reference" href="index-8.html#lst:Overriding-equalshash-expense">8.1.9↓</a>. In our example we’re using the primary key (<tt>id</tt> field) to define object “identity”.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Overriding <tt>equals</tt> and <tt>hashcode</tt> on the Expense entity<a class="Label" name="lst:Overriding-equalshash-expense"> </a>
+</div>
+<pre class="listing brush: scala">class Expense ... {
+  ...
+  override def equals (other : Any) = other match {
+    case e : Expense if e.id.is == this.id.is =&gt; true
+    case _ =&gt; false
+  }
+​
+  override def hashCode = this.id.is.hashCode
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We use the <tt>ByRef</tt> params to do the join between the many-to-many entity on the query. Related to <tt>In</tt> is <tt>InRaw</tt><a class="IndexReference" name="entry-InRaw-0" href="index-Index.html#index-InRaw">↓</a>, which allows you to specify your own SQL subquery for the “IN” portion of the where clause. Listing <a class="Reference" href="index-8.html#lst:Using-InRaw">8.1.9↓</a> shows an example of how we could use <tt>InRaw</tt> to find <tt>Tags</tt> for expense entries made in the last 30 days.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using InRaw<a class="Label" name="lst:Using-InRaw"> </a>
+</div>
+<pre class="listing brush: scala">def recentTags = {
+  val joins = ExpenseTag.findAll(
+    InRaw(ExpenseTag.expense,
+          "select id from Expense where dateOf &gt; (CURRENT_DATE - interval ’30 days’)",
+          IHaveValidatedThisSQL("dchenbecker", "2008-12-03"))
+  joins.map(_.expense.obj.open_!).removeDuplicates
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Here things are starting to get a little hairy. The <tt>InRaw</tt> only allows us to specify the subquery for the IN clause, so we have to do some postprocessing to get unique results. If you want to do this in the query itself you’ll have to use the <tt>findAllByInsecureSql</tt> or <tt>findAllByPreparedStatement</tt> methods, which are covered later in this section on page number <a class="Reference" href="index-8.html#sub:SQL-based-queries">1↓</a>. The final parameter for <tt>InRaw</tt>, <tt>IHaveValidatedThisSQL</tt> acts as a code audit mechanism that says that someone has checked the SQL to make sure it’s safe to use. The query fragment is added to the master query as-is: no escaping or other filtering is performed on the string. That means that if you take user input. then you need to be very careful about it or you run the risk of an SQL injection attack on your site.
+</div>
+<div class="Indented">
+The next <tt>QueryParam</tt> we’ll cover is <tt>BySql</tt>, which lets you use a complete SQL fragment that gets put into the where clause. An example of this would be if we want to find all expense entries within the last 30 days, as shown in Listing <a class="Reference" href="index-8.html#lst:Using-BySql">8.1.9↓</a>. Again, the <tt>IHaveValidatedThisSQL</tt><a class="IndexReference" name="entry-IHaveValidatedThisSQL-0" href="index-Index.html#index-IHaveValidatedThisSQL">↓</a> case class is required as a code audit mechanism to make sure someone has verified that the SQL used is safe.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using BySql<a class="Label" name="lst:Using-BySql"> </a>
+</div>
+<pre class="listing brush: scala">val recentEntries = Expense.findAll(
+  BySql("dateOf &gt; (CURRENT_DATE - interval ’30 days’)",
+        IHaveValidatedThisSQL("dchenbecker","2008-12-03"))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The tradeoff with using <tt>BySql</tt> is that you need to be careful with what you allow into the query string. <tt>BySql</tt> supports parameterized queries as shown in Listing <a class="Reference" href="index-8.html#lst:Parameterized-BySql">8.1.9↓</a>, so use those if you need to have dynamic queries. Whatever you do, don’t use string concatenation unless you really know what you’re doing.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Parameterized BySql<a class="Label" name="lst:Parameterized-BySql"> </a>
+</div>
+<pre class="listing brush: scala">val amountRange = Expense.findAll(
+  BySql("amount between ? and ?", lowVal, highVal))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As we mentioned in Section <a class="Reference" href="index-8.html#sub:Deleting-an-Instance">3 on page 1↑</a>, we can use the query parameters to do bulk deletes in addition to querying for instances. Simply use the <tt>QueryParam</tt> classes to constrain what you want to delete. Obviously, the control params that we’ll cover next make no sense in this context, but the compiler won’t complain. Listing <a class="Reference" href="index-8.html#lst:Bulk-Deletion">8.1.9↓</a> shows an example of deleting all entries older than a certain date.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Bulk Deletion<a class="Label" name="lst:Bulk-Deletion"> </a>
+</div>
+<pre class="listing brush: scala">def deleteBefore (date : Date) = 
+  Expense.bulkDelete_!!(By_&lt;(Expense.dateOf, date))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.10">8.1.10</a> Control QueryParams<a class="Label" name="sub:Control-QueryParams"> </a>
+</h3>
+<div class="Unindented">
+Now that we’ve covered the selection and comparison <tt>QueryParams</tt>, we can start to look at the control params. The first one that we’ll look at is <tt>OrderBy</tt>. This operates exactly like the order by clause in SQL, and allows you to sort on a given field in either ascending or descending order. Listing <a class="Reference" href="index-8.html#lst:OrderBy-Clause">8.1.10↓</a> shows an example of ordering our <tt>Expense</tt> entries by amount. The <tt>Ascending</tt> and <tt>Descending</tt> case objects are in the net.liftweb.mapper package. The <tt>OrderBySql</tt> case class operates similarly, except that you provide your own SQL fragment for the ordering, as shown in the example. Again, you need to validate this SQL.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+OrderBy Clause<a class="Label" name="lst:OrderBy-Clause"> </a>
+</div>
+<pre class="listing brush: scala">val cheapestFirst = 
+  Expense.findAll(OrderBy(Expense.amount,Ascending))
+// or
+val cheapestFirst = 
+  Expense.findAll(OrderBySql("amount asc"),
+    IHaveValidatedThisSQL("dchenbecker", "2008-12-03"))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Pagination of results is another feature that people often want to use, and Mapper provides a simple means for controlling it with two more <tt>QueryParam</tt> classes: <tt>StartAt</tt> and <tt>MaxRows</tt>, as shown in Listing <a class="Reference" href="index-8.html#lst:Pagination-of-Results">8.1.10↓</a>. In this example, we take the offset from a parameter passed to our snippet, with a default of zero.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Pagination of Results<a class="Label" name="lst:Pagination-of-Results"> </a>
+</div>
+<pre class="listing brush: scala">val offset = S.param("offset").map(_.toLong) openOr 0
+Expense.findAll(StartAt(offset), MaxRows(20))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+An important feature of the methods that take <tt>QueryParams</tt> is that they can take multiple params, as shown in this example. A more complex example is shown in Listing <a class="Reference" href="index-8.html#lst:Multiple-QueryParams">8.1.10↓</a>. In this example, we’re querying with a <tt>Like</tt> clause, sorting on the date of the entries, and paginating the results, all in one statement!
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Multiple QueryParams<a class="Label" name="lst:Multiple-QueryParams"> </a>
+</div>
+<pre class="listing brush: scala">Expense.findAll(Like(Expense.description, "Gift for%"),
+                OrderBy(Expense.dateOf,Descending),
+                StartAt(offset),
+                MaxRows(pageSize))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Another useful <tt>QueryParam</tt> is the <tt>Distinct</tt> case class, which acts exactly the same way as the DISTINCT keyword in SQL. One caveat is that Mapper doesn’t support explicit joins, so this restricts the situations in which you can use <tt>Distinct</tt>. The final “control” <tt>QueryParam</tt> that we’ll cover is <tt>PreCache</tt><a class="IndexReference" name="entry-PreCache-0" href="index-Index.html#index-PreCache">↓</a>. It’s used when you have a mapped foreign key field on an entity. Normally, when Mapper loads your main entity it leaves the foreign key field in a lazy state, so that the query to get the foreign object isn’t executed until you access the field. This can obviously be inefficient when you have many entities loaded that you need to access, so the <tt>PreCache</tt> parameter forces Mapper to preload the foreign objects as part of the query. Listing <a class="Reference" href="index-8.html#lst:Using-PreCache">8.1.10↓</a> shows how we can use <tt>PreCache</tt> to fetch an <tt>Expense</tt> entry as well as the account for the entry.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using PreCache<a class="Label" name="lst:Using-PreCache"> </a>
+</div>
+<pre class="listing brush: scala">def loadExpensePlusAccount (id : Long) =
+  Expense.findAll(By(Expense.id, id),
+                    PreCache(Expense.account))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.1.11">8.1.11</a> Making Joins a Little Friendlier<a class="Label" name="sub:helper-joins"> </a>
+</h3>
+<div class="Unindented">
+If you prefer to keep your queries type-safe, but you want a little more convenience in your joins between entities, you can define helper methods on your entities. One example is finding all of the tags for a given <tt>Expense</tt>, as shown in Listing <a class="Reference" href="index-8.html#lst:Join-Convenience-Method">1↓</a>. Using this method in our example has an advantage over using <tt>HasManyThrough</tt>: <tt>hasManyThrough</tt> is a lazy value that will only retrieve data from the database once per request. Using a <tt>findAll</tt> will retrieve data from the database every time. This may be important if you add data to the database during a request, or if you expect things to change between queries.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Join Convenience Method<a class="Label" name="lst:Join-Convenience-Method"> </a>
+</div>
+<pre class="listing brush: scala">def tags = 
+  ExpenseTag.findAll(By(ExpenseTag.expense, this.id)).map(_.tag.obj.open_!)
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-8.2">8.2</a> Utility Functionality
+</h2>
+<div class="Unindented">
+In addition to the first-class persistence support in Mapper and Record, the frameworks provide additional functionality to make writing data-driven applications much simpler. This includes things such as automatic XHTML representation of objects and support for generating everything from simple forms for an individual entity to a full-fledged CRUD<span class="FootOuter"><span class="SupFootMarker"> [D] </span><span class="HoverFoot"><span class="SupFootMarker"> [D] </span>An acronym (Create, Read, Update and Delete) representing the standard operations that are performed on database records. Taken from <a class="FlexURL" href="http://provost.uiowa.edu/maui/Glossary.html">http://provost.uiowa.edu/maui/Glossary.html</a>.</span></span> implementation for your entities.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.1">8.2.1</a> Display Generation
+</h3>
+<div class="Unindented">
+If you want to display a Mapper instance as XHTML, simply call the <tt>asHtml</tt> method (<tt>toXHtml</tt> in Record) on your instance. The default implementation turns each field’s value into a <tt>Text</tt> node via the <tt>toString</tt> method and concatenates the results separated by newlines. If you want to change this behavior, override the <tt>asHtml</tt> on your field definitions. For example, if we wanted to control formatting on our <tt>dateOf</tt> field, we could modify the field as shown in Listing <a class="Reference" href="index-8.html#lst:Custom-field-display">8.2.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Custom Field Display<a class="Label" name="lst:Custom-field-display"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.text.DateFormat
+...
+object dateOf extends MappedDateTime(this) {
+  final val dateFormat = 
+    DateFormat.getDateInstance(DateFormat.SHORT)
+  override def asHtml = Text(dateFormat.format(is))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that in Record, <tt>dateOf</tt> contains a <tt>java.util.Calendar</tt> instance and not a<br/>
+ <tt>java.util.Date</tt>, so we would need to use the <tt>getTime</tt> method on the value. Two similar methods, <tt>asJSON</tt> and <tt>asJs</tt>, will return the JSON and JavaScript object representation of the instance, respectively. 
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.2">8.2.2</a> Form Generation<a class="Label" name="sub:Form-generation"> </a><a class="IndexReference" name="entry-Forms-0" href="index-Index.html#index-Forms">↓</a>
+</h3>
+<div class="Unindented">
+One of the biggest pieces of functionality in the Mapper framework is the ability to generate entry forms for a given record. The <tt>toForm<a class="IndexReference" name="entry-toForm-0" href="index-Index.html#index-toForm">↓</a></tt> method on Mapper is overloaded so that you can control how your form is created. All three <tt>toForm</tt> methods on Mapper take a <tt>Box[String]</tt> as their first parameter to control the submit button; if the Box is Empty, no submit button is generated, otherwise, the String contents of the Box are used as the button label. If you opt to skip the submit button you’ll need to provide it yourself via binding or some other mechanism, or you can rely on implicit form submission (when the user hits enter in a text field, for instance). The first <tt>toForm</tt> method simply takes a function to process the submitted form and returns the XHTML as shown in Listing <a class="Reference" href="index-8.html#lst:Default-toForm-method">8.2.2↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Default toForm Method<a class="Label" name="lst:Default-toForm-method"> </a>
+</div>
+<pre class="listing brush: scala">myEntry.toForm(Full("Save"), { _.save })
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, this makes it very easy to generate a form for editing an entity. The second <tt>toForm</tt> method allows you to provide a URL which the Mapper will redirect to if validation succeeds on form submission (this is not provided in Record). This can be used for something like a login form, as shown in Listing <a class="Reference" href="index-8.html#lst:Custom-form-redirect">8.2.2↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Custom Submit Button<a class="Label" name="lst:Custom-form-redirect"> </a>
+</div>
+<pre class="listing brush: scala">myEntry.toForm (Full("Login"), "/member/profile")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The third form of the toForm method is similar to the first form, with the addition of “redo” snippet parameter. This allows you to keep the current state of the snippet when validation fails so that the user doesn’t have to re-enter all of the data in the form.
+</div>
+<div class="Indented">
+The Record framework allows for a little more flexibility in controlling form output. The MetaRecord object allows you to change the default template<a class="IndexReference" name="entry-Override-form-template-0" href="index-Index.html#index-Override-form-template">↓</a> that the form uses by setting the formTemplate<a class="IndexReference" name="entry-formTemplate-0" href="index-Index.html#index-formTemplate">↓</a> var. The template may contain any XHTML you want, but the <tt>toForm</tt> method will provide special handling for the following tags:
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;lift:field_label name=“...” /&gt;</span> The label for the field with the given name will be rendered here.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;lift:field name=“...” /&gt;</span> The field itself (specified by the given name) will be rendered here. Typically this will be an input field, although it can be anything type-appropriate. For example, a BooleanField would render a checkbox.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;lift:field_msg name=“...” /&gt;</span> Any messages, such as from validation, for the field with the given name will be rendered here.
+</div>
+<div class="Unindented">
+As an example, if we wanted to use tables to lay out the form for our ledger entry, the row for the description field might look like that in Listing <a class="Reference" href="index-8.html#lst:Custom-form-template">8.2.2↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Custom Form Template<a class="Label" name="lst:Custom-form-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;!-- Example description field row for Record’s toForm method --&gt;
+&lt;tr&gt;
+  &lt;th&gt;&lt;lift:field_label name="description" /&gt;&lt;/th&gt;
+  &lt;td&gt;&lt;lift:field name="description" /&gt; 
+      &lt;lift:field_msg name="description" /&gt;&lt;/td&gt;
+&lt;/tr&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Technically, the <tt>field_msg</tt> binding looks up Lift messages (Chapter <a class="Reference" href="index-B.html#cha:Message-Handling">B↓</a>) based on the field’s <tt>uniqueId</tt>, so you can set your own messages outside of validation using the S.{error, notice, warning} methods as shown in Listing <a class="Reference" href="index-8.html#lst:Setting-messages-via-S">8.2.2↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting Messages via S<a class="Label" name="lst:Setting-messages-via-S"> </a>
+</div>
+<pre class="listing brush: scala">S.warning(myEntry.amount.uniqueFieldId, 
+          "You have entered a negative amount!")
+S.warning("amount_id", "This is brittle")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+For most purposes, though, using the validation mechanism discussed in the next section is the appropriate way to handle error checking and reporting.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.3">8.2.3</a> Validation<a class="Label" name="sub:Mapper-Validation"> </a><a class="IndexReference" name="entry-Validation-0" href="index-Index.html#index-Validation">↓</a>
+</h3>
+<div class="Unindented">
+Validation is the process of checking a field during form processing to make sure that the submitted value meets requirements. This can be something as simple as ensuring that a value was submitted, or as complex as comparing multiple field values together. Validation is achieved via a <tt>List</tt> of functions on a field that take the field value as input and return a <tt>List[FieldError]</tt> (<tt>Box[Node]</tt> in Record). To indicate that validation succeeded, simply return an empty List, otherwise the list of <tt>FieldErrors</tt> you return are used as the failure messages to be presented to the user. A <tt>FieldError</tt> is simply a case class that associates an error message with a particular field. As an example, let’s say we don’t want someone to be able to add an <tt>Expense</tt> entry for a date in the future. First, we need to define a function for our <tt>dateOf</tt> field that takes a <tt>Date</tt> as an input (For Record, <tt>java.util.Calendar</tt><a class="IndexReference" name="entry-Calendar-0" href="index-Index.html#index-Calendar">↓</a>, not <tt>Date</tt>, is the actual value type of <tt>DateTimeField</tt>) and returns the proper <tt>List</tt>. We show a simple function in Listing <a class="Reference" href="index-8.html#lst:Date-validation">8.2.3↓</a>. In the method, we simply check to see if the millisecond count is greater than “now” and return an error message if so.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Date Validation<a class="Label" name="lst:Date-validation"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.util.Date
+​
+class Expense extends LongKeyedMapper[Expense] with IdPK {
+  ...
+  object dateOf extends MappedDateTime(this) {
+    def noFutureDates (time : Date) = {
+      if (time.getTime &gt; System.currentTimeMillis) {
+        List(FieldError(this, "You cannot make future expense entries"))
+      } else {
+        List[FieldError]()
+      }
+    }
+  }
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The first argument for the FieldError is the field itself, so you could use the alternate definition shown in Listing <a class="Reference" href="index-8.html#lst:Alternate-Date-Validation">8.2.3↓</a> if you would prefer to define your validation functions elsewhere (if they’re common to more than one entity, for example).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Alternate Date Validation<a class="Label" name="lst:Alternate-Date-Validation"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.util.Date
+import _root_.net.liftweb.http.FieldIdentifier
+​
+object ValidationMethods {
+  def noFutureDates (field : FieldIdentifier)(time : Date) = {
+    if (time.getTime &gt; System.currentTimeMillis) {
+      List(FieldError(field, "You cannot make future expense entries"))
+    } else {
+      List[FieldError]()
+    }
+  }
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The next step is to tie the validation into the field itself. We do this by slightly modifying our field definition for <tt>date</tt> to set our list of validators as shown in Listing <a class="Reference" href="index-8.html#lst:Setting-validators">8.2.3↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting Validators<a class="Label" name="lst:Setting-validators"> </a>
+</div>
+object dateOf extends MappedDateTime(this) {<pre class="listing brush: scala">  def noFutureDates (time : Date) = { ... }
+  override def validations = noFutureDates _ :: Nil
+}
+​
+// Using the alternate definition:
+object dateOf extends MappedDateTime(this) {
+  override def validations = ValidationMethods.noFutureDates(dateOf) _ :: Nil
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that we need to add the underscore for each validation function to be partially applied on the submitted value. When our form is submitted, all of the validators for each field are run, and if all of them return Empty then validation succeeds. If any validators return a Full Box, then the contents of the Box are displayed as error messages to the user.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.4">8.2.4</a> CRUD Support
+</h3>
+<div class="Unindented">
+Adding CRUD support to your Mapper classes is very simple. We just mix in the <tt><br/>
+net.liftweb.mapper.CRUDify</tt> trait to our meta object and it provides a full set of add, edit, list, delete and view pages automatically. Listing <a class="Reference" href="index-8.html#lst:Mixing-in-CRUDify">8.2.4↓</a> shows our <tt>Expense</tt> meta object with <tt>CRUDify</tt> mixed in.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mixing in CRUDify<a class="Label" name="lst:Mixing-in-CRUDify"> </a>
+</div>
+<pre class="listing brush: scala">object Expense extends Expense LongKeyedMetaMapper[Expense] 
+    with CRUDify[Long,Expense] {
+  ... normal def here ...
+  // disable delete functionality
+  override def deleteMenuLoc = Empty
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The CRUDify behavior is very flexible, and you can control the templates for pages or whether pages are shown at all (as we do in our example) by overriding defs that are provided on the CRUDify trait. In our example Listing <a class="Reference" href="index-8.html#lst:Mixing-in-CRUDify">8.2.4↑</a>, we disable the delete menu by overriding the<br/>
+ <tt>deleteMenuLoc</tt> method to return <tt>Empty</tt>. As an added bonus, CRUDify automatically creates a set of menus for SiteMap (Chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↑</a>) that we can use by appending them onto the rest of our menus as shown in Listing <a class="Reference" href="index-8.html#lst:Using-CRUDify-Menus">8.2.4↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using CRUDify Menus<a class="Label" name="lst:Using-CRUDify-Menus"> </a>
+</div>
+<pre class="listing brush: scala">class Boot {
+  def boot {
+    ...
+    val menus = ... Menu(Loc(...)) :: Expense.menus
+    LiftRules.setSiteMap(SiteMap(menus : _*))
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.5">8.2.5</a> Lifecycle Callbacks
+</h3>
+<div class="Unindented">
+Mapper and Record provide for a set of callbacks that allow you to perform actions at various points during the lifecycle of a given instance. If you want to define your own handling for one of the lifecycle events, all you need to do is override and define the callback because <tt>MetaMapper</tt> already extends the <tt>LifecycleCallbacks</tt> trait. Note that there is a separate <tt>LifecycleCallbacks</tt> trait in each of the record and mapper packages, so make sure that you import the correct one. For example, if we want to notify a Comet actor whenever a new <tt>Expense</tt> entry is saved, we can change our <tt>Expense</tt> class as shown in Listing <a class="Reference" href="index-8.html#lst:Lifecycle-Callbacks">8.2.5↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Lifecycle Callbacks<a class="Label" name="lst:Lifecycle-Callbacks"> </a>
+</div>
+<pre class="listing brush: scala">object Expense extends LongKeyedMapper[Expense] with LifecycleCallbacks {
+  ...
+  override def afterSave { myCometActor ! this }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The lifecycle hooks are executed at the main operations in an instance lifecycle:
+</div>
+<div class="Description">
+<span class="Description-entry">Create</span> When a fresh instance is first saved (corresponding to a table insert).
+</div>
+<div class="Description">
+<span class="Description-entry">Delete</span> When an instance is deleted.
+</div>
+<div class="Description">
+<span class="Description-entry">Save</span> When a new or existing instance is inserted or updated. <tt>beforeSave</tt> is always called before <tt>beforeCreate</tt> or <tt>beforeUpdate</tt>. Similarly, <tt>afterSave</tt> is always called after <tt>afterCreate</tt> or <tt>afterUpdate</tt>.
+</div>
+<div class="Description">
+<span class="Description-entry">Update</span> When an instance that already exists in the database is updated (corresponding to a table update).
+</div>
+<div class="Description">
+<span class="Description-entry">Validation</span> When form validation occurs.
+</div>
+<div class="Unindented">
+For each of these points you can execute your code before or after the operation is run.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.6">8.2.6</a> Base Field Types
+</h3>
+<div class="Unindented">
+The Record and Mapper frameworks define several basic field types. The following table shows the corresponding types between Mapper and Record, as well as a brief description of each type.
+</div>
+<div class="Indented">
+<table>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedBinary
+</td>
+<td align="center" valign="top">
+BinaryField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a byte array. You must provide your own overrides for toForm and asXHtml/asHtml for input and display
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedBirthYear
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Holds an Int that represents a birth year. The constructor takes a minAge parameter that is used for validation
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedBoolean
+</td>
+<td align="center" valign="top">
+BooleanField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a Boolean value. The default form representation is a checkbox
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedCountry
+</td>
+<td align="center" valign="top">
+CountryField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a choice from an enumeration of country phone codes as provided by the net.liftweb.mapper.Countries.I18NCountry class. The default form representation is a select
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedDateTime
+</td>
+<td align="center" valign="top">
+DateTimeField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a timestamp (java.util.Calender for Record, java.util.Date for Mapper). The default form representation is a text input
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedDouble
+</td>
+<td align="center" valign="top">
+DoubleField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a Double value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedEmail
+</td>
+<td align="center" valign="top">
+EmailField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents an email address with a maximum length
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedEnum
+</td>
+<td align="center" valign="top">
+EnumField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a choice from a given scala.Enumeration. The default form representation is a select
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedEnumList
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a choice of multiple Enumerations. The default form representation is a set of checkboxes, one for each enum value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedFakeClob
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Fakes a CLOB value (really stores String bytes to a BINARY column)
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedGender
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a Gender enumeration. Display values are localized via the I18NGenders object. Internationalization is covered in appendix <a class="Reference" href="index-D.html#cha:Internationalization">D↓</a> 
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedInt
+</td>
+<td align="center" valign="top">
+IntField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents an Int value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedIntIndex
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents an indexed Int field (typically a primary key). In Record this is achieved with the KeyField trait
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedLocale
+</td>
+<td align="center" valign="top">
+LocaleField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a locale as selected from the java.util.Locale.getAvailableLocales method. The default form representation is a select
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedLong
+</td>
+<td align="center" valign="top">
+LongField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a Long value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedLongForeignKey
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a mapping to another entity via the other entities Long primary key. This functionality in Record is not yet supported
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedLongIndex
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents an indexed Long field (typically a primary key). In Record this is achieved with the KeyField trait
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedPassword
+</td>
+<td align="center" valign="top">
+PasswordField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a password string. The default form representation is a password input (obscured text)
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedPoliteString
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Just like MappedString, but the default value is an empty string and the input is automatically truncated to fit the database column size
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedPostalCode
+</td>
+<td align="center" valign="top">
+PostalCodeField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a validated postal code string. The field takes a reference to a MappedCountry (CountryField in Record) at definition and validates the input string against the selected country’s postal code format
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedString
+</td>
+<td align="center" valign="top">
+StringField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a string value with a maximum length and optional default value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedStringForeignKey
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a mapping to another entity via the other entities String primary key. This functionality in Record is not yet supported
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedStringIndex
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents an indexed String field (typically a primary key). In Record this is achieved with the KeyField trait
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedText
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a String field that stores to a CLOB column in the database. This can be used for large volumes of text.
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedTextarea
+</td>
+<td align="center" valign="top">
+TextAreaField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a String field that will use an HTML textarea element for its form display. When you define the field you can override the textareaCols and textareaRows defs to control the dimensions of the textarea.
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedTimeZone
+</td>
+<td align="center" valign="top">
+TimeZoneField
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a time zone selected from java.util.TimeZone.getAvailableIDs. The default form representation is a select
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1.5in;">
+MappedUniqueId
+</td>
+<td align="center" valign="top">
+N/A
+</td>
+<td align="left" valign="top" style="width: 3.5in;">
+Represents a unique string of a specified length that is randomly generated. The implementation doesn’t allow the user to write new values to the field. This can be thought of as a GUID
+</td>
+
+</tr>
+
+</table>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.7">8.2.7</a> Defining Custom Field Types in Mapper<a class="Label" name="sub:Defining-Custom-Field-types-mapper"> </a>
+</h3>
+<div class="Unindented">
+The basic <tt>MappedField</tt> types cover a wide range of needs, but sometimes you may find yourself wanting to use a specific type. In our example, we would like a decimal value for our expense amount and account balance. Using a double would be inappropriate due to imprecision and rounding errors<span class="FootOuter"><span class="SupFootMarker"> [E] </span><span class="HoverFoot"><span class="SupFootMarker"> [E] </span><a class="FlexURL" href="http://stephan.reposita.org/archives/2008/01/11/once-and-for-all-do-not-use-double-for-money/">http://stephan.reposita.org/archives/2008/01/11/once-and-for-all-do-not-use-double-for-money/</a></span></span>, so instead we base it on <tt>scala.BigDecimal</tt>. We’re going to provide an abridged version of the code that will end up in the Lift library. Feel free to examine the source to see the constructors and methods that we’ve omitted<span class="FootOuter"><span class="SupFootMarker"> [F] </span><span class="HoverFoot"><span class="SupFootMarker"> [F] </span>The code is checked into the master branch of the liftweb Git repository.</span></span>. Our first task is to specify the class signature and constructors, as shown in Listing <a class="Reference" href="index-8.html#lst:MappedDecimal-constructors">8.2.7↓</a>. Note that the <tt>BigDecimal</tt> we’re using here is <tt>scala.BigDecimal</tt>, not <tt>java.math.BigDecimal</tt>. We’ll cover how we make this work with JDBC (which doesn’t support scala.BigDecimal) in a moment.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+MappedDecimal Constructors<a class="Label" name="lst:MappedDecimal-constructors"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.java.math.{MathContext, RoundingMode}
+​
+class MappedDecimal[T &lt;: Mapper[T]] (val fieldOwner : T,
+                                     val context : MathContext,
+                                     val scale : Int) extends MappedField[BigDecimal,T] {
+  // ... constructor taking initial value ...
+  def this(fieldOwner : T, value : BigDecimal, context: MathContext) = {
+    this(fieldOwner, context, value.scale)
+    setAll(value) // we’ll cover this later in this section
+  }
+​
+  def this(fieldOwner : T, value : BigDecimal) = {
+    this(fieldOwner, MathContext.UNLIMITED, value.scale)
+    setAll(value)
+  }
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The first part of the class definition is the type signature; basically the type <tt>[T &lt;: MappedField[T]]</tt> indicates that whatever type “owns” this field must be a Mapper subclass (&lt;: specifies an upper type bound<span class="FootOuter"><span class="SupFootMarker"> [G] </span><span class="HoverFoot"><span class="SupFootMarker"> [G] </span>For more on type bounds, see <a class="URL" href="http://www.scala-lang.org/node/136">http://www.scala-lang.org/node/136</a>.</span></span>). With our primary constructor we specify the owner mapper as well as the <tt>MathContext</tt> (this controls rounding and precision, or the total number of digits) and scale of the decimal value. The scale in <tt>BigDecimal</tt> essentially represents the number of digits to the right of the decimal point. In addition, we specify ancillary constructors to take an initial value with or without and explicit <tt>MathContext</tt>.
+</div>
+<div class="Indented">
+Now that we have the constructors in place, there are several abstract methods on <tt>MappedField</tt> that we need to define. The first of these is a method to provide a default value. The default value is used for uninitialized fields or if validation fails. We also need to specify the class for our value type by implementing the <tt>dbFieldClass</tt> method. Listing <a class="Reference" href="index-8.html#lst:Setting-a-default-value">8.2.7↓</a> shows both of these methods. In our case, we default to a zero value, with the scale set as specified in the contructor. Note that <tt>BigDecimal</tt> instances are generally immutable, so the <tt>setScale</tt> method returns a new instance. We also provide the vars and methods that handle the before and after values of the field. These values are used to handle persistence state. If you change the value of the field, then the original value is held until the instance is saved to the database. The <tt>st</tt> method is used internally to set the value of the field when instances are “rehydrated” from the database.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting a Default Value<a class="Label" name="lst:Setting-a-default-value"> </a>
+</div>
+<pre class="listing brush: scala">  private val zero = BigDecimal("0") 
+  def defaultValue = zero.setScale(scale)
+  def dbFieldClass = classOf[BigDecimal]
+​
+  // The data and orgData variables are used so that
+  // we know when the field has been modified by the user
+  private var data : BigDecimal = defaultValue
+  private var orgData : BigDecimal = defaultValue
+  private def st (in : BigDecimal) {
+    data = in
+    orgData = in
+  }
+  
+  // The i_is_! and i_was_! methods are used internally to
+  // keep track of when the field value is changed. In our 
+  // instance they delegate directly to the data and orgData 
+  // variables
+  protected def i_is_! = data
+  protected def i_was_! = orgData
+  override def doneWithSave() {
+    orgData = data
+  }
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The next set of methods we need to provide deal with when and how we can access the data. Listing <a class="Reference" href="index-8.html#lst:Access-Control">8.2.7↓</a> shows the overrides that set the read and write permissions to true (default to false for both) as well as the <tt>i_obscure_!</tt> and <tt>real_i_set_!</tt> methods. The <tt>i_obscure_!</tt> method returns the a value that is used when the user doesn’t have read permissions. The <tt>real_i_set_!</tt> method is what actually stores the internal value and sets the dirty flag when the field is updated.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Access Control<a class="Label" name="lst:Access-Control"> </a>
+</div>
+<pre class="listing brush: scala">  override def readPermission_? = true
+  override def writePermission_? = true
+  protected def i_obscure_!(in : BigDecimal) = defaultValue
+  protected def real_i_set_!(value : BigDecimal): BigDecimal = {
+    if (value != data) {
+      data = value
+      dirty_?(true)
+    }
+    data
+  }
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The next two methods that we need to provide deal with actually setting the value of the field. The first is <tt>setFromAny</tt>, which takes an <tt>Any</tt> parameter and must convert it into a <tt>BigDecimal</tt>. The second, <tt>setFromString</tt> is a subset of <tt>setFromAny</tt> in that it takes a <tt>String</tt> parameter and must return a <tt>BigDecimal</tt>. Our implementation of these two methods is shown in Listing <a class="Reference" href="index-8.html#lst:setFrom...-Methods">8.2.7↓</a>. We’ve also added a <tt>setAll</tt> and <tt>coerce</tt> method so that we have a common place to properly set scale and rounding modes on the value of the field. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+setFrom... Methods<a class="Label" name="lst:setFrom...-Methods"> </a>
+</div>
+<pre class="listing brush: scala">  def setFromAny (in : Any) : BigDecimal =
+    in match {
+      case bd : BigDecimal =&gt; setAll(bd)
+      case n :: _ =&gt; setFromString(n.toString)
+      case Some(n) =&gt; setFromString(n.toString)
+      case Full(n) =&gt; setFromString(n.toString)
+      case None | Empty | Failure(_, _, _) | null =&gt; setFromString("0")
+      case n =&gt; setFromString(n.toString)
+    }
+​
+  def setFromString (in : String) : BigDecimal = {
+    this.setAll(BigDecimal(in))
+  }
+​
+  protected def setAll (in : BigDecimal) = set(coerce(in))
+​
+  // Make a separate method for properly adjusting scale and rounding.
+  // We’ll use this method later in the class as well.
+  protected coerce (in : BigDecimal) = 
+    new BigDecimal(in.bigDecimal.setScale(scale, context.getRoundingMode))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Our implementations are relatively straightforward. The only special handling we need for <tt>setFromAny</tt> is to properly deal with <tt>Lists</tt>, <tt>Boxes</tt>, <tt>Options</tt> and the <tt>null</tt> value. The <tt>BigDecimal</tt> constructor takes Strings, so the <tt>setFromString</tt> method is easy. The only addition we make over the <tt>BigDecimal</tt> constructor is to properly set the scale and rounding on the returned value. 
+</div>
+<div class="Indented">
+Our final step is to define the database-specific methods for our field, as shown in Listing <a class="Reference" href="index-8.html#lst:Database-Specific-Methods">8.2.7↓</a>. The first method we implement is <tt>targetSQLType</tt>. This method tells Mapper what the corresponding SQL type is for our database column. The <tt>jdbcFriendly</tt> method returns a value that can be used in a JDBC statement. Here’s where we need to use the <tt>bigDecimal</tt> val on our <tt>scala.BigDecimal</tt> to obtain the real <tt>java.math.BigDecimal</tt> instance. Similarly, the <tt>real_convertToJDBCFriendly</tt> method needs to return a java <tt>BigDecimal</tt> for a given <tt>scala.BigDecimal</tt> input. The <tt>buildSet...</tt> methods return functions that can be used to set the value of our field based on different input types. These are essentially conversion functions that are used by Lift to convert data retrieved in a <tt>ResultSet</tt> into actual field values. Finally, the <tt>fieldCreatorString</tt> specifices what we would need in a CREATE TABLE statement to define this column. In this instance, we need to take into account the precision and scale. We use default precision if we’re set to unlimited, but it’s important to understand that actual precision for the default DECIMAL type varies between RDBMS vendors.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Database-Specific Methods<a class="Label" name="lst:Database-Specific-Methods"> </a>
+</div>
+<pre class="listing brush: scala">def targetSQLType = Types.DECIMAL
+def jdbcFriendly(field : String) = i_is_!.bigDecimal
+def real_convertToJDBCFriendly(value: BigDecimal): Object = value.bigDecimal
+​
+// The following methods are used internally by Lift to
+// process values retrieved from the database. 
+​
+// We don’t convert from Boolean values to a BigDecimal, so this returns null
+def buildSetBooleanValue(accessor : Method, columnName : String) : 
+  (T, Boolean, Boolean) =&gt; Unit = null
+​
+// Convert from a Date to a BigDecimal. Our assumption here is that we can take
+// The milliseconds value of the Date.
+def buildSetDateValue(accessor : Method, columnName : String) : 
+    (T, Date) =&gt; Unit =
+  (inst, v) =&gt; 
+    doField(inst, accessor,{
+      case f: MappedDecimal[T] =&gt; 
+        f.st(if (v == null) defaultValue else coerce(BigDecimal(v.getTime)))
+    })
+​
+// Convert from a String to a BigDecimal. Since the BigDecimal object can
+// directly convert a String, we just pass the String directly.
+def buildSetStringValue(accessor: Method, columnName: String) : 
+    (T, String) =&gt; Unit =
+  (inst, v) =&gt; 
+    doField(inst, accessor,{
+      case f: MappedDecimal[T] =&gt; 
+        f.st(coerce(BigDecimal(v)))
+    })
+​
+// Convert from a Long to a BigDecimal. This is slightly more complex than 
+// for a String, since we need to check for null values.
+def buildSetLongValue(accessor: Method, columnName : String) : 
+    (T, Long, Boolean) =&gt; Unit = 
+  (inst, v, isNull) =&gt; 
+    doField(inst, accessor, {
+      case f: MappedDecimal[T] =&gt; 
+        f.st(if (isNull) defaultValue else coerce(BigDecimal(v)))
+    })
+​
+// Convert from an AnyRef (Object). We simply use the String value 
+// of the input here.
+def buildSetActualValue(accessor: Method, data: AnyRef, columnName: String) : 
+    (T, AnyRef) =&gt; Unit =
+  (inst, v) =&gt; 
+    doField(inst, accessor, {
+      case f: MappedDecimal[T] =&gt; f.st(coerce(BigDecimal(v.toString)))
+    })
+​
+def fieldCreatorString(dbType: DriverType, colName: String): String = {
+  val suffix = if (context.getPrecision == 0) "" else {
+    "(" + context.getPrecision + "," + scale + ")"
+  }
+  colName + " DECIMAL" + suffix
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.2.8">8.2.8</a> ProtoUser and MegaProtoUser<a class="Label" name="sub:ProtoUser-and-MegaProtoUser"> </a>
+</h3>
+<div class="Unindented">
+In addition to all of the database-related features, Mapper contains an extra goody to help you quickly set up small sites. <tt>ProtoUser</tt> and <tt>MegaProtoUser</tt> are two built-in traits that define a simple user account. The <tt>ProtoUser</tt> trait defines some basic fields for a user: <tt>email</tt>, <tt>firstName</tt>, <tt>lastName</tt>, <tt>password</tt> and <tt>superUser</tt> (a boolean to provide basic permissions). There are also a number of defs used to format the fields for display or to provide form labels. Listing <a class="Reference" href="index-8.html#lst:A-simple-ProtoUser">8.2.8↓</a> shows an example of a ProtoUser-based Mapper class that overrides some of the formatting defs.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Simple ProtoUser<a class="Label" name="lst:A-simple-ProtoUser"> </a>
+</div>
+<pre class="listing brush: scala">class User extends ProtoUser[User] {
+  override def shortName = firstName.is
+  override lastNameDisplayName = "surname"
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The <tt>MegaProtoUser</tt> trait, as its name implies, extends the <tt>ProtoUser</tt> trait with a whole suite of functionality. The main thrust of <tt>MegaProtoUser</tt> (and its associated meta object,<br/>
+ <tt>MetaMegaProtoUser</tt>) is to automatically handle all of the scaffolding for a complete user management system, with:
+</div>
+<ul>
+<li>
+A user registration page with configurable validation via email
+</li>
+<li>
+A login page that automatically handles authentication
+</li>
+<li>
+A lost password page that does reset via email
+</li>
+<li>
+A change password page
+</li>
+<li>
+A user edit page
+</li>
+<li>
+A simple method to generate SiteMap menus for all of these pages
+</li>
+
+</ul>
+<div class="Unindented">
+Of course, you can customize any of these by overriding the associated methods on the MetaMegaProtoUser object. Listing <a class="Reference" href="index-2.html#lst:PocketChange-User-entity">2.1 on page 1↑</a> shows an example of sprucing up the signup and login pages by overriding the <tt>loginXHtml</tt> and <tt>signupXHtml</tt> methods. Listing <a class="Reference" href="index-8.html#lst:Hooking-MetaMegaProtoUser-into-Boot">8.2.8↓</a> shows how easy it is to then hook the MetaMegaProtoUser menus into SiteMap.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Hooking MetaMegaProtoUser into Boot<a class="Label" name="lst:Hooking-MetaMegaProtoUser-into-Boot"> </a>
+</div>
+<pre class="listing brush: scala">// in Boot.scala
+LiftRules.setSiteMap(SiteMap((... :: User.sitemap) :_*))
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-8.3">8.3</a> Advanced Features
+</h2>
+<div class="Unindented">
+In this section we’ll cover some of the advanced features of Mapper
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.3.1">8.3.1</a> Using Multiple Databases <a class="Label" name="sub:Multiple-Databases"> </a><a class="IndexReference" name="entry-Mapper-multiple-databases-1" href="index-Index.html#index-Mapper-multiple-databases">↓</a>
+</h3>
+<div class="Unindented">
+It’s common for an application to need to access data in more than one database. Lift supports this feature through the use of overrides on your MetaMapper classes. First, we need to define the identifiers for the various databases using the <tt>ConnectionIdentifier</tt> trait and overriding the <tt>jndiName</tt> def. Lift comes with one pre-made: <tt>DefaultConnectionIdentifier</tt>. It’s jndiName is set to “lift”, so it’s recommended that you use something else. Let’s say we have two databases: sales and employees. Listing <a class="Reference" href="index-8.html#lst:Defining-Connection-Identifiers">8.3.1↓</a> shows how we would define the <tt>ConnectionIdentifier</tt> objects for these.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining Connection Identifiers<a class="Label" name="lst:Defining-Connection-Identifiers"> </a>
+</div>
+<pre class="listing brush: scala">object SalesDB extends ConnectionIdentifier {
+  def jndiName = "sales"
+}
+​
+object EmployeeDB extends ConnectionIdentifier {
+  def jndiName = "employees"
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Simple enough. Now, we need to create connection managers for each one, or we can combine the functionality into a single manager. To keep things clean we’ll use a single manager, as shown in Listing <a class="Reference" href="index-8.html#lst:Multi-database-Connection-Manager">8.3.1↓</a>. Scala’s match operator allows us to easily return the correct connection.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Multi-database Connection Manager<a class="Label" name="lst:Multi-database-Connection-Manager"> </a>
+</div>
+<pre class="listing brush: scala">object DBVendor extends ConnectionManager {
+  Class.forName("org.postgresql.Driver")
+ 
+  def newConnection(name : ConnectionIdentifier) = {
+    try {
+      name match {
+        case SalesDB =&gt;
+          Full(DriverManager.getConnection(
+            "jdbc:postgresql://localhost/sales",
+            "root", "secret"))
+        case EmployeeDB =&gt;
+          Full(DriverManager.getConnection(
+            "jdbc:postgresql://server/employees",
+            "root", "hidden"))
+    } catch {
+      case e : Exception =&gt; e.printStackTrace; Empty
+    }
+  }
+  def releaseConnection (conn : Connection) { conn.close }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now that we’ve defined our connection identifiers, we need to be able to use them in our <tt>Mapper</tt> instances. There are several ways to do this. The first (simplest) way is to override the <tt>dbDefaultConnectionIdentifier</tt> method on your <tt>MetaMapper</tt> object, as shown in Listing <a class="Reference" href="index-8.html#lst:Defining-the-Default-connid">8.3.1↓</a>. In this example we’re setting the <tt>MetaMapper</tt> to always use the <tt>EmployeeDB</tt> connection for all persistence operations.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining the Default Connection Identifier<a class="Label" name="lst:Defining-the-Default-connid"> </a>
+</div>
+<pre class="listing brush: scala">object EmployeeMeta extends Employee with LongKeyedMetaMapper[Employee] {
+  ...
+  override def dbDefaultConnectionIdentifier = EmployeeDB
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The second way to utilize more than one DB is to use the “DB” version of the persistence methods, as we mentioned in Section <a class="Reference" href="index-8.html#sub:Persistence-Operations-on-entity">8.1.7↑</a>. Listing <a class="Reference" href="index-8.html#lst:Using-a-Connection-id-direct">8.3.1↓</a> shows how we can perform a <tt>findAll</tt> with a specific connection.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using a Connection Identifier Directly<a class="Label" name="lst:Using-a-Connection-id-direct"> </a>
+</div>
+<pre class="listing brush: scala">val employees = EmployeeMeta.findAllDb(EmployeeDB)
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.3.2">8.3.2</a> Database Sharding
+</h3>
+<div class="Unindented">
+A special case of using multiple databases is <i>sharding</i><span class="FootOuter"><span class="SupFootMarker"> [H] </span><span class="HoverFoot"><span class="SupFootMarker"> [H] </span>For more information on sharding, see this article: <a class="FlexURL" href="http://highscalability.com/unorthodox-approach-database-design-coming-shard">http://highscalability.com/unorthodox-approach-database-design-coming-shard</a></span></span>. Sharding is a means to scale your database capacity by associating entities with one database instance out of a federation of servers based on some property of the entity. For instance, we could distribute user entites across 3 database servers by using the first character of the last name: A-H goes to server 1, I-P goes to server 2, and Q-Z goes to server 3. As simple as this sounds, there are some important factors to remember:
+</div>
+<ul>
+<li>
+Sharding increases the complexity of your code.
+</li>
+<li>
+To get the most benefit out of sharding, you need to carefully choose and tune your “selector.” If you’re not careful, you can get an uneven distribution where some servers handle significantly more load than others, defeating the purpose of sharding. The example we’ve given here of using the last name is, in practice, a very poor choice. We recommend reading <a class="URL" href="http://startuplessonslearned.blogspot.com/2009/01/sharding-for-startups.html">http://startuplessonslearned.blogspot.com/2009/01/sharding-for-startups.html</a> for a good overview of the pros and cons of various selector strategies.
+</li>
+<li>
+When you use sharding, you can’t just use normal joins anymore because the data isn’t all within one instance. This means more work on your part to properly retrieve and associate data
+</li>
+
+</ul>
+<div class="Unindented">
+Mapper provides a handy feature for sharding that allows you to choose which database connection you want to use for a specific entity. There are two methods we can use to control the behavior: <tt>dbSelectDBConnectionForFind</tt> and <tt>dbCalculateConnectionIdentifier</tt>. dbSelect... is used to find an instance by primary key, and takes a partial function (typically a match clause) to determine which connection to use. dbCalculate... is used when a new instance is created to decide where to store the new instance. As an example, say we’ve defined two database connections, SalesA and SalesB. We want to place new instances in SalesA if the amount is &gt; $100 and SalesB otherwise. Listing <a class="Reference" href="index-8.html#lst:Sharding-in-Action">8.3.2↓</a> shows our method in action.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Sharding in Action<a class="Label" name="lst:Sharding-in-Action"> </a>
+</div>
+<pre class="listing brush: scala">class Expense extends LongKeyedMapper[Expense] {
+  ... fields, etc ...
+​
+  override def dbCalculateConnectionIdentifier = {
+    case n if n.amount.is &gt; 100 =&gt; SalesA
+    case _ =&gt; SalesB
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-8.3.3">8.3.3</a> SQL-based Queries<a class="Label" name="sub:SQL-based-queries"> </a>
+</h3>
+<div class="Unindented">
+If, despite all that Mapper covers, you find yourself still wanting more control over the query, there are two more options available to you: <tt>findAllByPreparedStatement</tt> and <tt>findAllByInsecureSql</tt>. The <tt>findAllByPreparedStatement</tt> method allows you to, in essence, construct your query completely by hand. The added benefit of using a <tt>PreparedStatement</tt><span class="FootOuter"><span class="SupFootMarker"> [I] </span><span class="HoverFoot"><span class="SupFootMarker"> [I] </span><a class="FlexURL" href="http://java.sun.com/javase/6/docs/api/java/sql/PreparedStatement.html">http://java.sun.com/javase/6/docs/api/java/sql/PreparedStatement.html</a></span></span> means that you can easily include user-defined data in your queries. The <tt>findAllByPreparedStatement</tt> method takes a single function parameter. This function takes a <tt>SuperConnection</tt><span class="FootOuter"><span class="SupFootMarker"> [J] </span><span class="HoverFoot"><span class="SupFootMarker"> [J] </span>Essentially a thin wrapper on java.sql.Connection, <a class="FlexURL" href="http://scala-tools.org/mvnsites/liftweb/lift-webkit/scaladocs/net/liftweb/mapper/SuperConnection.html">http://scala-tools.org/mvnsites/liftweb/lift-webkit/scaladocs/net/liftweb/mapper/SuperConnection.html</a></span></span> and returns a<br/>
+ <tt>PreparedStatement</tt> instance. Listing <a class="Reference" href="index-8.html#lst:Using-findAllByPreparedStatement">8.3.3↓</a> shows our previous example in which we looked up all <tt>Tag</tt>s for recent <tt>Expense</tt> entries, but here using <tt>findAllByPreparedStatement</tt> instead. The query that you provide must at least return the fields that are mapped by your entity, but you can return other columns as well (they’ll just be ignored), so you may choose to do a “select *” if you prefer.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using findAllByPreparedStatement<a class="Label" name="lst:Using-findAllByPreparedStatement"> </a>
+</div>
+<pre class="listing brush: scala">def recentTags = Tag.findAllByPreparedStatement({ superconn =&gt;
+  superconn.connection.prepareStatement(
+    "select distinct Expense.id, Tag.name" +
+    "from Tag" +
+    "join ExpenseTag et on Tag.id = et.tag " +
+    "join Expense ex on ex.id = et.expense " +
+    "where ex.dateOf &gt; (CURRENT_DATE - interval ’30 days’)")
+})
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The <tt>findAllByInsecureSql</tt> method goes even further, executing the string you submit directly as a statement without any checks. The same general rules apply as for<br/>
+ <tt>findAllByPreparedStatement</tt>, although you need to add the <tt>IHaveValidatedThisSQL</tt> parameter as a code audit check. In either case, the ability to use full SQL queries can allow you to do some very powerful things, but it comes at the cost of losing type safety and possibly making your app non-portable.
+</div>
+<div class="Indented">
+As a last resort, Mapper provides support for non-entity SQL queries through a few methods on the DB object. The first method we’ll look at is <tt>DB.runQuery</tt>. This method allows you to provide a full SQL query string, and is overloaded to take a parameterized query. It returns a <tt>Pair[List[String],List[List[String]]</tt>, with the first <tt>List[String]</tt> containing all of the column names and the second <tt>List</tt> corresponding to each row in the result set. For example, let’s say we wanted to compute the sums of each tag for a given account. Listing <a class="Reference" href="index-8.html#lst:Using-DB.runQuery">8.3.3↓</a> shows how we could accomplish this using a parameterized query against the database. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using DB.runQuery<a class="Label" name="lst:Using-DB.runQuery"> </a>
+</div>
+<pre class="listing brush: scala">DB.runQuery("select Tag.name, sum(amount) from Expense ex " +
+            "join ExpenseTag et on et.expense = ex.id " +
+            "join Tag on et.tag = Tag.id " +
+            "join Account on Account.id = ex.account " +
+            "where Account.id = ? group by Tag.name order by Tag.name",
+            myAccount.id)
+// might return:
+(List("tag", "sum"]),
+ List(List("food","42.00"),
+      List("home","75.49"),
+      List("work","2.00")))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+If you need full control over the query and full access to the result set, DB provides some low-level utility methods. The most basic is <tt>DB.use</tt>, which takes a connection identifier as well as a function that takes a <tt>SuperConnection</tt> (a thin wrapper on JDBC’s connection). This forms a loan pattern<span class="FootOuter"><span class="SupFootMarker"> [K] </span><span class="HoverFoot"><span class="SupFootMarker"> [K] </span><a class="URL" href="http://scala.sygneca.com/patterns/loan">http://scala.sygneca.com/patterns/loan</a></span></span> that lets Mapper deal with all of the connection open and release details. The <tt>DB.exec</tt> method takes a provided connection and executes an arbitrary SQL statement on it, then applies a provided function to the result set. Similarly, the <tt>DB.prepareStatement</tt> method allows you to create a prepared statement and then apply a function to it. You can combine these methods to run any arbitrary SQL, as shown in Listing <a class="Reference" href="index-8.html#lst:Using-DB.use">8.3.3↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using DB.use<a class="Label" name="lst:Using-DB.use"> </a>
+</div>
+<pre class="listing brush: scala">// recompute an account balance from all of the transactions
+DB.use(DefaultConnectionIdentifier) { conn =&gt;
+  val balance = 
+    // Should use a prepared statement here. This is for example only
+    DB.exec(conn, 
+      "select sum(ex.amount) from Expense ex where ex.account = " 
+      + myAccount.id) {
+      rs =&gt; 
+       if (!rs.next) BigDecimal(0) 
+       else (new BigDecimal(rs.getBigDecimal(1)))
+    }
+  DB.prepareStatement("update Account set balance = ? where Account.id = ", 
+                      conn) { stmt =&gt;
+    stmt.setBigDecimal(1, balance.bigDecimal)
+    stmt.setLong(2, resetAccount.id)
+    stmt.executeUpdate()
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-8.4">8.4</a> Logging
+</h2>
+<div class="Unindented">
+Logging with Mapper is covered in detail in Section <a class="Reference" href="index-E.html#sec:Logging-Mapper-Queries">E.4 on page 1↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-8.5">8.5</a> Summary 
+</h2>
+<div class="Unindented">
+In this chapter, we discussed the two major ORMs included in Lift: Mapper and Record. We’ve shown how you can define entities using the Mapper field types and how to coordinate between the entity and its Meta-object. We’ve shown how you can customize the display and schema of your behavior with custom form control, CRUD support, and indexing. And we’ve show you how to query for entities using Mapper’s type-safe query support. Finally, we showed you how you can do in-depth customization of Mapper behavior by writing your own field types, using multiple databases, and using raw SQL queries.
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-7.html#Next">Previous: Chapter 7</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-Part-II.html#prev">Next: Part II</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-C.html#Next">Previous: Appendix C</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-E.html#prev">Next: Appendix E</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-D">D</a> Internationalization<a class="Label" name="cha:Internationalization"> </a><a class="IndexReference" name="entry-Internationalization---see-I18N-0" href="index-Index.html#index-Internationalization---see-I18N">↓</a><a class="IndexReference" name="entry-I18N-0" href="index-Index.html#index-I18N">↓</a>
+</h1>
+<div class="Unindented">
+The ability to display pages to users of multiple languages is a common feature of many web frameworks. Lift builds on the underlying Java I18N foundations<span class="FootOuter"><span class="SupFootMarker"> [G] </span><span class="HoverFoot"><span class="SupFootMarker"> [G] </span>Primarily java.util.Locale and java.util.ResourceBundle</span></span> to provide a simple yet flexible means for using Locales and translated strings in your app. Locales are used to control not only what language the text is in that’s presented to the user, but also number and date formatting, among others. If you want more details on the underlying foundation of Java I18N we suggest you visit the Internationalization Homepage at <a class="FlexURL" href="http://java.sun.com/javase/technologies/core/basic/intl/">http://java.sun.com/javase/technologies/core/basic/intl/</a>.
+</div>
+<div class="Indented">
+Another note is that languages are selected in Lift using language tags, as defined in <a class="FlexURL" href="http://www.w3.org/International/articles/language-tags/">http://www.w3.org/International/articles/language-tags/</a>. Language tags are base on the ISO 639 standard<span class="FootOuter"><span class="SupFootMarker"> [H] </span><span class="HoverFoot"><span class="SupFootMarker"> [H] </span><a class="FlexURL" href="http://en.wikipedia.org/wiki/List_of_ISO_639-1_codes">http://en.wikipedia.org/wiki/List_of_ISO_639-1_codes</a></span></span>. In general, you should keep language tags as short as possible and avoid adding information (such as regional specifiers) that does not provide otherwise distinguishing information. For example, if your Spanish page will be used for both Mexican and Spanish clients without modification, simply use <tt>es</tt> and not <tt>es_MX</tt> or <tt>es_ES</tt>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.1">D.1</a> Localized Templates<a class="Label" name="sec:Localized-Templates"> </a><a class="IndexReference" name="entry-I18N-Localized-templates-0" href="index-Index.html#index-I18N-Localized-templates">↓</a>
+</h2>
+<div class="Unindented">
+As we described in Section <a class="Reference" href="index-4.html#sec:Templates">4.1 on page 1↑</a>, Lift automatically chooses the template for a request based on the current locale by appending the locale’s variants. That means that a request for <tt>/index</tt> with a calculated locale of <tt>en_US</tt> will try these filenames, in order:
+</div>
+<ul>
+<li>
+<tt>index_en_US.html</tt>
+</li>
+<li>
+<tt>index_en.html</tt>
+</li>
+<li>
+<tt>index.html</tt>
+</li>
+
+</ul>
+<div class="Unindented">
+Note that Java upper-cases the country portion of the locale, so you need to make sure you name your templates accordingly. For instance, in the above example a file named <tt>index_en_us.html</tt> wouldn’t match.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.2">D.2</a> Resource Bundles<a class="Label" name="sec:Resource-Bundles"> </a>
+</h2>
+<div class="Unindented">
+Resource bundles are sets of property files<span class="FootOuter"><span class="SupFootMarker"> [I] </span><span class="HoverFoot"><span class="SupFootMarker"> [I] </span>Technically, they can have other formats, but Lift generally only deals with <tt>PropertyResourceBundles</tt></span></span> that contain keyed strings for your application to use in messages. In addition to the key/value pair contents of the files, the filename itself is significant. When a <tt>ResourceBundle</tt> is specified by name, the base name is used as the default, and additional files with names of the form “&lt;base name&gt;_&lt;language tag&gt;” can be used to specify translations of the default strings in a given language. As an example, consider listing <a class="Reference" href="index-D.html#lst:Default-door-bundle">D.2↓</a>, which specifies a default resource bundle for an application that reports the status of a door (open or closed). 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Default Door Bundle<a class="Label" name="lst:Default-door-bundle"> </a>
+</div>
+<pre class="listing brush: scala">openStatus=The door is open
+closedStatus=The door is closed
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Suppose this file is called “DoorMessages.properties”; we can provide an additional translation for Spanish by creating a file called “DoorMessages_es.properties”, shown in listing <a class="Reference" href="index-D.html#lst:Spanish-door-bundle">D.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Spanish Door Bundle<a class="Label" name="lst:Spanish-door-bundle"> </a>
+</div>
+<pre class="listing brush: scala">openStatus=La puerta está abierta
+closedStatus=La puerta está cerrada
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When you want to retrieve a message (covered in the next two sections) Lift will check the current Locale and see if there’s a specialized ResourceBundle available for it. If so, it uses the messages in that file; otherwise, it uses the default bundle. 
+</div>
+<div class="Indented">
+Lift supports using multiple resource bundle files so that you can break your messages up into functional groups. You specify this by setting the <tt>LiftRules.resourceNames</tt> property to a list of the base names (without a language or “.properties” extension):
+</div>
+<pre class="LyX-Code">
+LiftRules.resourceNames = "DoorMessages" :: 
+                          "DoorknobMessages" :: Nil
+</pre>
+<div class="Unindented">
+The order that you define the resource bundle names is the order that they’ll be searched for keys. The message properties files should be located in your <tt>WEB-INF/classes</tt> folder so that they are accessible from Lift’s classloader<span class="FootOuter"><span class="SupFootMarker"> [J] </span><span class="HoverFoot"><span class="SupFootMarker"> [J] </span>The properties files are retrieved with <tt>ClassLoader.getResourceAsStream</tt></span></span>; if you’re using Maven this will happen if you put your files in the <tt>src/main/resources</tt> directory.
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: According to the <tt>Properties</tt> documentation<span class="FootOuter"><span class="SupFootMarker"> [K] </span><span class="HoverFoot"><span class="SupFootMarker"> [K] </span><a class="FlexURL" href="http://download.oracle.com/javase/6/docs/api/java/util/Properties.html">http://download.oracle.com/javase/6/docs/api/java/util/Properties.html</a></span></span>, keys <i>must</i> escape significant whitespace, colons or equals signs in the key itself with backslashes. For example, to specify “this = that” as a key, you would have to write it as “this\ \=\ that” in the properties file.<a class="IndexReference" name="entry-I18N-whitespace-in-keys-0" href="index-Index.html#index-I18N-whitespace-in-keys">↓</a>
+</div>
+
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.3">D.3</a> An Important Note on Resource Bundle Resolution<a class="IndexReference" name="entry-I18N-Resource-bundle-resolution-0" href="index-Index.html#index-I18N-Resource-bundle-resolution">↓</a>
+</h2>
+<div class="Unindented">
+Per Java’s documentation on <a class="URL" href="http://java.sun.com/javase/6/docs/api/java/util/ResourceBundle.html#getBundle(java.lang.String,%20java.util.Locale,%20java.lang.ClassLoader)">ResourceBundle</a>, resolution of property files is done in this order:
+</div>
+<ul>
+<li>
+baseName + “_” + language1 + “_” + country1 + “_” + variant1
+</li>
+<li>
+baseName + “_” + language1 + “_” + country1
+</li>
+<li>
+baseName + “_” + language1
+</li>
+<li>
+baseName + “_” + language2 + “_” + country2 + “_” + variant2
+</li>
+<li>
+baseName + “_” + language2 + “_” + country2
+</li>
+<li>
+baseName + “_” + language2
+</li>
+<li>
+baseName
+</li>
+
+</ul>
+<div class="Unindented">
+where “language1”, “country1”, and “variant1” are the requested locale parameters, and “language2”, “country2”, “variant2” are the default locale parameters.
+</div>
+<div class="Indented">
+For example, if the default locale for your computer is “en_GB”, someone requests a page for “ja”, and you have the following property files defined:
+</div>
+<ul>
+<li>
+Messages_fr_FR.properties
+</li>
+<li>
+Messages_en_GB.properties
+</li>
+<li>
+Messages.properties
+</li>
+
+</ul>
+<div class="Unindented">
+then the <b>Messages_en_GB.properties</b> file, and not <b>Messages.properties</b> will be used. If you want to change this behavior so that any undefined locales utilize the base properties file, set your default Locale to the ROOT locale in your <tt>Boot.scala</tt> with the code shown in Listing <a class="Reference" href="index-D.html#lst:Setting-the-ROOT-locale">D.3↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Setting-the-ROOT-locale"> </a>Setting the ROOT Default Locale
+</div>
+<pre class="listing brush: scala">import java.util.Locale
+Locale.setDefault(Locale.ROOT)
+</pre>
+</div>
+ 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.4">D.4</a> Localized Strings in Scala Code<a class="Label" name="sec:Localized-Strings-in-Scala"> </a>
+</h2>
+<div class="Unindented">
+Retrieving localized strings in your Scala code is primarily performed using the <tt>S.?</tt> method. When invoked with one argument the resource bundles are searched for a key matching the given argument. If a matching value is found it’s returned. If it can’t be found then Lift calls <tt>LiftRules.localizationLookupFailureNotice</tt> on the (key, current Locale) pair and then simply returns the key. If you call <tt>S.?</tt> with more than one argument, the first argument is still the key to look up, but any remaining arguments are used as format parameters for <tt>String.format</tt> executed on the retrieved value. For example, listing <a class="Reference" href="index-D.html#lst:Formatted-bundles">D.4↓</a> shows a sample bundle file and the associated Scala code for using message formatting.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Formatted Bundles<a class="Label" name="lst:Formatted-bundles"> </a>
+</div>
+<pre class="listing brush: scala">// bundle
+tempMsg=The current temperature is %0.1 degrees
+// code
+var currentTmp : Double = getTemp()
+Text(S.?("tempMsg", currentTemp))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Lift also provides the <tt>S.??</tt> method, which is similar to <tt>S.?</tt> but uses the <tt>ResourceBundle</tt> for internal Lift strings. Lift’s resource-bundles are located in the i18n folder with the name lift-core.properties The resource-bundle name is given by <tt>LiftRules.liftCoreResourceName</tt> variable. Generally you won’t use this method.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.5">D.5</a> Formatting Localized Strings
+</h2>
+<div class="Unindented">
+While Lift provides facilities for retrieving strings from localized property bundles (Section <a class="Reference" href="index-D.html#sec:Localized-Strings-in-Scala">D.4↑</a>), it does not provide direct support for localized formatting of those strings. There is an <tt>S.?</tt> method which takes additional parameters, but it uses <tt>String.format</tt> (and printf syntax) to format the strings and does not properly support date/time formatting. Instead, we recommend you use <tt>java.text.MessageFormat</tt> for localized strings that will use parameters. Listing <a class="Reference" href="index-D.html#lst:A-Utility-Method-l10n">D.5↓</a> shows a utility method that you can use in your code to localize strings with parameters. Note that if you have a lot of Lift’s implicit conversions in scope you may need to explicitly type some arguments as we have in this example.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Utility Method for Localizing Strings<a class="Label" name="lst:A-Utility-Method-l10n"> </a>
+</div>
+<pre class="listing brush: scala">private def i10n(key : String, args : Object*) = {
+ import java.text.{FieldPosition,MessageFormat}
+ val formatter = new MessageFormat(S.?(key), S.locale)
+ formatter.format(args.toArray, new StringBuffer, new FieldPosition(0)).toString
+}
+​
+// Usage:
+&lt;span&gt;{i10n("welcome", new java.util.Date, 6 : Integer)}&lt;/span&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.6">D.6</a> Localized Strings in Templates<a class="IndexReference" name="entry-I18N-Localized-templates-1" href="index-Index.html#index-I18N-Localized-templates">↓</a>
+</h2>
+<div class="Unindented">
+You can add localized strings directly in your templates through the <tt>&lt;lift:loc /&gt;</tt> tag. You can either provide a locid attribute on the tag which is used as the lookup key, or if you don’t provide one, the contents of the tag will be used as the key. In either case, if the key can’t be found in any resource bundles, the contents of the tag will be used. Listing <a class="Reference" href="index-D.html#lst:Using-the-loc-tag">D.6↓</a> shows some examples of how you could use lift:loc. In both examples, assume that we’re using the resource bundle shown in listing <a class="Reference" href="index-D.html#lst:Spanish-door-bundle">D.2↑</a>. The fallthrough behavior lets us put a default text (English) directly in the template, although for consistency you should usually provide an explicit bundle for all languages.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using the loc tag<a class="Label" name="lst:Using-the-loc-tag"> </a>
+</div>
+<pre class="listing brush: xml">&lt;!-- using explicit key (preferred) --&gt;
+&lt;lift:loc locid="openStatus"&gt;The door is open&lt;/lift:loc&gt;
+​
+&lt;!-- should be the same result, but a missing bundle
+     will result in the key being displayed --&gt;
+&lt;lift:loc&gt;openStatus&lt;/lift:loc&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-D.7">D.7</a> Calculating Locale<a class="IndexReference" name="entry-I18N-Calculating-locale-0" href="index-Index.html#index-I18N-Calculating-locale">↓</a><a class="IndexReference" name="entry-Locale-calculating-0" href="index-Index.html#index-Locale-calculating">↓</a>
+</h2>
+<div class="Unindented">
+The <tt>Locale</tt> for a given request is calculated by the function set in<tt> LiftRules.localeCalculator</tt>, a <span class="formula">(<i>Box</i>[<i>HttpServletRequest</i>]) ⇒ <i>Locale</i></span>. The default behavior is to call <tt>getLocale</tt> on the <tt>HTTPRequest</tt>, which allows the server to set it if your clients send locale preferences. If that call returns null, then <tt>Locale.getDefault</tt> is used. You can provide your own function for calculating locales if you desire. 
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-D.html#lst:Calculating-Locale-Based">D.7↓</a> shows how you can use a cookie in addition to a URL query parameter to select the locale for your pages<span class="FootOuter"><span class="SupFootMarker"> [L] </span><span class="HoverFoot"><span class="SupFootMarker"> [L] </span>Thanks to Tim Perret for the original examples at <a class="FlexURL" href="http://blog.getintheloop.eu/2009/7/26/how-to-extensive-localization-with-the-liftweb-framework">http://blog.getintheloop.eu/2009/7/26/how-to-extensive-localization-with-the-liftweb-framework</a></span></span>. This code would be placed in your <tt>Boot.boot</tt> method. Lines 2-3 define some imports beyond the standard imports (see Section <a class="Reference" href="index-3.html#lst:Standard-import-statements">3.3 on page 1↑</a>). Lines 6-10 define a utility function to convert a language tag string into a <tt>Locale</tt>. Line 13 defines the name of the cookie that will store your locale choice. Lines 15-34 define the partial function that will be used to compute the new <tt>Locale</tt>. First, we only do computation if the <tt>LiftRules.localeCalculator</tt> method is invoked with an <tt>HTTPRequest</tt> (line 16). Our next step is to determine the current locale by checking whether there is an existing locale cookie set (lines 18-20), or by utilizing the default Lift locale calculator (line 21). Our next check is to determine if the user has explicitly requested a locale via a query parameter (line 24). If the parameter is set (and not <tt>null</tt>), we construct a new <tt>Locale</tt> from the value (line 26), set the cookie so that the request is remembered (line 27), and return the new locale. If there is no request parameter then we use the current locale as defined on line 18.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Calculating Locale Based on Cookies and Parameters<a class="Label" name="lst:Calculating-Locale-Based"> </a>
+</div>
+<pre class="listing brush: scala">// Import the classes we’ll be using beyond the standard imports
+import java.util.Locale
+import provider.{HTTPCookie,HTTPRequest}
+​
+// Properly convert a language tag to a Locale
+def computeLocale(tag : String) = tag.split(Array(’-’, ’_’)) match {
+  case Array(lang) =&gt; new Locale(lang)
+  case Array(lang, country) =&gt; new Locale(lang, country)
+  case Array(lang, country, variant) =&gt; new Locale(lang, country, variant)
+}
+​
+// Define this to be whatever name you want
+val LOCALE_COOKIE_NAME = "SelectedLocale"
+​
+LiftRules.localeCalculator = {
+  case fullReq @ Full(req) =&gt; {
+    // Check against a set cookie, or the locale sent in the request 
+    def currentLocale : Locale = 
+      S.findCookie(LOCALE_COOKIE_NAME).flatMap { 
+        cookie =&gt; cookie.value.map(computeLocale) 
+      } openOr LiftRules.defaultLocaleCalculator(fullReq)
+​
+    // Check to see if the user explicitly requests a new locale 
+    S.param("locale") match { 
+      case Full(requestedLocale) if requestedLocale != null =&gt; { 
+        val computedLocale = computeLocale(requestedLocale) 
+        S.addCookie(HTTPCookie(LOCALE_COOKIE_NAME, requestedLocale)) 
+        computedLocale 
+      }
+      case _ =&gt; currentLocale 
+    } 
+  }
+  case _ =&gt; Locale.getDefault 
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-C.html#Next">Previous: Appendix C</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-E.html#prev">Next: Appendix E</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

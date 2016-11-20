@@ -1,0 +1,641 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-B.html#Next">Previous: Appendix B</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-D.html#prev">Next: Appendix D</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-C">C</a> Lift Helpers<a class="Label" name="cha:Lift-Helpers"> </a>
+</h1>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.1">C.1</a> Introduction<a class="Label" name="sec:Introduction"> </a>
+</h2>
+<div class="Unindented">
+Lift provides a fairly useful collection of helper artifacts. The helpers are essentially utility functions that minimize the need for boilerplate code. This appendix is intended to introduce some of the more common utility classes and objects to you so that you’re familiar with them. If you would like more details, you can look at the API documentation for the <tt>net.liftweb.util package</tt>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.2">C.2</a> Box (or Scala’s Option class on steroids)<a class="Label" name="sec:Box-(or-Scala's"> </a>
+</h2>
+<div class="Unindented">
+<tt>net.liftweb.util.Box</tt> (or Scala’s <tt>scala.Option</tt> class on steroids) is a utility class that mimics Scala’s <tt>Option</tt> type (also heavily used inside Lift). To understand some of the underlying concepts and assumptions, let’s take a quick look at <tt>Option</tt> class first. The <tt>Option</tt> class allows a type-safe way of dealing with a situation where you may or may not have a result. <tt>Option</tt> has two values, either <tt>Some(value)</tt>, where <tt>value</tt> is actually the value, and <tt>None</tt>, which is used to represent nothing. A typical example for <tt>Option</tt> is outlined using Scala’s Map type. Listing <a class="Reference" href="index-C.html#lst:Option-and-Map">C.2↓</a> shows a definition of a <tt>Map</tt>, a successful attempt to get the value of key <tt>a</tt>, and an attempt to get the value of key <tt>i</tt>. Notice that when we retrieved the existing key-value pair for <tt>a</tt>, the value returned was <tt>Some(A)</tt> and when we asked for the value of key <tt>i</tt>, we received None.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Option and Map example<a class="Label" name="lst:Option-and-Map"> </a>
+</div>
+<pre class="listing brush: scala">scala&gt; val cap = Map("a" -&gt; "A", "b" -&gt; "B") 
+cap: scala.collection.immutable.Map[java.lang.String,java.lang.String] = 
+  Map(a -&gt; A, b -&gt; B)
+​
+scala&gt; cap.get("a")  
+res1: Option[java.lang.String] = Some(A)
+​
+scala&gt; cap.get("i") 
+res2: Option[java.lang.String] = None
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Getting the value out of an <tt>Option</tt> is usually handled via Scala’s matching mechanism or via the <tt>getOrElse</tt> function, as shown in Listing <a class="Reference" href="index-C.html#lst:Fetch-value-from">C.2↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Fetch value from an Option<a class="Label" name="lst:Fetch-value-from"> </a>
+</div>
+<pre class="listing brush: scala">def prettyPrint(foo: Option[String]): String = foo match {
+  case Some(x) =&gt; x
+  case None =&gt; "Nothing found."
+}
+​
+// Which would be used in conjunction with the previous code:
+scala&gt; prettyPrint(cap.get("a")) 
+res7: String = A
+​
+scala&gt; prettyPrint(cap.get("i")) 
+res8: String = Nothing found.
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<tt>Box</tt> in Lift covers the same base functionality as <tt>Option</tt> but expands the semantics for missing values. If we have an <tt>Option</tt> that is <tt>None</tt> at some point, we can’t really tell why that <tt>Option</tt> is <tt>None</tt>, although in many situations, knowing why would be quite helpful. With <tt>Box</tt>, on the other hand, you have either have a <tt>Full</tt> instance (corresponding to <tt>Some</tt> with <tt>Option</tt>) or an instance that subclasses <tt>EmptyBox</tt> (corresponding to <tt>None</tt>). <tt>EmptyBox</tt> can either be an <tt>Empty</tt> instance or a <tt>Failure</tt> instance incorporating the cause for the failure. So you can think of <tt>Box</tt> as a container with three states: full, empty, or empty for a particular reason. The <tt>Failure</tt> case class takes three arguments: a <tt>String</tt> message to describe the failure, a <tt>Box[Throwable]</tt> for an optional exception related to the failure, and a <tt>Box[Failure]</tt> for chaining based on earlier <tt>Failure</tt>s. 
+</div>
+<div class="Indented">
+As an example of how we can use <tt>Box</tt> instances in real code, consider the case where we have to do a bunch of null checks, perform an operation, and then perform more null checks, other operations, and so on. Listing <a class="Reference" href="index-C.html#lst:Pseudocode-nested-operations">C.2↓</a> shows an example of this sort of structure.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Pseudocode nested operations example<a class="Label" name="lst:Pseudocode-nested-operations"> </a>
+</div>
+<pre class="listing brush: scala">    x = getSomeValue();
+    if (x != null) {
+      y = getSomeOtherValue();
+      if (y != null) {
+        compute(x, y);
+      }
+    }
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This is tedious and error-prone in practice. Now let’s see if we can do better by combining Lift’s <tt>Box</tt> with Scala’s for comprehensions as shown in Listing <a class="Reference" href="index-C.html#lst:Scala-nested-operations">C.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Box nested operations example<a class="Label" name="lst:Scala-nested-operations"> </a>
+</div>
+<pre class="listing brush: scala">​
+    def getSomeValue(): Box[Int] = Full(12)     
+    def getSomeOtherValue(): Box[Int] = Full(2)
+    
+    def compute(x: Int, y: Int) = x * y
+  
+    val res = for ( x &lt;- getSomeValue();
+                    y &lt;- getSomeOtherValue() if x &gt; 10) yield compute(x, y)
+    println(res) 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In Listing <a class="Reference" href="index-C.html#lst:Scala-nested-operations">C.2↑</a>, we have two values, <tt>x</tt> and <tt>y</tt>, and we want to do some computation with these values. But we must ensure that computation is done on the correct data. For instance, the computation cannot be done if <tt>getSomeValue</tt> returns no value. In this context, the two functions return a <tt>Box[Int]</tt>. The interesting part is that if either or both of the two functions return an <tt>Empty</tt> Box instead of <tt>Full</tt> (<tt>Empty</tt> impersonating the nonexistence of the value), the <tt>res</tt> value will also be <tt>Empty</tt>. However, if both functions return a <tt>Full</tt> (like in Listing <a class="Reference" href="index-C.html#lst:Scala-nested-operations">C.2↑</a>), the computation is called. In our example the two functions return <tt>Full(12)</tt> and <tt>Full(2)</tt>, so <tt>res</tt> will be a <tt>Full(24)</tt>.
+</div>
+<div class="Indented">
+But we have something else interesting here: the <tt>if x &gt; 10</tt> statement (this is called a “guard” in Scala). If the call to <tt>getSomeValue</tt> returns a value less than or equal to 10, the <tt>y</tt> variable won’t be initialized, and the res value will be <tt>Empty</tt>. This is just a taste of some of the power of using <tt>Box</tt> for comprehensions; for more details on for comprehensions, see <i>The Scala Language Specification</i>, section 6.19, or one of the many Scala books available.
+</div>
+<div class="Indented">
+Lift’s <tt>Box</tt> extends <tt>Option</tt> with a few ideas, mainly the fact that you can add a message about why a <tt>Box</tt> is <tt>Empty</tt>. <tt>Empty</tt> corresponds to <tt>Option</tt>’s <tt>None</tt> and <tt>Full</tt> to <tt>Option</tt>’s Some. So you can pattern match against a <tt>Box</tt> as shown in Listing <a class="Reference" href="index-C.html#lst:Box-example">C.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Box example<a class="Label" name="lst:Box-example"> </a>
+</div>
+<pre class="listing brush: scala">a match {
+  Full(author) =&gt; Text("I found the author " + author.niceName)
+  Empty =&gt; Text("No author by that name.")
+  // message may be something like "Database disconnected."
+  Failure(message, _, _) =&gt; Text("Nothing found due to " + message) 
+}
+def confirmDelete {     
+  (for (val id &lt;- param("id");     // get the ID           
+        val user &lt;- User.find(id)) // find the user                                                                                
+  yield {          
+    user.delete_!                   
+    notice("User deleted")          
+    redirectTo("/simple/index.html")        
+  }) getOrElse {error("User not found"); redirectTo("/simple/index.html")}    
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In conjunction with Listing <a class="Reference" href="index-C.html#lst:Box-example">C.2↑</a>, we can use other <tt>Box</tt> functions, such as the <tt>openOr</tt> function shown in Listing <a class="Reference" href="index-C.html#lst:openOr-example">C.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+openOr example<a class="Label" name="lst:openOr-example"> </a>
+</div>
+<pre class="listing brush: scala">lazy val UserBio = UserBio.find(By(UserBio.id, id)) openOr (new UserBio)
+def view (xhtml: NodeSeq): NodeSeq = passedAuthor.map({ author =&gt; 
+  // do bind, etc here and return a NodeSeq
+}) openOr Text("Invalid author") 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We won’t be detailing all of the Box functions here, but a few words on the most common function might be benficial.
+</div>
+<div class="Indented">
+<div class="center">
+<table>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+Function name
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Description
+</td>
+<td align="left" valign="top" style="width: 2in;">
+Short example. Assume myBox is a Box
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+openOr
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Returns the value contained by this Box. If the Box is Empty 
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox openOr “The box is Empty”
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+map
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Apply a function on the values of this Box and return something else.
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox map (value =&gt; value + “ suffix”)
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+dmap
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Equivalent with map(..) openOr default_value. The default value will be returned in case the map is Empty
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox dmap(“default”)(value =&gt; value + “ suffix”)
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+!!
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+If the argument is null in will return an Empty, otherwise a Full containing the arguent’s value. Note this this is a method on the Box object, not a given Box instance.
+</td>
+<td align="left" valign="top" style="width: 2in;">
+Box !! (&lt;a reference&gt;)
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+?~
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Transforms an Empty to a Failure and passing a message. If the Box is a Full it will just return <tt>this</tt>.
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox ?~ (“Error message”)
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+isDefined
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Returns true if this Box contains a value
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox isDefined
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+isEmpty
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Retun true is this Boxis empty
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox isEmpty
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+asA[B]
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Return a Full[B] if the content of this Box is of type B, otherwise return Empty 
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox asA[Person]
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1in;">
+isA[B]
+</td>
+<td align="left" valign="top" style="width: 2.75in;">
+Return a Full[B] if the contents of this Box is an instance of the specified class, otherwise return Empty 
+</td>
+<td align="left" valign="top" style="width: 2in;">
+myBox isA[Person]
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+<div class="Indented">
+Note that <tt>Box</tt> contains a set of implicit conversion functions from/to <tt>Option</tt> and from/to <tt>Iterable</tt>.
+</div>
+<div class="Indented">
+Remember that Box is heavily used in Lift and most of the Lift’s API’s operates with <tt>Box</tt>es. The rationale is to avoid <tt>n</tt>ull references and to operate safely in context where values may be missing. Of course, a <tt>Box</tt> can be set to <tt>null</tt> manually but we strongly recommend against doing so. There are cases, however, where you are using some third party Java libraries with APIs that return <tt>null</tt> values. To cope with such cases in Lift you can use the <tt>!!</tt> function to <tt>Box</tt> that value. Listing <a class="Reference" href="index-C.html#lst:Null-example">C.2↓</a> shows how we can deal with a possible <tt>null</tt> value.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Null example<a class="Label" name="lst:Null-example"> </a>
+</div>
+<pre class="listing brush: scala">​
+var x = getSomeValueThatMayBeNull();
+​
+var boxified = Box !! x
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In this case the <tt>boxified</tt> variable will be <tt>Empty</tt> if <tt>x</tt> is <tt>null</tt> or <tt>Full(x)</tt> if <tt>x</tt> is a valid value/reference..
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.3">C.3</a> ActorPing<a class="Label" name="sec:ActorPing"> </a>
+</h2>
+<div class="Unindented">
+It provides convenient functionality to schedule messages to Actors. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+ActorPing example<a class="Label" name="lst:ActorPing-example"> </a>
+</div>
+<pre class="listing brush: scala">// Assume myActor an existing Actor
+// And a case object MyMessage
+​
+// Send the MyMessage message after 15 seconds
+ActorPing.schedule(myActor, MyMessage, 15 seconds)
+​
+// Send the MyMessage message every 15 seconds. The cycle is stopped 
+// if recipient actor exits or replied back with UnSchedule message
+ActorPing.scheduleAtFixedRate(myActor, MyMessage, 0 seconds, 15 seconds)
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.4">C.4</a> ClassHelpers<a class="Label" name="sec:ClassHelpers"> </a>
+</h2>
+<div class="Unindented">
+Provides convenient functions for loading classes using Java reflection, instantiating dinamically loaded classes, invoking methods vis reflection etc.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+ClassHelper example<a class="Label" name="lst:ClassHelper-example"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.net.liftweb.util.Helpers._
+​
+// lookup the class Bar in the three packages specified in th list
+findClass("Bar", "com.foo" :: "com.bar" :: "com.baz" :: Nil)
+​
+invokeMethod(myClass, myInstance, "doSomething")
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.5">C.5</a> CodeHelpers<a class="Label" name="sec:CodeHelpers"> </a>
+</h2>
+<div class="Unindented">
+Provides a convenient way of telling why a boolean expression failed. For instance we are seeing manytime code like:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Expression example<a class="Label" name="lst:Expression-example"> </a>
+</div>
+<pre class="listing brush: scala">var isTooYoung = false;
+var isTooBig = false;
+var isTooLazy = true;
+​
+var exp = isTooYoung &amp;&amp; isTooBig &amp;&amp; isTooLazy
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see we have no way of telling if the exp was false because of isTooYoung, isTooBig or isTooLazy unless we test them again. But let’s see this:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+CodeHelpers example<a class="Label" name="lst:CodeHelpers-example"> </a>
+</div>
+<pre class="listing brush: scala">​
+import net.liftweb.util._
+import net.liftweb.util.MonadicConversions._
+​
+val exp = (isTooYoung ~ "too young") &amp;&amp;  
+          (isTooBad ~ "too bad") &amp;&amp;  
+          (isToLazy ~ "too lazy")
+​
+println(exp match {  
+  case False(msgs) =&gt; 
+    msgs mkString("Test failed because it is ’", "’ and ’", "’.")  
+  case _ =&gt; "success"  
+  }) 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now if exp is a False we can tell why it failed as we have the messages now.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.6">C.6</a> ControlHelpers<a class="Label" name="sec:ControlHelpers"> </a>
+</h2>
+<div class="Unindented">
+Provides convenient functions for try/catch situations. For example:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+ControlHelpers example<a class="Label" name="lst:ControlHelpers-example"> </a>
+</div>
+<pre class="listing brush: scala">​
+tryo {
+  // code here. Any exception thrown here will be silently caught
+}
+​
+ 
+tryo((e: Throwable) =&gt; println(e)) {
+  // code here. Any exception here willbe caught add passed to 
+  // the above function.
+}
+​
+tryo(List(classOf[ClassNotFoundException], classOf[IOException])) {
+  // code here. If IOException or ClassNotFoundException is thrown 
+  // (or a subclass of the two) they will be ignored. Any other
+  // exception will be rethrown.
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.7">C.7</a> CSSHelpers<a class="Label" name="sec:CSSHelpers"> </a>
+</h2>
+<div class="Unindented">
+This provide a convenient functionality to fix relative root paths in CSS (Cascade Stylesheet) files. Here is an example:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+CSSHelper example<a class="Label" name="lst:CSSHelper-example"> </a>
+</div>
+<pre class="listing brush: scala">Assume this entry in a CSS file:
+​
+.boxStyle {
+  background-image: url(’/img/bkg.png’)
+}
+​
+​
+//in your code you can say
+​
+CSSHelpers.fixCSS(reader, "/myliftapp")
+​
+// where reader is a java.io.Reader that provides the 
+// content of the CSS file.
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now if your application is not deployed in the ROOT context path (“/”) and say it is deployed with the context root /myliftapp then the background picture will probably notbe found. Say <tt>http://my.domain.com/img/bkg.png</tt> is an unknown path. However <tt>http://my.domain.com/<u>myliftapp</u>/img/bkg.png </tt>is known. In the example above we are calling fixCSS so that it will automatically replace the root relative paths such that <tt>background-image: url(’/img/bkg.png’)</tt> becomes <tt>background-image: url(’/myliftapp/img/bkg.png’)</tt>. To use that in your lift application you can do:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+fixCSS example<a class="Label" name="lst:fixCSS-example"> </a>
+</div>
+<pre class="listing brush: scala">def boot(){
+    ...
+    LiftRules.fixCSS("styles" :: "theme" :: Nil, Empty)
+    ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When the <tt>/styles/theme.css</tt> file Lift will apply the prefix specified. But in this case we provided an Empty Box. This actually means that Lift will apply the context path returned by <tt>S.contextPath </tt>function which as you know returns the context path from the <tt>HttpSession</tt>.
+</div>
+<div class="Indented">
+Internally when you call <tt>fixCSS</tt> a dispatch function is automatically created and pre-pended to <tt>LiftRules.dispatch</tt>. This is needed in order to intercept the browser request to this .css resource. Also internally we are telling Lift the this resource must be server by Lift and not by container. 
+</div>
+<div class="Indented">
+The way it works internally is that we are using Scala combinator parsers to augment only the root relative paths with the given prefix.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.8">C.8</a> BindHelpers<a class="Label" name="sec:BindHelpers"> </a>
+</h2>
+<div class="Unindented">
+Binders are extensiveley discussed in other chapters so we won’t reiterate them here. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Choose template XML<a class="Label" name="lst:Choose-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:CountGame.run form="post"&gt;
+  &lt;choose:guess&gt;
+    Guess a number between 1 and 100.&lt;br/&gt;
+    Last guess: &lt;count:last/&gt;&lt;br /&gt;
+    Guess: &lt;count:input/&gt;&lt;br/&gt;
+    &lt;input type="submit" value="Guess"/&gt;
+  &lt;/choose:guess&gt;
+  &lt;choose:win&gt;
+    You Win!!&lt;br /&gt;
+    You guessed &lt;count:number/&gt; after &lt;count:count/&gt; guesses.&lt;br/&gt;
+  &lt;/choose:win&gt;
+&lt;/lift:CountGame.run&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+You can use the <tt>Helpers.chooseTemplate</tt> method to extract portions of a given XML input:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Choose template Scala code
+</div>
+<pre class="listing brush: scala">import net.liftweb.util._
+import Helpers._
+​
+class CountGame {
+  def run(xhtml: NodeSeq): NodeSeq = {
+    ... 
+    chooseTemplate("choose", "win", xhtml);
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+So in the snippet conditionally we can choose between parts of the snippet template. In the case above only the childs of <tt>&lt;choose:win&gt;</tt> node will be returned by the snippetfunction, hence rendered.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.9">C.9</a> HttpHelpers<a class="Label" name="sec:HttpHelpers"> </a>
+</h2>
+<div class="Unindented">
+This provides helper functions for HTTP parameters manipulation, URL encoding/decoding etc. However there is some interesting functionality available that lets you choose between tags of a snippet. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.10">C.10</a> JSON<a class="Label" name="sec:JSON"> </a>
+</h2>
+<div class="Unindented">
+Lift provides its own JSON parser if you ever need one. At a first glance it may be a bit redundant with Scala’s JSON parser but infact Scala’sparser has its own problems with large JSON objects hence List’s uses its own JSON parser implemented of course using combinator parsers.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.11">C.11</a> LD<a class="Label" name="sec:LD"> </a>
+</h2>
+<div class="Unindented">
+Provides utility functions for calculating the distance between words <span class="FootOuter"><span class="SupFootMarker"> [F] </span><span class="HoverFoot"><span class="SupFootMarker"> [F] </span>http://en.wikipedia.org/wiki/Levenshtein_distance</span></span>
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.12">C.12</a> ListHelpers<a class="Label" name="sec:ListHelpers"> </a>
+</h2>
+<div class="Unindented">
+Provides utility functions for manipulating lists that are not provided by Scala libraries.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.13">C.13</a> NamedPartialFunctions<a class="Label" name="sec:NamedPartialFunctions"> </a>
+</h2>
+<div class="Unindented">
+Provides extremly useful functions for invoking partial functions that are chained in lists of functions. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+NamedPF example<a class="Label" name="lst:NamedPF-example"> </a>
+</div>
+<pre class="listing brush: scala">var f1: PartialFunction[Int,Int] = {
+  case 10 =&gt; 11
+  case 12 =&gt; 14
+}
+​
+var f2: PartialFunction[Int,Int] = {
+  case 20 =&gt; 11
+  case 22 =&gt; 14
+}
+​
+​
+NamedPF(10, f1 :: f2 :: Nil)
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Remember that many LiftRules variable are RuleSeq-s. Meaning that most of the times we re talking about lists of partial functions. Hence internally lift uses NamedPF for invoking such functions that are ultimately provided by the user. Please see <tt>LiftRules.dispatch</tt>
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.14">C.14</a> SecurityHelpers<a class="Label" name="sec:SecurityHelpers"> </a>
+</h2>
+<div class="Unindented">
+Provides various functions used for random number generation, encryption/decriptions (blowfish), hash calculations (MD5, SHA, SHA-256) and so on.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-C.15">C.15</a> TimeHelpers<a class="Label" name="sec:TimeHelpers"> </a>
+</h2>
+<div class="Unindented">
+Utility functions for time operations. For instance if also provides a set of implicit conversion functions that allow you to type “10 seconds” and returns the value in milliseconds. 
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-B.html#Next">Previous: Appendix B</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-D.html#prev">Next: Appendix D</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

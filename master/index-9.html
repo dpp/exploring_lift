@@ -1,0 +1,1207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-II.html#Next">Previous: Part II</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-10.html#prev">Next: Chapter 10</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-9">9</a> Advanced Lift Architecture<a class="Label" name="cha:Advanced-Lift-Guts"> </a>
+</h1>
+<div class="Unindented">
+<div class="Framed" style="width: 100%;">
+This chapter is still under active development. The contents will change.
+</div>
+
+</div>
+<div class="Indented">
+Congratulations! You’ve either made it through the introduction to Lift, or maybe you’ve just skipped Basics and jumped right to here to Advanced; either way, the next group of chapters will be exciting. 
+</div>
+<div class="Indented">
+In this chapter we’re going to dive into some of the advanced guts of Lift so that you have a thorough understanding of what’s going on before we explore further.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.1">9.1</a> Architectural Overview
+</h2>
+<div class="Unindented">
+Before we jump into the specific details of the architecture, let’s refresh our memories. Figure <a class="Reference" href="index-9.html#fig:Architecture-diagram">9.1↓</a> highlights the main Lift components and where they live in the ecosystem. Scala compiles down to Java bytecode, so we sit on top of the JVM. Lift Applications are typically run in a J(2)EE web container, such as Jetty or Tomcat. As we explained in section <a class="Reference" href="index-3.html#sec:Entry-into-Lift">3.1↑</a>, Lift is set up to act as a Filter<span class="FootOuter"><span class="SupFootMarker"> [L] </span><span class="HoverFoot"><span class="SupFootMarker"> [L] </span><a class="URL" href="http://java.sun.com/j2ee/1.4/docs/api/javax/servlet/Filter.html">http://java.sun.com/j2ee/1.4/docs/api/javax/servlet/Filter.html</a></span></span> that acts as the entry point. Usage of the rest of the framework varies from application to application, depending on how simple or complex you make it.
+</div>
+<div class="Indented">
+<div class="center">
+<div class="float">
+<a class="Label" name="fig:Architecture-diagram"> </a><div class="figure">
+<div class="caption">
+Figure 9.1 Architecture
+</div>
+<div class="center">
+<img class="embedded" src="images/LiftArchDiagram.png" alt="figure images/LiftArchDiagram.png" style="max-width: 612px; max-height: 792px;"/>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+The major components outlined in the diagram are:
+</div>
+<div class="Description">
+<span class="Description-entry">LiftCore</span> The engine of the framework responsible for request/response lifecycle, rendering pipeline, invoking user’s functions etc. We don’t directly cover the core in this book since essentially all of the functionality that we do cover sits on top of the core
+</div>
+<div class="Description">
+<span class="Description-entry">SiteMap</span> Contains the web pages for a Lift application (chapter<a class="Reference" href="index-7.html#cha:SiteMap">7↑</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">LiftRules</span> Allows you to configure Lift. We cover this in various sections throughout the book
+</div>
+<div class="Description">
+<span class="Description-entry">LiftSession</span> The session state representation (section <a class="Reference" href="index-9.html#sec:Session-Management">9.5↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">S</span> The stateful object impersonating the state context for a given request/response lifecycle (section <a class="Reference" href="index-9.html#sub:Advanced-S-Object">9.7↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">SHtml</span> Contains helper functions for XHtml artifacts (chapters <a class="Reference" href="index-6.html#cha:Forms-in-Lift">6↑</a> and <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">Views</span> LiftView objects impersonating a view as a XML content. Thus pages can be composed from other sources not only from html files. (section <a class="Reference" href="index-4.html#sec:Views">4.4↑</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">LiftResponse</span> Represents the abstraction of a response that will be propagated to the client. (section <a class="Reference" href="index-9.html#sec:LiftResponse-in-Detail">9.4↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">Comet</span> Represents the Comet Actors layer which allows the sending of asynchronous content to the browser (section <a class="Reference" href="index-11.html#sec:COMET">11.5↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">ORM</span> - Either Mapper or Record - The lightweight ORM library provided by Lift. The Mapper framework is the proposed ORM framework for Lift 1.0 and the Record framework will be out for next releases. (chapter <a class="Reference" href="index-8.html#cha:mapper_and_record">8↑</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">HTTP Auth</span> - You can use either Basic or Digest HTTP authentication in your Lift application. This provides you more control as opposed to web-container’s HTTP authentication model. (section <a class="Reference" href="index-9.html#sub:HTTP-Authentication">9.9↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">JS API</span> The JavaScript abstraction layer. These are Scala classes/objects that abstract JavaScript artifacts. Such objects can be combined to build JavaScript code (chapter <a class="Reference" href="index-10.html#cha:Lift-and-Javascript">10↓</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">Utils</span> Contains a number of helper functions that Lift uses internally and are available to your application
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.2">9.2</a> The Request/Response Lifecycle<a class="Label" name="sec:Request/Response-Lifecycle"> </a>
+</h2>
+<div class="Unindented">
+We briefly discussed the Request/Response Liftcycle in section <a class="Reference" href="index-3.html#sec:The-Rendering-Process">3.5↑</a>, and now we’re going to cover it in depth. This will serve not only to familiarize you with the full processing power of Lift, but also to introduce some of the other advanced topics we’ll be discussing in this and later chapters.
+</div>
+<div class="Indented">
+One important thing we’d like to mention is that most of the configurable properties are in <tt>LiftRules</tt>, and are of type <tt>RulesSeq</tt>. With a <tt>RulesSeq</tt> you essentially have a list of functions or values that are applied in order. <tt>RulesSeq</tt> defines a prepend and append method that allows you to add new configuration items at the beginning or end of the configuration, respectively. This allows you to prioritize things like partial functions and compose various methods together to control Lift’s behavior. You can think of a RulesSeq as a Seq on steroids, tweaked for Lift’s usage.
+</div>
+<div class="Indented">
+The following list outlines, in order, the process of transforming a Request into a Response. We provide references to the sections of the book where we discuss each step in case you want to branch off.
+</div>
+<ol>
+<li>
+Execute early functions: this is a mechanism that allows a user function to be called on the HttpServletRequest before it enters the normal processing chain. This can be used for, for example, to set the XHTML output to UTF-8. This is controlled through <tt>LiftRules.early</tt>
+</li>
+<li>
+Perform URL Rewriting, which we already covered in detail in section <a class="Reference" href="index-3.html#sec:URL-Rewriting">3.7↑</a>. Controlled via <tt>LiftRules.rewrite</tt>, this is useful for creating user-friendly URLs, among other things. The result of the transformation will be checked for possible rewrites until there are no more matches or it is explicitly stopped by setting the <tt>stopRewriting</tt> val in ReqwriteResponse to <tt>true</tt>. It is relevant to know that you can have rewriter functions per-session hence you can have different rewriter in different contexts. These session rewriters are prended to the LiftRules rewriters before their application.
+</li>
+<li>
+Call <tt>LiftRules.onBeginServicing</tt> hooks. This is a mechanism that allows you to add your own hook functions that will be called when Lift is starting to process the request. You could set up logging here, for instance.
+</li>
+<li>
+Check for user-defined stateless dispatch in <tt>LiftRules.statelessDispatchTable</tt>. If the partial functions defined in this table match the request then they are used to create a <tt>LiftResponse</tt> that is sent to the user, bypassing any further processing. These are very useful for building things like REST APIs. The term stateless refers to the fact that at the time the dispatch function is called, the stateful object, called <tt>S</tt>, is not available and the <tt>LiftSession</tt> is not created yet. Custom dispatch is covered in section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↑</a>
+</li>
+<li>
+Create a <tt>LiftSession</tt>. The <tt>LiftSession</tt> holds various bits of state for the request, and is covered in more detail in section <a class="Reference" href="index-9.html#sec:Session-Management">9.5↓</a>.
+</li>
+<li>
+Call <tt>LiftSession.onSetupSession</tt>. This is a mechanism for adding hook functions that will be called when the LiftSession is created. We’ll get into more details when we discuss Lift’s session management in section <a class="Reference" href="index-9.html#sec:Session-Management">9.5↓</a>.
+</li>
+<li>
+Initialize the <tt>S</tt> object (section <a class="Reference" href="index-3.html#sub:S-object">3.4.1↑</a>). The <tt>S</tt> object represents the current state of the Request and Response.
+</li>
+<li>
+Call any <tt>LoanWrapper</tt> instances that you’ve added through <tt>S.addAround</tt>. A <tt>LoanWrapper</tt> is a way to insert your own processing into the render pipeline, similar to how Filter works in the Servlet API. This means that when your <tt>LoanWrapper</tt> implementation is called, Lift passes you a function allowing you to chain the processing of the request. With this functionality you can execute your own pre- and post-condition code. A simple example of this would be if you need to make sure that something is configured at the start of processing and cleanly shut down when processing terminates. LoanWrappers are covered in section <a class="Reference" href="index-9.html#sub:Wrapping-Lift's-processing">9.6.1↓</a>
+</li>
+<li>
+Process the stateful request<ol>
+<li>
+Check the stateful dispatch functions defined in <tt>LiftRules.dispatch</tt>. This is similar to the stateless dispatch in step #4 except that these functions are executed in the context of a LiftSession and an <tt>S</tt> object (section <a class="Reference" href="index-3.html#sub:S-object">3.4.1↑</a>). The first matching partial function is used to generate a <tt>LiftResponse</tt> that is returned to the client. If none of the dispatch functions match then processing continues. Dispatch functions are covered in section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↑</a>. This flow is wrapped by LiftSession.onBeginServicing/onEndServicing calls
+</li>
+<li>
+If this is a <b>Comet</b> request, then process it and return the response. Comet is a method for performing asynchronous updates of the user’s page without a reload. We cover Comet techniques in chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>
+</li>
+<li>
+If this is an <b>Ajax</b> request, execute the user’s callback function; the specific function is mapped via a request parameter (essentially a token). The result of the callback is returned as the response to the user. The response can be a JavaScript snippet, an XML construct or virtually any <tt>LiftResponse</tt>. For an overview of <tt>LiftResponse</tt> please see section <a class="Reference" href="index-9.html#sec:LiftResponse-in-Detail">9.4↓</a>. This flow is wrapped by LiftSession.onBeginServicing/onEndServicing calls.
+</li>
+<li>
+If this is a regular HTTP request, then:<ol>
+<li>
+Call <tt>LiftSession.onBeginServicing</tt> hooks. Mostly “onBegin”/”onEnd” functions are used for logging. Note that the <tt>LiftRules</tt> object also has <tt>onBeginServicing</tt> and <tt>onEndServicing</tt> functions but these are “wrapping” more Lift processing and not just statefull processing.
+</li>
+<li>
+Check the user-defined dispatch functions that are set per-session (see <tt>S.addHighLevelSessionDispatcher</tt>). This is similar to <tt>LiftRules.dispatch</tt> except that you can have different functions set up for a different session depending on your application logic. If there is a function applicable, execute it and return its response. If there is no per-session dispatch function, process the request by executing the Scala function that user set up for specific events (such as when clicking a link, or pressing the submit button, or a function that will be executed when a form field is set etc.). Please see SHtml obejct <a class="Reference" href="index-3.html#sub:SHtml">3.4.2↑</a>.
+</li>
+<li>
+Check the SiteMap and Loc functions. We cover SiteMap extensively in chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↑</a>.
+</li>
+<li>
+Lookup the template based on the request path. Lift will locate the templates using various approaches:<ol>
+<li>
+Check the partial functions defined in <tt>LiftRules.viewDispatch</tt>. If there is a function defined for this path invoke it and return an Either[<span class="formula">() ⇒ <i>Can</i>[<i>NodeSeq</i>]</span>,LiftView]. This allows you to either return the function for handling the view directly, or delegate to a <tt>LiftView</tt> subclass. <tt>LiftView</tt> is covered in section <a class="Reference" href="index-4.html#sec:Views">4.4↑</a>
+</li>
+<li>
+If no viewDispatch functions match, then look for the template using the ServletContext’s <tt>getResourceAsStream</tt>.
+</li>
+<li>
+If Lift still can’t find any templates, it will attempt to locate a View class whose name matches the first component of the request path under the <tt>view</tt> folder of any packages defined by <tt>LiftRules.addToPackages</tt> method. If an <tt>InsecureLiftView</tt> class is found, it will attempt to invoke a function on the class corresponding to the second component of the request path. If a <tt>LiftView</tt> class is found, it will invoke the <tt>dispatch</tt> method on the second component of the request path.
+</li>
+
+</ol>
+
+</li>
+<li>
+Process the templates by executing snippets, combining templates etc.<ol>
+<li>
+Merge &lt;head&gt; elements, as described in section e<a class="Reference" href="#sec:Head-Merge">↓</a>
+</li>
+<li>
+Update the internal functions map. Basically this associates the user’s Scala functions with tokens that are passed around in subsequent requests using HTTP query parameters. We cover this mechanism in detail in section <a class="Reference" href="index-9.html#sub:Lift-Function-Mapping">9.3↓</a>
+</li>
+<li>
+Clean up notices (see S.error, S.warning, S.notice) since they were already rendered they are no longer needed. Notices are covered in section <a class="Reference" href="index-B.html#cha:Message-Handling">B↓</a>.
+</li>
+<li>
+Call <tt>LiftRules.convertResponse</tt>. Basically this glues together different pieces if information such as the actual markup, the response headers, cookies, etc into a LiftResponse instance.
+</li>
+<li>
+Check to see if Lift needs to send HTTP redirect. For an overview please see <a class="Reference" href="index-3.html#sec:HTTP-redirects">3.9↑</a>
+</li>
+
+</ol>
+
+</li>
+<li>
+Call <tt>LiftSession.onEndServicing</tt> hooks, the counterparts to <tt>LiftSession.onBeginServicing</tt>
+</li>
+
+</ol>
+
+</li>
+<li>
+Call <tt>LiftRules.performTransform</tt>. This is actually configured via the <tt>LiftRules.responseTransformers</tt> <tt>RulesSeq</tt>. This is a list of functions on <span class="formula"><i>LiftResponse</i> ⇒ <i>LiftResponse</i></span> that allows the user to modify the response before it’s sent to the client
+</li>
+
+</ol>
+
+</li>
+<li>
+Call <tt>LiftRules.onEndServicing</tt> hooks. These are the stateless end-servicing hooks, called after the S object context is destroyed.
+</li>
+<li>
+Call any functions defined in <tt>LiftRules.beforeSend</tt>. This is the last place where you can modify the response before it’s sent to the user
+</li>
+<li>
+Convert the <tt>LiftResponse</tt> to a raw byte stream and send it to client as an HTTP response.
+</li>
+<li>
+Call any functions defined in <tt>LiftRules.afterSend</tt>. Typically these would be used for cleanup.
+</li>
+
+</ol>
+<div class="Unindented">
+We realize that this is a lot of information to digest in one pass, so as we continue to cover the specific details of the rendering pipeline you may want to keep a bookmark here so that you can come back and process the new information in the greater context of how Lift is working.
+</div>
+<div class="Indented">
+Tyler Weir has created a set of diagrams on the following two pages that outline Lift’s processing at the global level and also for HTTP requests in particular. For the visually-oriented these may explain things a bit better.<p><br/>
+</p>
+
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="Figure-9.2"> </a><div class="figure">
+<div class="center">
+<img class="embedded" src="images/lift_request_processing_global.png" alt="figure images/lift_request_processing_global.png" style="width: 7in; max-width: 1186px; height: auto; max-height: 1226px;"/>
+
+</div>
+<div class="caption">
+Figure 9.2 Lift Global Request Processing
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+The “Process HTTP request” step is expanded on the following page.
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="Figure-9.3"> </a><div class="figure">
+<div class="center">
+<img class="embedded" src="images/lift_request_processing_http.png" alt="figure images/lift_request_processing_http.png" style="width: auto; max-width: 1103px; height: 9in; max-height: 1482px;"/>
+
+</div>
+<div class="caption">
+Figure 9.3 Lift HTTP Request Processing
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.3">9.3</a> Lift Function Mapping<a class="Label" name="sub:Lift-Function-Mapping"> </a>
+</h2>
+<div class="Unindented">
+As we mentioned in section <a class="Reference" href="index-6.html#sec:Form-Fundamentals">6.1↑</a>, lift utilizes scala closures and functions for almost all processing of client data. Because of this, Lift’s ability to associate functions with specific form elements, AJAX calls, etc, is critical to its operation. This association of functions, commonly known as “mapping” is handled through a combination of request parameters, Scala closures and Session data. We feel that understanding how mapping works is important if you want to work on advanced topics.
+</div>
+<div class="Indented">
+At its most basic, mapping of functions is just that; a map of the user’s currently defined functions. To simplify things, Lift actually uses one of four subclasses of AFuncHolder<span class="FootOuter"><span class="SupFootMarker"> [M] </span><span class="HoverFoot"><span class="SupFootMarker"> [M] </span>net.liftweb.http.S.AFuncHolder</span></span>:
+</div>
+<div class="Description">
+<span class="Description-entry">BinFuncHolder</span> used for binding functions for file uploading. It will hold a <span class="formula"><i>FileParamHolder</i> ⇒ <i>Any</i></span> function, which is used to process the file data after upload (section <a class="Reference" href="index-6.html#sec:File-Uploads">6.4↑</a>)
+</div>
+<div class="Description">
+<span class="Description-entry">SFuncHolder</span> used for binding <span class="formula"><i>String</i> ⇒ <i>Any</i></span> functions. This function corresponds to a single HTTP query parameter, except that the parameter name is <i>unique to this request</i> (we’ll cover naming shortly)
+</div>
+<div class="Description">
+<span class="Description-entry">LFuncHolder</span> used for binding <span class="formula"><i>List</i>[<i>String</i>] ⇒ <i>Any</i></span> functions. This is essentially the same as SFuncHolder but for multiple values
+</div>
+<div class="Description">
+<span class="Description-entry">NFuncHolder</span> used for binding <span class="formula">() ⇒ <i>Any</i></span> functions. Typically these are used for event callabcks (such as form submission)
+</div>
+<div class="Unindented">
+Wherever Lift takes a function callback it is converted to one of these types behind the scenes. Also on the backend, each function is assigned a token ID (generated by <tt>Helpers.nextFuncName</tt>), which is then added to the session, typically via <tt>S.addFunctionMap</tt> or <tt>S.mapFunc</tt>. The token is generally used as the form element name so that the tokens for a given form are passed back to Lift when the form is submitted; in AJAX, the token is used as an HTTP query parameter of the AJAX callback from the client JavaScript code. In either case, Lift processes the query parameters within LiftSession.runParams and executes each associated function in the function mapping.
+</div>
+<div class="Indented">
+As a concrete example, let’s look at a simple binding in a form. Listing <a class="Reference" href="index-9.html#lst:Function-binding-snippet">9.3↓</a> shows a small example snippet that will request a person’s name and print it out when the person clicks the submit button.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Function binding snippet<a class="Label" name="lst:Function-binding-snippet"> </a>
+</div>
+<pre class="listing brush: scala">def greet (xhtml : NodeSeq) : NodeSeq = {
+  var name = ""
+  def process() = {
+    println(name)
+  }
+  bind("form", xhtml, "name" -&gt; SHtml.text(name, name = _),
+                      "greet" -&gt; SHtml.submit("Greet", process))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-9.html#lst:Function-binding-template">9.3↓</a> shows the corresponding template using our sample snippet.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Function binding template<a class="Label" name="lst:Function-binding-template"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:Test.greet form="GET"&gt;
+    &lt;form:name /&gt; &lt;form:greet /&gt;
+  &lt;/lift:Test.greet&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Finally, listing <a class="Reference" href="index-9.html#lst:Function-binding-result">9.3↓</a> shows an example of the resulting HTML that’s generated when a user views the template. As you can see, each of the elements with callbacks has a corresponding form element with a token ID for the name value. Since we’ve used the GET CGI method here (we usually recommend using POST in the real world), when we submit the form our URL would look like <tt>/greet.html?F541542594358JE2=...&amp;F541542594359PM4=Greet</tt>. For SFuncHolder mappings the value of the request parameter is passed directly. For NFuncHolders the presence of the token in the query parameter list is enough to fire the function. For BinFuncHolder and LFuncHolder mappings some additional processing is performed to coerce the submitted values into proper values for the functions to handle.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Function binding result<a class="Label" name="lst:Function-binding-result"> </a>
+</div>
+<pre class="listing brush: scala">&lt;form method="get" action="/greet.html"&gt;
+  &lt;input name="F541542594358JE2" type="text" value=""/&gt;
+  &lt;input name="F541542594359PM4" type="submit" value="Greet"/&gt;
+&lt;/form&gt; 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Normally you do not have to directly deal with the function holder classes, since the generator functions in SHtml handle that internally. However, if you’re in a situation when you need to bind functions by yourself (such as building your own widget where SHtml doesn’t provided needed elements), you can use the previously mentioned <tt>S.addFunctionMap</tt> or <tt>S.mapFunc</tt> to do the “registration” for you.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.4">9.4</a> LiftResponse in Detail<a class="Label" name="sec:LiftResponse-in-Detail"> </a>
+</h2>
+<div class="Unindented">
+In some cases, particularly when using dispatch functions (section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↑</a>), you may want explicit control over what Lift returns to the user. The LiftResponse trait is the base of a complete hierarchy of response classes that cover a wide variety of functionality, from simply returning an HTTP status code to returning a byte stream or your own XML fragments. In this section we’ll cover some of the more common classes.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.4.1">9.4.1</a> InMemoryResponse
+</h3>
+<div class="Unindented">
+The <tt>InMemoryResponse</tt> allows you to return an array of bytes directly to the user along with a set of HTTP headers, cookies and a response code. An example of using <tt>InMemoryResponse</tt> was given in section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↑</a>, showing how we can directly generate a chart PNG in memory and send it to the user. This is generally useful as long as the data you need to generate and send is relatively small; when you start getting into larger buffers you can run into memory constraints as well as garbage collection pressure if you’re serving a large number of requests.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.4.2">9.4.2</a> StreamingResponse
+</h3>
+<div class="Unindented">
+The <tt>StreamingResponse</tt> class is similar to the <tt>InMemoryResponse</tt>, except that instead of reading from a buffer, it reads from an input object. The input object is not required to be a subclass of <tt>java.io.InputStream</tt>, but rather is only required to implement the method “def read(buf: Array[Byte]): Int”<span class="FootOuter"><span class="SupFootMarker"> [N] </span><span class="HoverFoot"><span class="SupFootMarker"> [N] </span>This is done with Scala’s structural typing, which we don’t cover in this book. For more info, see <a class="URL" href="http://scala.sygneca.com/patterns/duck-typing-done-right">http://scala.sygneca.com/patterns/duck-typing-done-right</a>, or the Scala Language Spec, section 3.2.7</span></span>. This allows you to essentially send back anything that can provide an input stream. Additionally, you can provide a <span class="formula">() ⇒ <i>Unit</i></span> function (cleanup, if you will) that is called when the input stream is exhausted. As an example, let’s look at how we could stream a file from our WAR back to the client. Listing <a class="Reference" href="index-9.html#lst:streaming-download">9.4.2↓</a> shows how we can retrieve the input stream from our classloader and then send it directly to the user. Note that you <i>must</i> know the size of the file you’re streaming before sending it.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Streaming download method<a class="Label" name="lst:streaming-download"> </a>
+</div>
+<pre class="listing brush: scala">def sendFile () : Box[LiftResponse] = {
+  // Locate the file and process it
+  LiftRules.getResource("/some-file.txt").map { url =&gt;
+    val input = url.openStream()
+    val filesize = ... // must compute or predetermine this.
+    StreamingResponse(inPipe,
+                      () =&gt; { input.close },
+                      filesize,
+                      (Content-Type -&gt; "text/plain") :: Nil,
+                      Nil,
+                      200)
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that we use the cleanup function to close the input stream once we’re done so that we make sure to release resources.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.4.3">9.4.3</a> Hierarchy
+</h3>
+<div class="Unindented">
+The Lift framework makes a lot of things really easy and it provides extremly useful abstractions as you may have already discovered. Responses to clients are also abstacted by <tt>LiftResponse</tt> trait. There are numerous response types and here is the simplified view of the class hierarchy:
+</div>
+<ul>
+<li>
+LiftResponse<ul>
+<li>
+BasicResponse<ul>
+<li>
+InMemoryResponse
+</li>
+<li>
+StreamingResponse
+</li>
+
+</ul>
+
+</li>
+<li>
+JSonResponse
+</li>
+<li>
+RedirectResponse<ul>
+<li>
+RedirectWithState
+</li>
+
+</ul>
+
+</li>
+<li>
+ToResponse<ul>
+<li>
+XhtmlRespomse
+</li>
+<li>
+XmlResponse
+</li>
+<li>
+XmlMimeResponse
+</li>
+<li>
+AtomResponse
+</li>
+<li>
+OpenSearchResponse
+</li>
+<li>
+AtomCreatedResponse
+</li>
+<li>
+AtomCategoryResponse
+</li>
+<li>
+AtomServiceResponse
+</li>
+<li>
+CreatedResponse
+</li>
+
+</ul>
+
+</li>
+<li>
+OkResponse
+</li>
+<li>
+PermRedirectResponse
+</li>
+<li>
+BadResponse
+</li>
+<li>
+UnauthorizedResponse
+</li>
+<li>
+UnauthorizedDigestResponse
+</li>
+<li>
+NotFoundResponse
+</li>
+<li>
+MethodNotAllowedResponse
+</li>
+<li>
+GoneResponse
+</li>
+
+</ul>
+
+</li>
+
+</ul>
+<div class="Unindented">
+We won’t get into details right now on what exactly each and every class/object does, although their purpose is given away by their names. It is important to know that whenever you need to return a <tt>LiftResponse</tt> reference from one of your functions, for example <tt>LiftRules.dispatch</tt> you can you can use one of these classes. Lift doesn’t really provide the HttpServletResponse object, instead all responses are impersonated by a <tt>LiftResponse</tt> instance and it content (the actual payload, http headers, content-type, cookies etc.) is written internally by Lift to the container’s output stream.
+</div>
+<div class="Indented">
+Still let’s take a look at a few examples
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.4.4">9.4.4</a> RedirectWithState
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+RedirectWithState example
+</div>
+<pre class="listing brush: scala">// Assume you boot function
+import MessageState._
+...
+​
+def boot = { 
+​
+LiftRules.dispatch.prepend {
+  case Req("redirect1" :: _, _, _) =&gt; () =&gt; 
+    Full(RedirectWithState("/page1", "My error" -&gt; Error))
+  case Req("redirect2" :: _, _, _) =&gt; () =&gt; 
+    Full(RedirectWithState("/page2", 
+                           RedirectState(() =&gt; println("Called on redirect!"), 
+                                         "My error" -&gt; Error)))     
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+First of all we added a DispatchPF function that pattern matches for paths starting with <tt>redirect1</tt> and <tt>redirect2</tt>. Let’s see what happens in each case.
+</div>
+<ul>
+<li>
+<tt>redirect1</tt> - We are returning a RedirectWithState response. It will do HTTP redirect towards /page1 and the state is impersonated by the tuple “MyError” -&gt; Error. Because MessageState object holds an implicit conversion function from Tuple2 to MessageState it suffices to just provide the tuple here. Essentially we are saying here that when the browser sends the redirect request to server we already have an Error notice set up and the &lt;lift:msgs&gt; tag from your /page1 will show this “My error” error message.
+</li>
+<li>
+<tt>redirect2</tt> - Similarly it does an HTTP redirect to browser towards your /page2. But we are passing now a RedirectState object. This object holds a () =&gt; Unit function that will be executed when browser send the redirect request and the Notices impersonated by a repeated parameter (String, NoticeType.Value)*. In fact the mapping between the actual message and its type: Notice, Warning or Error.
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.4.5">9.4.5</a> XmlResponse
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+XmlResponse example
+</div>
+<pre class="listing brush: scala">// Assume you boot function
+​
+def boot = { 
+​
+LiftRules.dispatch.prepend {
+  case Req("rest" :: Nil, _, _) =&gt; () =&gt; Full(XmlResponse(
+        &lt;persons&gt;
+            &lt;name&gt;John&lt;/name&gt;
+            &lt;name&gt;Jane&lt;/name&gt;
+        &lt;/persons&gt;
+    ))
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When you are receiving a request with the path /rest the code is returning an XML response. The content-type and everything else is taken care of by XmlResponse. You can build much more complex REST API’s an return XML response which is probably mot commonly used.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.5">9.5</a> Session Management <a class="Label" name="sec:Session-Management"> </a>
+</h2>
+<div class="Unindented">
+Lift is a stateful framework and naturally this state needs to be managed. You may already be familiar with HttpSession and and how a J(2)EE web container identifies an HttpSession; either by a JSESSIONID cookie or by a JSESSIONID URI sequence (in case of URL rewriting). Similarly, Lift uses a LiftSession reference which is not actually “persisted” in HttpSession. As a matter of fact Lift does not really use the HttpSession provided by the web container to maintain conversational state, but rather uses a bridge between the <tt>HttpSession</tt> and the <tt>LiftSession</tt>. This bridge is impersonated by <tt>SessionToServletBridge</tt> class which implements <i>javax.servlet.http.HttpSessionBindingListener</i> and <i>javax.servlet.http.HttpSessionActivationListener</i> and works like this:
+</div>
+<ol>
+<li>
+When receiving an HTTP Request and there was no stateless dispatch function to execute, Lift does the stateful processing. But before doing that it checks to see if there is a <tt>LiftSession</tt> associated with this HTTP session ID. This mapping is kept on a SessionMaster Scala actor. 
+</li>
+<li>
+If there is no associated LiftSession in the SessionMaster actor, create it and add a SessionToServletBridge attribute on HttpSession. This will make Lift aware of the session when the container terminates the HttpSession or when the HTTP session is about to be passivated or activated.
+</li>
+<li>
+When the container terminates the HTTP session, SessionToServletBridge sends a message to the SessionMaster Actor to terminate the LiftSession, which includes the following steps:<ol>
+<li>
+Call any defined LiftSession.onAboutToShutdownSession hooks
+</li>
+<li>
+Send a ShutDown message to all Comet Actors pertaining to this session
+</li>
+<li>
+Clean up any internal LiftSession state
+</li>
+<li>
+Call LiftSession.onShutdownSession hooks
+</li>
+
+</ol>
+
+</li>
+
+</ol>
+<div class="Unindented">
+The SessionMaster Actor is also protected by another watcher Actor. This watcher Actor receives the Exit messages of the watched Actors. When it receives an Exit message it will call the users’ failure functions and restart the watched actor (Please see ActorWatcher.failureFuncs). 
+</div>
+<div class="Indented">
+Even while Lift is handling session management you still have the ability to manually add attributes to the HttpSession object. We do not recommend this unless you really must. A simpler way to keep your own session variables, is to use <tt>SessionVar</tt>s. For more details about SessionVar please see the fundamental chapter <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11↑</a>
+</div>
+<div class="Indented">
+The next question would probably be “So we have internal session management, how do we cope with that in a clustered environment? ... how are sessions replicated?” the answer is, they aren’t. There is no intention to use the web container’s session replication as these technologies appears to be inferior to other solutions on the market. Relying on Java serialization brings a lot of performance concerns and alternative technologies have been investigated and they are still under investigation. Until there is a standard session replication technology you can still cluster you application using “sticky session”. This meas that all requests pertaining to a HTTP session must be processed by the same cluster node. This can be done by software or hardware load balancers, as they would dispatch the requests based on JSESSIONID cookie. Another approach is that the dispatching is done based on some URI or query parameters. For example, a query parameter like serverid=1 is configured in the load balancer to always be dispatched to the node 1 of the cluster, and so on. There are some downsides for the sticky session approach. For instance you are logged in the application and do your stuff. Suddenly the node designated to your session crashes. At this moment you lost your session. The next subsequent request would be automatically dispatched by the load balancer to another cluster node and depending how your application is built this may mean that you need to log in again or if part of the state was persisted in DB you may resume your work from some point avoiding re-login ... but this is application specific behavior that is beyond the scope of this discussion. The advantages of sticky sessions are related with application performance since in this model the state does not need to be replicated in all cluster nodes which for significant state information can be quite time/resources consuming.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.5.1">9.5.1</a> Lift garbage collection
+</h3>
+<div class="Unindented">
+As you have seen, Lift tailors Scala functions with client side artifacts (XHTML input elements, Ajax requests etc.). Naturally these functions are kept into the session state. Also for every rendered page, a page ID is generated and functions bound for these pages as asociated with this page ID. In order to prevent accumulation of such mappings, Lift has a mechanism of purging unused functions. Basically the idea is
+</div>
+<ol>
+<li>
+On client side, a script periodically sends to the server an Ajax request impersonating a lift GC request. 
+</li>
+<li>
+On service side Lift updates the timestamps of the functions associated with this page ID. The functions older then <tt>LiftRules.unusedFunctionsLifeTime</tt> (default value is 10 minutes) become eligible for garbage collection as they are de-referenced from the current session. The frequency of such Ajax requests is given by <tt>LiftRules.liftGCPollingInterval</tt>. By default it is set to 75 seconds.
+</li>
+<li>
+Each Ajax request contains includes the page ID as new function may be bound as a result of processing the Ajax request, dependin on the application code. Such function that are dynamically bound are automatically associated with the same page ID.
+</li>
+
+</ol>
+<div class="Unindented">
+You can of course turn off this garbage collection mechanism by setting <tt>LiftRules.enableLiftGC = false</tt> typically in your Boot. You can also fine tune the garbage collection mechanims to fit your application needs, by changing the default LiftRules variables.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+LiftRules gabage collection variables
+</div>
+<pre class="listing brush: scala">/**    
+ * By default lift uses a garbage-collection mechanism of removing 
+ * unused bound functions from LiftSesssion
+ * Setting this to false will disable this mechanims and there will 
+ * be no Ajax polling request attempted.    
+ */ 
+var enableLiftGC = true;
+​
+/**    
+ * If Lift garbage collection is enabled, functions that are not seen 
+ * in the page for this period of time (given in milliseonds) will be
+ * discarded, hence eligible for garbage collection. The default value
+ * is 10 minutes.    
+ */   
+var unusedFunctionsLifeTime: Long = 10 minutes
+​
+/**    
+ * The polling interval for background Ajax requests to prevent
+ * functions of being garbage collected.   
+ * Default value is set to 75 seconds.
+ */   
+var liftGCPollingInterval: Long = 75 seconds
+​
+/**   
+ * The polling interval for background Ajax requests to prevent functions
+ * of being garbage collected.  
+ * This will be applied if the Ajax request will fail. Default value is
+ * set to 15 seconds.  
+ */ 
+var liftGCFailureRetryTimeout: Long = 15 seconds 
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.6">9.6</a> Miscellaneous Lift Features
+</h2>
+<div class="Unindented">
+In this section we will discuss various features that can prove helpful in building rich Lift applications.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.6.1">9.6.1</a> Wrapping Lift’s processing logic<a class="Label" name="sub:Wrapping-Lift's-processing"> </a>
+</h3>
+<div class="Unindented">
+Lift provides the ability to allow user functions to be part of processing lifecycle. In these cases Lift allows you to provide your own functions and the actual Lift’s processing function is passed to your function. Hence your own function is responsible of calling the actual Lift’s processing logic. 
+</div>
+<div class="Indented">
+But let’s see how exactly you can do this.<div class="listing">
+<div class="caption">
+LoanWrapper example
+</div>
+<pre class="listing brush: scala"> class Boot {   
+  def boot {    
+    ...   
+    S.addAround(new LoanWrapper { // Y   
+      def apply[T](f: =&gt; T): T = {   
+        println("Y -&gt; hello to the request!")  
+        val result = f // Let Lift do normal request processing.   
+        println("Y -&gt; goodbye!")  
+        result   
+      }   
+    })   
+    S.addAround(new LoanWrapper { // X   
+      def apply[T](f: =&gt; T): T = {   
+        println("X -&gt; hello to the request!")   
+        val result = f // Let Lift do normal request processing.   
+        println("X -&gt; goodbye!")   
+        result
+      }   
+    })   
+ }  
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The code looks pretty straight-forward in the sense that we add two <tt>LoanWrapper</tt> instances to the <tt>S</tt> object. (Note that we’re using the <tt>S</tt> object not <tt>LiftRules</tt> meaning that <tt>LoanWrapper</tt>s are applicable only for stateful processing. See <a class="Reference" href="index-9.html#sec:Request/Response-Lifecycle">9.2↑</a> for when exactly <tt>LoanWrapper</tt>s are invoked.) 
+</div>
+<div class="Indented">
+So let’s see what happens when the above code processess a request from a client. You can think of the invocation sequence as <tt>X(Y(f))</tt> where f is the Lift function that impersonates the core processing. Therefore you’ll see the following output in the console:
+</div>
+<div class="Indented">
+<div class="listing">
+<pre class="listing brush: scala">X -&gt; hello to the request!
+Y -&gt; hello to the request!
+&lt;Lift’s logic ... whatever is printed here&gt;
+Y -&gt; goodbye!
+X -&gt; goodbye!
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This feature allows you use a resource before Lift does and release them after Lift has finished processing the stateful request and before the LiftResponse object is constructed.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.6.2">9.6.2</a> Passing Template Parameters to Snippets<a class="IndexReference" name="entry-Parameters-0" href="index-Index.html#index-Parameters">↓</a><a class="IndexReference" name="entry-Snippet-parameters-0" href="index-Index.html#index-Snippet-parameters">↓</a> 
+</h3>
+<div class="Unindented">
+In addition to the standard attributes for snippets, outlined in Section <a class="Reference" href="index-5.html#sub:snippet-tag">5.1↑</a>, you can set your own attributes on the snippet element. Attributes used in this manner are called “parameters”. Listing <a class="Reference" href="index-9.html#lst:Snippet-parameter-template">9.6.2↓</a> shows us setting a <tt>default</tt> parameter on our <tt>Ledger.balance</tt> snippet.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Snippet-parameter-template"> </a>Defining a Snippet Parameter
+</div>
+<pre class="listing brush: scala">&lt;lift:Ledger.balance default="10"&gt;
+  &lt;ledger:balance/&gt; as of &lt;ledger:time /&gt;
+&lt;/lift:Ledger.balance&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The <tt>S.attr</tt> function allows us to access all parameters defined on the snippet element itself, as shown in Listing <a class="Reference" href="index-9.html#lst:Snippet-parameter-code">9.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Snippet-parameter-code"> </a>Accessing a Snippet Parameter
+</div>
+<pre class="listing brush: scala">class Ledger {
+  def balance (content : NodeSeq ) : NodeSeq = {
+    val dflt = S.attr("default") openOr "0";
+    bind ("ledger", content,
+          "balance" -&gt; Text(currentLegdger.formattedBalance),
+          "time" -&gt; Text((new java.util.Date).toString))
+  }
+}
+​
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.6.3">9.6.3</a> Computing Attributes with Snippets<a class="IndexReference" name="entry-Attributes-computing-via-snippet-0" href="index-Index.html#index-Attributes-computing-via-snippet">↓</a>
+</h3>
+<div class="Unindented">
+You can use snippets to compute tag attributes, as shown in Listing <a class="Reference" href="index-9.html#lst:Using-a-Snippet-compute-attr">9.6.3↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Using-a-Snippet-compute-attr"> </a>Using a Snippet to Compute an Attribute
+</div>
+<pre class="listing brush: scala">// In your page you can have
+&lt;div lift:snippet="MyDivThing:calcDir"&gt; ... &lt;/div&gt;
+​
+...
+// Your snippet
+class MyDivThing {   
+  def calcDir = new UnprefixedAttribute("dir", "rtl", Null)
+} 
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.6.4">9.6.4</a> Processing Element Attributes<a class="IndexReference" name="entry-Attributes-retrieving-from-elements-0" href="index-Index.html#index-Attributes-retrieving-from-elements">↓</a>
+</h3>
+<div class="Unindented">
+Now we have seen how we can pass xml parameters to snippets but what if we want to pass parameters on the nodes that will be bound? For instance, we may want to pass the am/pm information on the time element such as:
+</div>
+<pre class="LyX-Code">
+<tt>&lt;ledger:time ampm=”true”/&gt; </tt>
+</pre>
+<div class="Unindented">
+to control the time display format. Listing <a class="Reference" href="index-9.html#lst:Element-attribute-retrieval">9.6.4↓</a> shows how we can use the <tt>BindHelpers</tt> object to retrieve the current element’s attributes.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Retrieving Element Attributes with BindHelpers<a class="Label" name="lst:Element-attribute-retrieval"> </a>
+</div>
+<pre class="listing brush: scala">class Ledger {
+  def balance (content : NodeSeq ) : NodeSeq = {
+    val dflt = S.attr("default") openOr "0";
+    bind ("ledger", content,
+          "balance" -&gt; Text(currentLegdger.formattedBalance),
+          "time" -&gt; {
+            node: NodeSeq =&gt; println(BindHelpers.attr("ampm")); 
+            Text((new java.util.Date).toString))
+          })
+  }
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+You can use the <tt>BindHelpers</tt> object for obtaining information about node attributes. This context is maintained internally using <tt>ThreadLocal</tt>s and closures. Note that the context is cleared after the bind method is executed. In our example above for “time” node we are actually binding a function that takes the child nodes of the <tt>&lt;ledger:time&gt;</tt> node. When our function is called by Lift we can access the BindHelpers, such ass the attributes of the current node. The sequence <tt>&lt;string&gt; -&gt; &lt;right-hand-side-expression&gt;</tt> is turned into a BindParam object using implicit conversions. It is important to note that BindParam.calcValue function is called in the correct context so that BindHelpers can be safely used.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.7">9.7</a> Advanced S Object Features<a class="Label" name="sub:Advanced-S-Object"> </a>
+</h2>
+<div class="Unindented">
+The <tt>S</tt>, or Stateful, object is a very important part of Lift. The S context is created when a client request is recieved that needs to be handled as a stateful reuest. Please see <a class="Reference" href="index-9.html#sec:Request/Response-Lifecycle">9.2↑</a> for more details on the state creation and handling. The actual state information is kept inside the S object using ThreadLocal<span class="FootOuter"><span class="SupFootMarker"> [O] </span><span class="HoverFoot"><span class="SupFootMarker"> [O] </span>java.lang.ThreadLocal</span></span> variables since <tt>S</tt> is a singleton. This means that if you have any code that is executed in the stateful context you can safely use any <tt>S</tt> object goodies, which include:
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.1">9.7.1</a> Managing cookies
+</h3>
+<div class="Unindented">
+You can retrieve cookies from the request or set cookies to be sent in the response. Cookies are covered in section <a class="Reference" href="index-3.html#sec:Cookies">3.10↑</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.2">9.7.2</a> Localization and Internationalization
+</h3>
+<div class="Unindented">
+Localization (also called L10N) and Internationalization (also called I18N) are very important aspects of many web applications that deal with different languages. These topics are covered in chapter <a class="Reference" href="index-D.html#cha:Internationalization">D↓</a>. 
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.3">9.7.3</a> Managing the Timezone
+</h3>
+<div class="Unindented">
+The<tt> S.timeZone</tt> function returns the current timezone as computed by the<br/>
+<tt>LiftRules.timeZoneCalculator</tt> function. By default, the <tt>LiftRules</tt> method simply executes TimeZone.getDefault, but you can provide your own <span class="formula"><i>Box</i>[<i>HttpServletRequest</i>] ⇒ <i>TimeZone</i></span> partial function to define your own behavior. Examples would include allowing users to choose their own timezone, or to use geographic lookup of the user’s IP address.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.4">9.7.4</a> Per-session DispatchPF functions 
+</h3>
+<div class="Unindented">
+You can set DispatchPF functions that operate in the context of a current session. Essentially you can bind DispatchPF functions with a given name. Relevant functions are:
+</div>
+<ul>
+<li>
+<tt>S.highLevelSessionDispatcher</tt> - returns a <tt>List[LiftRules.DispatchPF]</tt>
+</li>
+<li>
+<tt>S.highLevelSessionDispatchList</tt> - returns a <tt>List[DispatchHolder] </tt>
+</li>
+<li>
+<tt>S.addHighLevelSessionDispatcher </tt>- maps a name with a given <tt>DispatchPF</tt>
+</li>
+<li>
+<tt>S.removeHighLevelSessionDispatcher</tt> - removes the <tt>DispatchPF</tt> given its name
+</li>
+<li>
+<tt>S.clearHighLevelSessionDispatcher</tt> - removes all <tt>DispatchPF</tt> associations
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.5">9.7.5</a> Session re-writers
+</h3>
+<div class="Unindented">
+Session re-writers are per session functions that allow you to modify a HTTP request (URI, query parameters etc.) before the request is actually processed. This is similar with LiftRules.rewrite variable but you can apply rewriters per a given session. Hence you can have different rewrites in diferent contexts. The relevant functions are:
+</div>
+<ul>
+<li>
+<tt>S.sessionRewriter</tt> - returns a<tt> List[RewriteHolder]</tt>
+</li>
+<li>
+<tt>S.addSessionRewriter</tt> - maps a <tt>LiftRules.RewritePF </tt>with a given name
+</li>
+<li>
+<tt>S.removeSessionRewriter</tt> - removes a rewriter by a name
+</li>
+<li>
+<tt>S.clearSessionRewriter</tt> - remove all session rewriters.
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.6">9.7.6</a> Access to HTTP headers
+</h3>
+<div class="Unindented">
+Accessing HTTP header parameters from the request and adding HTTP header parameters to the HTTP response represent very common operations. You can easily perform these operations using the following functions:
+</div>
+<ul>
+<li>
+<tt>S.getHeaders</tt> - returns a <tt>List[(String, String)] </tt>containing all HTTP headers grouped by name and value pair
+</li>
+<li>
+<tt>S.setHeader</tt> - sets a HTTP header parameter by specifying the name and value pair
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.7">9.7.7</a> Manage the document type
+</h3>
+<div class="Unindented">
+You can also read and write the XML document type set for the current response. You can use the following functions:
+</div>
+<ul>
+<li>
+<tt>S.getDocType</tt> - returns the doc type that was set forthe current response
+</li>
+<li>
+<tt>S.setDocType</tt> - sets a document type for the curent response object.
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.7.8">9.7.8</a> Other functions 
+</h3>
+<ul>
+<li>
+Access to the raw HttpServletRequest and HttpSession if you really need it.
+</li>
+<li>
+Managing the function map. The function map generates an association between a String and a function. This string represents a query parameter that when Lift receives upon a HTTP request, it will execute your function. Normally these names are auto-generated by Lift but you can also provide you own name. Please see <a class="Reference" href="index-9.html#sub:Lift-Function-Mapping">9.3↑</a> for more details.
+</li>
+<li>
+Managing wrappers - see <a class="Reference" href="index-9.html#sub:Wrapping-Lift's-processing">9.6.1↑</a>
+</li>
+<li>
+Managing notices - see <a class="Reference" href="index-3.html#sub:Notices/Warnings/Errors-messages">3.6↑</a>
+</li>
+<li>
+Managing HTTP redirects - see S.redirectTo functions and <a class="Reference" href="index-9.html#sec:LiftResponse-in-Detail">9.4↑</a>
+</li>
+<li>
+Using XML attibutes of a snippet - see <a class="Reference" href="#sub:Additional-Snippet-Features">↓</a>
+</li>
+
+</ul>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.8">9.8</a> ResourceServer<a class="Label" name="sub:ResourceServer"> </a>
+</h2>
+<div class="Unindented">
+ResourceServer is a Lift component that manages the serving of resources like JS, CSS etc. Well the web container can do that right? ... still container does not serve these resources if they are inside jar files. The default URI path for serving such resources is given by<tt> LiftRules.resourceServerPath</tt> variable which by default it is set to “classpath”. The folder location where the resource is looked up inside jar files is given by <tt>ResourceServer.baseResourceLocation</tt> variable which by default it is set to “toserve”. Let’s assume the following folder structure inside you Lift project:
+</div>
+<div class="Indented">
+<tt>lift-proj/src/main/resources/toserve/css/mystyle.css</tt>
+</div>
+<div class="Indented">
+Maven will create the toserver folder in the jar/war file generated. Then in your web page you add something like:
+</div>
+<div class="Indented">
+<tt>&lt;link rel="stylesheet" href="/classpath/css/mystyle.css" type="text/css"/&gt;</tt>
+</div>
+<div class="Indented">
+Because the first URI part matches with <tt>LiftRules.resourceServerPath</tt> Lift will tell ResouceServer to load this resource from ’toserve’ folder. But it will fail. There is one thing left to do. We need to tell ResouceServer to allow the loading of mystyle.css resource. We can do this from Boot by calling:
+</div>
+<div class="Indented">
+<tt>ResourceServer.allow { </tt>
+</div>
+<div class="Indented">
+<tt>case "css" :: _ =&gt; true </tt>
+</div>
+<div class="Indented">
+<tt>}</tt>
+</div>
+<div class="Indented">
+We basically told Lift here to allow any resource found in css folder under toserve. Note that toserver comes from <tt>ResourceServer.baseResourceLocation</tt> which can be changed.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-9.9">9.9</a> HTTP Authentication<a class="Label" name="sub:HTTP-Authentication"> </a><a class="IndexReference" name="entry-HTTP-authentication-0" href="index-Index.html#index-HTTP-authentication">↓</a><a class="IndexReference" name="entry-Authentication-0" href="index-Index.html#index-Authentication">↓</a>
+</h2>
+<div class="Unindented">
+HTTP authentication is described by RFC 2617 <span class="FootOuter"><span class="SupFootMarker"> [P] </span><span class="HoverFoot"><span class="SupFootMarker"> [P] </span><a class="FlexURL" href="http://www.isi.edu/in-notes/rfc2617.txt">http://www.isi.edu/in-notes/rfc2617.txt</a></span></span>. It describes the means of protecting server resources and allowing access only to authorized entities. As you may know, any J(2)EE web container provides HTTP authentication support using JAAS<span class="FootOuter"><span class="SupFootMarker"> [Q] </span><span class="HoverFoot"><span class="SupFootMarker"> [Q] </span>Java Authentication and Authorization Service. More information can be found at <a class="FlexURL" href="http://java.sun.com/javase/6/docs/technotes/guides/security/jaas/JAASRefGuide.html">http://java.sun.com/javase/6/docs/technotes/guides/security/jaas/JAASRefGuide.html</a></span></span><a class="IndexReference" name="entry-Authentication-JAAS-0" href="index-Index.html#index-Authentication-JAAS">↓</a>. However, this approach has limitations. For example, if you provide your own <tt>LoginModule</tt> or <tt>CallbackHandler</tt> implementation this will not be loaded by the web application classloader but instead by the container classloader (at least in tomcat). This can lead to dependency loading issues since the web application classloader sits below the container’s classloader in the delegation chain. Lift, however, provides supports for both basic and digest authentications via a simplified, scala-oriented API that you can use directly. This API provides not only direct support for the HTTP authentication mechanisms, but also a path and role based authorization mechanism. The following sections show how we use basic authentication to protect our REST API (Chapter <a class="Reference" href="index-15.html#cha:Web-Services">15 on page 1↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.9.1">9.9.1</a> Determining which Resources to Protect
+</h3>
+<div class="Unindented">
+The first thing we need to do is tell Lift which resources are protected by authentication. This is done by configuring <tt>LiftRules.httpAuthProtectedResources<a class="IndexReference" name="entry-httpAuthProtectedResources-0" href="index-Index.html#index-httpAuthProtectedResources">↓</a></tt> with one or more <tt>PartialFunction[Req,Box[Role]]</tt><span class="FootOuter"><span class="SupFootMarker"> [R] </span><span class="HoverFoot"><span class="SupFootMarker"> [R] </span><tt>net.liftweb.http.auth.Role</tt></span></span> to match on the request. Listing <a class="Reference" href="index-9.html#lst:HTTP-auth-define-resources">9.9.1↓</a> shows the PartialFunction defined in our <tt>DispatchRestAPI</tt> object (Section <a class="Reference" href="index-15.html#sub:REST-Custom-Dispatch">15.4.1 on page 1↓</a>) used to protect our REST API from unauthorized access.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining Protected Resources<a class="Label" name="lst:HTTP-auth-define-resources"> </a>
+</div>
+<pre class="listing brush: scala">  // We explicitly protect GET and PUT requests in our REST API
+  import net.liftweb.http.auth.AuthRole
+  def protection : LiftRules.HttpAuthProtectedResourcePF = {
+    case Req(List("api", "account", accountId), _, PutRequest) =&gt;
+       Full(AuthRole("editAcct:" + accountId))
+    case Req(List("api", "account", accountId), _, GetRequest) =&gt;
+       Full(AuthRole("viewAcct:" + accountId))
+    // If the account is public, don’t enforce auth
+    case Req(List("api", "expense", Expense(e, true)), _, GetRequest) =&gt; Empty
+    case Req(List("api", "expense", Expense(e, _)), _, GetRequest) =&gt;
+      Full(AuthRole("viewAcct:" + e.account.obj.open_!.id))
+  }
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The <tt>PartialFunction</tt> matches on the <tt>Req</tt> and can either return an <tt>Empty</tt>, indicating that the given request does not require authentication, or a <tt>Full[Role]</tt>, that indicates which R<tt>ole</tt> a user requires to be authorized to access the given resource. One important thing to remember is that HTTP authentication and SiteMap access control (Section <a class="Reference" href="index-7.html#sec:SiteMap-Access-Control">7.3 on page 1↑</a>) are synergistic, so make sure that you configure both properly. We will discuss <tt>Role</tt>s further in Section <a class="Reference" href="index-9.html#sub:Role-Hierarchies">9.9.3↓</a>, but for now you can simply consider them as <tt>String</tt> attributes associated with the current session. Once we’ve defined which resources are to be protected, we need to hook our <tt>PartialFunction</tt> into <tt>LiftRules</tt> in the <tt>Boot.boot</tt> method, shown in Listing <a class="Reference" href="index-9.html#lst:Hooking-Resource-Protection">9.9.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Hooking Resource Protection<a class="Label" name="lst:Hooking-Resource-Protection"> </a>
+</div>
+<pre class="listing brush: scala">// Hook in our REST API auth
+LiftRules.httpAuthProtectedResource.append(DispatchRestAPI.protection)
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.9.2">9.9.2</a> Providing the Authentication Hook
+</h3>
+<div class="Unindented">
+After we’ve defined what resources we want to protect, we need to configure the <tt>LiftRules.authentication</tt> function to perform the actual authentication. Lift supports both HTTP Basic and Digest authentication schemes, which we’ll cover in the next two sections.
+</div>
+<div class="Indented">
+<div class="defskip"> </div>
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note that in these examples we use stateful dispath (Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8 on page 1↑</a>) since the <tt>User.logUserIn</tt> method utilizes a backing <tt>SessionVar</tt>. If you use stateless dispatch you will need to provide your own <tt>RequestVar</tt>s to store the current user and roles.
+</div>
+
+</div>
+
+</div>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-9.9.2.1">9.9.2.1</a> HTTP Basic Authentication
+</h4>
+<div class="Unindented">
+HTTP Basic authentication is provided by the <tt>net.liftweb.http.auth.HttpBasicAuthentication</tt> implementation class, constructed using the authentication realm name as well as a <tt>PartialFunction[(String, String, Req), Boolean]</tt> that actually does the authentication. The tuple passed to the <tt>PartialFunction</tt> consists of the attempted username password, and the request object (<tt>Req</tt>). It’s your responsibility to return <tt>true</tt> or <tt>false</tt> to indicate whether the provided credentials succeed. Listing <a class="Reference" href="index-9.html#lst:Performing-Basic-Authentication">9.9.2.1↓</a> shows the code in <tt>Boot.boot</tt> that PocketChange uses to perform authentication based on the user’s email address and password. Note that when authentication succeeds for a given user not only do we return true, but we set the user as logged in (via <tt>User.logUserIn</tt>) and we compile a set of all of the <tt>Role</tt>s that the user so that Lift knows which protected resources the user may access. The<tt> net.liftweb.http.auth.userRoles</tt> <tt>RequestVar</tt> is a built-in construct in Lift that the authentication backend uses for bookkeeping.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Performing Basic Authentication<a class="Label" name="lst:Performing-Basic-Authentication"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.http.auth.{AuthRole,HttpBasicAuthentication,userRoles}
+LiftRules.authentication = HttpBasicAuthentication("PocketChange") {
+  case (userEmail, userPass, _) =&gt; {
+    logger.debug("Authenticating: " + userEmail)
+    User.find(By(User.email, userEmail)).map { user =&gt;
+      if (user.password.match_?(userPass)) {
+        logger.debug("Auth succeeded for " + userEmail)
+        User.logUserIn(user)
+​
+        // Compute all of the user roles
+        userRoles(user.editable.map(acct =&gt; AuthRole("editAcct:" + acct.id)) ++
+                  user.allAccounts.map(acct =&gt; AuthRole("viewAcct:" + acct.id)))
+        true
+      } else {
+        logger.warn("Auth failed for " + userEmail)
+        false
+      }
+    } openOr false
+  }
+}
+</pre>
+</div>
+
+</div>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-9.9.2.2">9.9.2.2</a> HTTP Digest Authentication
+</h4>
+<div class="Unindented">
+HTTP Digest authentication is provided by the <tt>net.liftweb.http.auth.HttpDigestAuthentication</tt> implementation class. Like Basic authentication, the <tt>HttpDigestAuthentication</tt> instance is constructed with a realm name and a <tt>PartialFunction</tt>, but in this case the <tt>PartialFunction</tt> uses a tuple of <tt>(String,Req,(String)<span class="formula"> ⇒ </span>Boolean)</tt>. The first parameter is still the username, and the second parameter is the request instance, but the third parameter is a function that will compute and compare the digest for authentication based on a <i>plaintext</i> password. This means that if we want to use Digest authentication, we need to be able to retrieve a plaintext password for the user from the database somehow. Listing <a class="Reference" href="index-9.html#lst:HTTP-Digest-Authentication">9.9.2.2↓</a> shows how we could do this in PocketChange if we modified the <tt>User.password</tt> field to simply be a <tt>MappedString</tt>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Performing Digest Authentication<a class="Label" name="lst:HTTP-Digest-Authentication"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.http.auth.{AuthRole,HttpBasicAuthentication,userRoles}
+LiftRules.authentication = HttpBasicAuthentication("PocketChange") {
+  case (userEmail, _, authenticates) =&gt; {
+    logger.debug("Authenticating: " + userEmail)
+    User.find(By(User.email, userEmail)).map { user =&gt;
+      if (authenticates(user.password.is)) {
+        logger.debug("Auth succeeded for " + userEmail)
+        User.logUserIn(user)
+​
+        // Compute all of the user roles
+        userRoles(user.editable.map(acct =&gt; AuthRole("editAcct:" + acct.id)) ++
+                  user.allAccounts.map(acct =&gt; AuthRole("viewAcct:" + acct.id)))
+        true
+      } else {
+        logger.warn("Auth failed for " + userEmail)
+        false
+      }
+    } openOr false
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Another important factor with Digest authentication is that it uses nonces<span class="FootOuter"><span class="SupFootMarker"> [S] </span><span class="HoverFoot"><span class="SupFootMarker"> [S] </span><a class="FlexURL" href="http://en.wikipedia.org/wiki/Cryptographic_nonce">http://en.wikipedia.org/wiki/Cryptographic_nonce</a></span></span> for authenticating the client, and the nonces have a limited lifetime. The default nonce lifetime is 30 seconds, but you can configure this by overriding the <tt>HttpDigestAuthentication.nonceValidityPeriod</tt> method.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-9.9.3">9.9.3</a> Role Hierarchies<a class="Label" name="sub:Role-Hierarchies"> </a>
+</h3>
+<div class="Unindented">
+So far we’ve discussed <tt>Role</tt>s as essentially flat constructs. A <tt>Role</tt>, however, is an n-ary tree structure, meaning that when we assign a <tt>Role</tt> to a protected resource we can actually provide a hierarchy. Figure <a class="Reference" href="index-9.html#fig:Roles-hierarchy-example">9.4↓</a> shows an example of one such hierarchy. In this example, the Admin is the “superuser” role for admins, and can do what any sub-role can do and more. The Site-Admin can monitor the application, the User-Admin can manage users, and then we specify a set of location-specific roles: the Romania-Admin that can manage users from Romania, US-Admin that can manage users from US and UK-Admin that can only manage users from UK. With this hierarchy a User-Admin can manage users from anywhere but a Site-Admin can not manage any users. A Romania-Admin can’t monitor the site, nor it can manage the US or UK users.
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="fig:Roles-hierarchy-example"> </a><div class="figure">
+<div class="center">
+<img class="embedded" src="images/roles.png" alt="figure images/roles.png" style="width: 4in; max-width: 1692px; height: auto; max-height: 654px;"/>
+
+</div>
+<div class="caption">
+Figure 9.4 Roles hierarchy example
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Given this Role hierarchy, Listing <a class="Reference" href="index-9.html#lst:Using-Role-Hierarchies">9.9.3↓</a> shows how we can implement this in our code by creating our Role hierarchy and then using the Role.getRoleByName method to locate the proper Role when we perform authentication. In this example we’re restricting access to the <tt>/users/ro</tt> path to only users with the “Romania-Admin” role. However, our fictional “John” user is assigned the “User-Admin” role, so he will be able to access that path.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using Role Hierarchies<a class="Label" name="lst:Using-Role-Hierarchies"> </a>
+</div>
+<pre class="listing brush: scala">import auth._
+​
+class Boot {
+  def boot = {
+    ...
+    val roles = 
+      AuthRole("Admin", 
+        AuthRole("Site-Admin"),
+        AuthRole("User-Admin", 
+            AuthRole("Romania-Admin"),
+            AuthRole("US-Admin"),
+            AuthRole("UK-Admin")
+        )
+    )
+​
+    LiftRules.protectedResource.append {    
+      case (ParsePath("users" :: "ro" :: _, _, _, _)) =&gt; 
+        roles.getRoleByName("Romania-Admin")
+    }
+   
+    LiftRules.authentication = HttpBasicAuthentication("lift") {  
+      case ("John", "12test34", req) =&gt; 
+        println("John is authenticated !")
+        userRoles(AuthRole("User-Admin")) 
+        true    
+    }  
+​
+   ...
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-II.html#Next">Previous: Part II</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-10.html#prev">Next: Chapter 10</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-A.html#Next">Previous: Appendix A</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-C.html#prev">Next: Appendix C</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-B">B</a> Message Handling<a class="Label" name="cha:Message-Handling"> </a>
+</h1>
+<div class="Unindented">
+When we talk about message handling in Lift, we’re talking about how you provide feedback to the users of your application. While there are already a lot of mechanisms for displaying data to the user via snippets, views, etc, properly binding and setting up HTML-level elements can get complicated, especially when you’re dealing with callback functions or error handling. Lift provides an alternate mechanism for displaying messages to users that is easy to use and allows flexibility in display on the client side.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-B.1">B.1</a> Sending Messages
+</h2>
+<div class="Unindented">
+Messages for non-Comet requests are handled via the S object (yes, even Ajax is handled automatically); specifically, the error, notice and warning methods allow you to send a String or a NodeSeq back to the user for display, with or without an association with a particular element id. The error method also provides an overload that takes a List[FieldError], the type returned from Mapper field validation (section <a class="Reference" href="index-8.html#sub:Mapper-Validation">8.2.3↑</a>). The messages that you send are held by a RequestVar (section <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11↑</a>) in the S object, so you can send messages from anywhere in your stateful request/response lifecycle without breaking the flow of your code. Listing <a class="Reference" href="index-B.html#lst:Using-messages-in-forms">B.1↓</a> shows how you could use messages in form processing to send feedback on missing fields.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using messages in form processing<a class="Label" name="lst:Using-messages-in-forms"> </a>
+</div>
+<pre class="listing brush: scala">object data extends RequestVar[String]("")
+​
+def addNote (xhtml : NodeSeq) : NodeSeq = {
+  def doAdd () = {
+    //validate
+    if (data.is == "") { 
+      S.error("noteField", "You need to provide a note")
+    } else {
+      Note.create.note(data).save
+      S.notice("Note added")
+      redirectTo("/viewNotes")
+    }
+  }
+  bind("form", xhtml,
+       "note" -&gt; SHtml.text(data.is, data(_), "id" -&gt; "noteField"),
+       "add" -&gt; SHtml.submit("Add", doAdd))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In this particular case we use two different messages. One is an error to be displayed when the form is re-shown; this error is associated with the “noteField” element. The second message is a simple notice to let the user know that the data was successfully saved.
+</div>
+<div class="Indented">
+For Comet<a class="IndexReference" name="entry-Comet-1" href="index-Index.html#index-Comet">↓</a> the only difference in sending messages is that the error, notice and warning methods are defined in the CometActor class, so you just use those directly and Lift handles the rest. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-B.2">B.2</a> Displaying Messages
+</h2>
+<div class="Unindented">
+The display of messages is handled by two builtin snippets, &lt;lift:Msgs/&gt; and &lt;lift:Msg/&gt;. The Msgs snippet displays all messages not associated with a particular element Id. The messages are displayed as an unordered list, but Lift allows customization of the messages via XML that you embed within the snippet. For each of the three message types, you can specify a &lt;lift:TYPE_msg&gt; and &lt;lift:TYPE_class&gt; element that controls the message label and CSS class, respectively. The default label is simply the title-case type (Error, Notice, Warning). For example, listing <a class="Reference" href="index-B.html#lst:Custom-message-labels">B.2↓</a> shows how we could change the error and notice messages.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Custom message labels<a class="Label" name="lst:Custom-message-labels"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:Msgs&gt;
+  &lt;lift:error_msg&gt;Danger, Will Robinson! &lt;/lift:error_msg&gt;
+  &lt;lift:error_class&gt;redtext&lt;/lift:error_class&gt;
+  &lt;lift:notice_msg&gt;FYI: &lt;/lift:notice_msg&gt;
+&lt;/lift:Msgs&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The Msg snippet is used to display all messages associated with a particular Id by specifying the id attribute on the &lt;lift:Msg/&gt; element. With Msg, you don’t get a message label, so there’s no override mechanism for it. You do, however, have the ability to to change the message class on a per-type basis by setting the noticeClass, errorClass, or warningClass attributes on the &lt;lfit:Msg/&gt; element. Listing <a class="Reference" href="index-B.html#lst:Per-id-messages">B.2↓</a> shows usage of Msg corresponding to our snippet in listing <a class="Reference" href="index-B.html#lst:Using-messages-in-forms">B.1↑</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Per-id messages<a class="Label" name="lst:Per-id-messages"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:Stuff.addNote form="POST"&gt;
+  &lt;form:note /&gt;&lt;lift:Msg id="noteField" errorClass="redtext" /&gt;
+  &lt;form:add /&gt;
+&lt;/lift:Stuff.addNote&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-A.html#Next">Previous: Appendix A</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-C.html#prev">Next: Appendix C</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,960 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-14.html#Next">Previous: Chapter 14</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-Part-III.html#prev">Next: Part III</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-15">15</a> RESTful Web Services<a class="Label" name="cha:Web-Services"> </a>
+</h1>
+<div class="Unindented">
+Many web applications today offer an API<span class="FootOuter"><span class="SupFootMarker"> [P] </span><span class="HoverFoot"><span class="SupFootMarker"> [P] </span>Application Programming Interface</span></span> that allows others to extend the functionality of the application. An API is a set of exposed functions that is meant to allow third parties to reuse elements of the application. There is a number of sites that catalog the available APIs, such as ProgrammableWeb (see <a class="FlexURL" href="http://www.programmableweb.com/">http://www.programmableweb.com/</a>). An example of a site that has combined the GoogleMaps and Flickr APIs is FlickrVision.com<span class="FootOuter"><span class="SupFootMarker"> [Q] </span><span class="HoverFoot"><span class="SupFootMarker"> [Q] </span><a class="URL" href="http://flickrvision.com/">http://flickrvision.com/</a></span></span>. FlickrVision allows users to visualize where in the world recent photos have been taken by combining the geolocation information embedded in the photos and the mapping system of GoogleMaps. This is just one example of an API mashup, and there are countless other examples.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.1">15.1</a> Some Background on REST
+</h2>
+<div class="Unindented">
+Before we dive into the details of building a RESTful API with Lift, let’s start by discussing a little about REST and the protocol that it sits atop: HTTP. If you’re already familiar with REST and HTTP, feel free to skip to the implementation in Section <a class="Reference" href="index-15.html#sec:A-Simple-API-pocketchange">15.2↓</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.1.1">15.1.1</a> A Little Bit about HTTP
+</h3>
+<div class="Unindented">
+As we build our web service, it will to be helpful to know a few things about HTTP<span class="FootOuter"><span class="SupFootMarker"> [R] </span><span class="HoverFoot"><span class="SupFootMarker"> [R] </span>Hypertext Transfer Protocol</span></span> requests and responses. If you’re comfortable with the Request-Response cycle then feel free to jump to Section <a class="Reference" href="index-15.html#sec:What-is-REST?">15.1.2↓</a> to get down to business.
+</div>
+<div class="Indented">
+A simplification of how the web works is that clients, typically web browsers, send HTTP Requests to servers, which respond with HTTP Responses. Let’s take a look at an exchange between a client and a server.
+</div>
+<div class="Indented">
+We’re going to send a GET request to the URI <a class="FlexURL" href="http://demo.liftweb.net/">http://demo.liftweb.net/</a> using the <tt>cURL</tt> utility. We’ll enable dumping the HTTP protocol header information so that you can see all of the information associated with the request and response. The cURL utility sends the output shown in Listing <a class="Reference" href="index-15.html#lst:cURL-Output">15.1.1↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+cURL Request<a class="Label" name="lst:cURL-Output"> </a>
+</div>
+<pre class="listing brush: scala">$ curl -v http://demo.liftweb.net/ 
+* About to connect() to demo.liftweb.net port 80 (#0) 
+*   Trying 64.27.11.183... connected 
+* Connected to demo.liftweb.net (64.27.11.183) port 80 (#0) 
+&gt; GET / HTTP/1.1 
+&gt; User-Agent: curl/7.19.0 (i386-apple-darwin9.5.0) libcurl/7.19.0 zlib/1.2.3 
+&gt; Host: demo.liftweb.net 
+&gt; Accept: */*
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+And gets the corresponding response, shown in Listing <a class="Reference" href="index-15.html#lst:cURL-Response">15.1.1↓</a>, from the server:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+cURL Response<a class="Label" name="lst:cURL-Response"> </a>
+</div>
+<pre class="listing brush: scala">&lt; HTTP/1.1 200 OK 
+&lt; Server: nginx/0.6.32 
+&lt; Date: Tue, 24 Mar 2009 20:52:55 GMT 
+&lt; Content-Type: text/html 
+&lt; Connection: keep-alive 
+&lt; Expires: Mon, 26 Jul 1997 05:00:00 GMT 
+&lt; Set-Cookie: JSESSIONID=5zrn24obipm5;Path=/ 
+&lt; Content-Length: 8431 
+&lt; Cache-Control: no-cache; private; no-store; 
+  must-revalidate; max-stale=0; post-check=0; pre-check=0; max-age=0 
+&lt; Pragma: no-cache 
+&lt; X-Lift-Version: 0.11-SNAPSHOT 
+&lt;  
+&lt;?xml version="1.0" encoding="UTF-8"?&gt; 
+&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"&gt;
+&lt;html xmlns:lift="http://liftweb.net" xmlns="http://www.w3.org/1999/xhtml"&gt;
+&lt;head&gt;....
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This seems pretty straightforward: we ask for a resource, and the server returns it to us. Take a look at the HTTP request. We’d like to point out the method called, in this case a <tt>“GET”, </tt>and the<tt> </tt>URI,<tt> </tt>which is “http://demo.liftweb.net/”. Method calls and addresses are what make the web work. You can think of the web as a series of method calls on varying resources, where the URI (Uniform Resource Identifier) identifies the resource upon which the method will be called.
+</div>
+<div class="Indented">
+Methods are defined as part of the HTTP standard, and we’ll use them in our API. In addition to <tt>GET</tt>, the other HTTP methods are <tt>POST</tt>, <tt>DELETE</tt>, <tt>PUT</tt>, <tt>HEAD</tt>, and<tt> OPTIONS</tt>. You may also see methods referred to as actions or verbs. In this chapter, we will focus on using <tt>GET</tt> and <tt>PUT</tt> for our API. 
+</div>
+<div class="Indented">
+As do Requests, Responses come with a few important pieces of information. Of note are the Response Code and the Entity Body. In the above example, the Response Code is “<tt>200 OK</tt>” and the Entity Body is the HTML content of the webpage, which is shown as the last two lines starting with “<tt>&lt;!DOCTYPE</tt>.” We’ve truncated the HTML content here to save space.
+</div>
+<div class="Indented">
+This was a quick overview of HTTP, but if you’d like to learn more, take a look at the protocol definition found at<span class="FootOuter"><span class="SupFootMarker"> [S] </span><span class="HoverFoot"><span class="SupFootMarker"> [S] </span>http://www.ietf.org/rfc/rfc2616.txt</span></span>. We wanted to point out a few of the interesting parts of the cycle before we got into building a REST API.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.1.2">15.1.2</a> Defining REST<a class="Label" name="sec:What-is-REST?"> </a>
+</h3>
+<div class="Unindented">
+Roy Fielding defined REST in his dissertation<span class="FootOuter"><span class="SupFootMarker"> [T] </span><span class="HoverFoot"><span class="SupFootMarker"> [T] </span><a class="FlexURL" href="http://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm">http://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm</a></span></span> and defined the main tenet of the architecture to be a uniform interface to resources. “Resources” refers to pieces of information that are named and have representations. Examples include an image, a Twitter status, or a timely item such as a stock quote or the current temperature. The uniform interface is supported by a set of constraints that include the following: 
+</div>
+<ul>
+<li>
+Statelessness of communication: This is built on top of HTTP, which is also stateless. 
+</li>
+<li>
+Client-server–style interaction: Again, just as the Web consists of browsers talking to servers, REST discusses machines or applications talking to servers in the same way. 
+</li>
+<li>
+Support for caching: REST uses the caching headers of HTTP to support the caching of resources. 
+</li>
+
+</ul>
+<div class="Unindented">
+These features are shared by both the web and by RESTful services. REST adds additional constraints regarding interacting with resources:
+</div>
+<ul>
+<li>
+Naming: As we mentioned, a resource must be identified, and this is done using URLs. 
+</li>
+<li>
+Descriptive actions: Using the HTTP actions, GET, PUT, and DELETE makes it obvious what action is being performed on the resource. 
+</li>
+<li>
+URL addressability: URLs should allow for the addressing of representation of a resource. 
+</li>
+
+</ul>
+<div class="Unindented">
+Fielding’s goal was to define a method that allowed machine-to-machine communication to mimic that of browser-to-server communication and to take advantage of HTTP as the underlying protocol.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.1.3">15.1.3</a> Comparing XML-RPC to REST Architectures
+</h3>
+<div class="Unindented">
+What, then, is the difference between a RESTful architecture and a traditional RPC<span class="FootOuter"><span class="SupFootMarker"> [U] </span><span class="HoverFoot"><span class="SupFootMarker"> [U] </span>Remote Procedure Call</span></span> architecture? 
+</div>
+<div class="Indented">
+An RPC application follows a more traditional software development pattern. It ignores most of the features offered by HTTP, such as the HTTP methods. Instead, the scoping and data to be used by the call are contained in the body of a POST request. XML-RPC works similarly to the web for <i>getting</i> resources, but breaks from the HTTP model for everything else by overloading the POST request. You will often see the term SOAP when referring to an XML-RPC setup, because SOAP permits the developer to define the action and the resource in the body of the request and ignore the HTTP methods.
+</div>
+<div class="Indented">
+RESTful architectures embrace HTTP. We’re using the web; we may as well take advantage of it.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.2">15.2</a> A Simple API for PocketChange<a class="Label" name="sec:A-Simple-API-pocketchange"> </a>
+</h2>
+<div class="Unindented">
+We’re going to start with a simple example, so we’ll only touch on some of the more complex steps of building a web service, such as authentication<a class="IndexReference" name="entry-HTTP-authentication-1" href="index-Index.html#index-HTTP-authentication">↓</a><a class="IndexReference" name="entry-Authentication-1" href="index-Index.html#index-Authentication">↓</a> and authorization. If you would like to see the code involved in performing authentication and authorization for our REST API, see Section <a class="Reference" href="index-9.html#sub:HTTP-Authentication">9.9↑</a>. For the purposes of this example, we’re going to model two calls to the server: a GET request that responds with the details of an expense, and a PUT to add a new expense.The URLs will be:
+</div>
+<ul>
+<li>
+A GET request sent to URI: <pre class="LyX-Code">
+http://www.pocketchangeapp.com/api/expense/&lt;expense id&gt;
+</pre>
+
+</li>
+<li>
+A PUT request containing a new expense sent to URI:<pre class="LyX-Code">
+http://www.pocketchangeapp.com/api/account/&lt;account id&gt;
+</pre>
+
+</li>
+
+</ul>
+<div class="Unindented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note that a URL (Uniform Resource Locator) is a type of URI in which the URI also serves to locate the resource on the web. A URN (Uniform Resource Name) is another type of URI that provides a unique name to a resource without specifying an actual location, though it may look a lot like a URL. For more information on the distinctions among URIs, see <a class="FlexURL" href="http://en.wikipedia.org/wiki/Uniform_Resource_Name">http://en.wikipedia.org/wiki/Uniform_Resource_Name</a>.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+We would like the REST API to support both XML and JSON for this data. Additionally, we would like to support an Atom feed on an account so that people can track expenses as they’re added. The URL for the Atom feed will be a GET of the form:
+</div>
+<pre class="LyX-Code">
+http://www.pocketchangeapp.com/api/account/&lt;account id&gt;
+</pre>
+<div class="Unindented">
+In the next few sections we’ll show how you can easily add support for these methods and formats using Lift.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.3">15.3</a> Adding REST Helper Methods to our Entities
+</h2>
+<div class="Unindented">
+In order to simplify our REST handler code, we would like to add some helper methods for our <tt>Expense</tt> entity to support generation of both XML and JSON for our consumers. We’ll add these to a new <tt>RestFormatters</tt> object inside the <tt>src/main/scala/com/pocketchangeapp/RestFormatters.scala</tt> source file. First, we add some common functionality in Listing <a class="Reference" href="index-15.html#lst:Common-Expense-REST-helpers">15.3↓</a> by adding several helper methods for computing REST header values.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Common Expense REST Helpers<a class="Label" name="lst:Common-Expense-REST-helpers"> </a>
+</div>
+<pre class="listing brush: scala">  /* The REST timestamp format. Not threadsafe, so we create
+   * a new one each time. */
+  def timestamp = new SimpleDateFormat("yyyy-MM-dd’T’HH:mm:ss’Z’")
+​
+  // A simple helper to generate the REST ID of an Expense
+  def restId (e : Expense) =
+    "http://www.pocketchangeapp.com/api/expense/" + e.id
+​
+  // A simple helper to generate the REST timestamp of an Expense
+  def restTimestamp (e : Expense) : String =
+    timestamp.format(e.dateOf.is)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-15.html#lst:Expense-Entity-JSON">15.3↓</a> shows a helper method for generating a proper JSON representation of a given <tt>Expense</tt> using the Lift JSON DSL. Although <tt>Expense</tt> is a <tt>Mapper</tt> entity, we don’t use the <tt>Expense.asJs<a class="IndexReference" name="entry-Mapper-asJs-0" href="index-Index.html#index-Mapper-asJs">↓</a></tt> method inherited from <tt>Mapper</tt> because we want to better control the format.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Expense Entity JSON Formatters<a class="Label" name="lst:Expense-Entity-JSON"> </a>
+</div>
+<pre class="listing brush: scala">/**
+ * Generates the JSON REST representation of an Expense
+ */
+def toJSON (e : Expense) : JValue = {
+  import net.liftweb.json.JsonDSL._
+  import net.liftweb.json.JsonAST._
+​
+  ("expense" -&gt;
+    ("id" -&gt; restId(e)) ~
+    ("date" -&gt; restTimestamp(e)) ~
+    ("description" -&gt; e.description.is) ~
+    ("accountname" -&gt; e.accountName) ~
+    ("accountid" -&gt; e.account.obj.open_!.id.is) ~
+    ("amount" -&gt; e.amount.is.toString) ~
+    ("tags" -&gt; e.tags.map(_.name.is).mkString(",")))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Finally, Listing <a class="Reference" href="index-15.html#lst:Expense-Entity-REST-XML">15.3↓</a> shows the <tt>toXML</tt> method, which will generate properly formatted XML for a given <tt>Expense</tt>. Like <tt>toJSON</tt>, we don’t use the <tt>Expense.toXml</tt><a class="IndexReference" name="entry-Mapper-toXml-0" href="index-Index.html#index-Mapper-toXml">↓</a> method because we want more control over the generated format. Instead, we simply convert the result of <tt>toJSON</tt> into XML using the <tt>net.liftweb.json.Xml</tt> helper object.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Expense Entity XML REST Formatter<a class="Label" name="lst:Expense-Entity-REST-XML"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.json.Xml
+/**
+ * Generates the XML REST representation of an Expense
+ */
+def toXML (e : Expense) : Node = Xml.toXml(toJSON(e)).first
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.4">15.4</a> Multiple Approaches to REST Handling
+</h2>
+<div class="Unindented">
+As Lift has evolved, two main approaches have emerged that allow you to perform RESTful operations. In Lift 1.0 and up, you can add custom dispatch (Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8 on page 1↑</a>) on your API URLs to call custom handlers for your REST data. In Lift 2.0, the new <tt>net.liftweb.http.rest.RestHelper</tt> was introduced that vastly simplifies not only the dispatch for given operations, but also assists with conversion of requests and responses to both XML and JSON. Because custom dispatch is still very much a first-class feature of Lift we will cover both approaches here.
+</div>
+<div class="Indented">
+Before we get into the details of each method, there are two last helpers we’d like to define. Listing <a class="Reference" href="index-15.html#lst:Adding-an-Extractor-expense">15.4↓</a> shows an <tt>unapply</tt> method that we add to our <tt>Expense</tt> <tt>MetaMapper</tt> so that we can use <tt>Expense</tt> as an extractor in pattern matching. In this code we not only attempt to match by using a provided <tt>String</tt> as the <tt>Expense</tt>’s primary key, but we also compute whether the <tt>Expense</tt> is in a public account. This assists us in determining authorization for viewing a given <tt>Expense</tt>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding an Extractor for Expense<a class="Label" name="lst:Adding-an-Extractor-expense"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.util.ControlHelpers.tryo
+/**
+ * Define an extractor that can be used to locate an Expense based
+ * on its ID. Returns a tuple of the Expense and whether the
+ * Expense’s account is public.
+ */
+def unapply (id : String) : Option[(Expense,Boolean)] = tryo {
+  find(By(Expense.id, id.toLong)).map { expense =&gt;
+     (expense,
+      expense.account.obj.open_!.is_public.is)
+  }.toOption
+} openOr None
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Similarly, Listing <a class="Reference" href="index-15.html#lst:Adding-an-Extractor-account">15.4↓</a> shows an extractor on the <tt>Account</tt> <tt>MetaMapper</tt> that matches an <tt>Account</tt> based on its primary key.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding an Extractor for Account<a class="Label" name="lst:Adding-an-Extractor-account"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.util.Helpers.tryo
+/**
+ * Define an extractor that can be used to locate an Account based
+ * on its ID.
+ */
+def unapply (id : String) : Option[Account] = tryo {
+  find(By(Account.id, id.toLong)).toOption
+} openOr None
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.4.1">15.4.1</a> Using Custom Dispatch<a class="Label" name="sub:REST-Custom-Dispatch"> </a>
+</h3>
+<div class="Unindented">
+Now that we’ve discussed our design, let’s see the code that will handle the routing. In the package <tt>com.pocketchangeapp.api</tt>, we have an object named <tt>DispatchRestAPI, which we’ve</tt> defined in <tt>src/main/scala/com/pocketchangeapp/api/RestAPI.scala</tt>. In <tt>DispatchRestAPI</tt>, we define a custom dispatch function to pattern match on the request and delegate to a handler method. The custom dispatch function is shown in Listing <a class="Reference" href="index-15.html#lst:REST-Method-Routing">15.4.1↓</a>. You can see that we use our extractors in the matching for both <tt>Expense</tt>s and <tt>Account</tt>s. We’ll cover the processing of PUTs in Section <a class="Reference" href="index-15.html#sec:Processing-Expense-PUTs">15.5↓</a>, and the Atom processing in Section <a class="Reference" href="index-15.html#sec:Servicing-Atom">15.7↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+REST Method Routing<a class="Label" name="lst:REST-Method-Routing"> </a>
+</div>
+<pre class="listing brush: scala">// Import our methods for converting things around
+import RestFormatters._
+​
+def dispatch: LiftRules.DispatchPF = {
+  // Define our getters first
+  case Req(List("api", "expense", Expense(expense,_)), _, GetRequest) =&gt;
+     () =&gt; nodeSeqToResponse(toXML(expense)) // default to XML
+  case Req(List("api", "expense", Expense(expense,_), "xml"), _, GetRequest) =&gt;
+     () =&gt; nodeSeqToResponse(toXML(expense))
+  case Req(List("api", "expense", Expense(expense,_), "json"), _, GetRequest) =&gt;
+     () =&gt; JsonResponse(toJSON(expense))
+  case Req(List("api", "account", Account(account)), _, GetRequest) =&gt;
+     () =&gt; AtomResponse(toAtom(account))
+​
+  // Define the PUT handler for both XML and JSON MIME types
+  case request @ Req(List("api", "account", Account(account)), _, PutRequest)
+    if request.xml_? =&gt;
+      () =&gt; addExpense(fromXML(request.xml,account),
+                       account,
+                       result =&gt; CreatedResponse(toXML(result), "text/xml"))
+  case request @ Req(List("api", "account", Account(account)), _, PutRequest)
+    if request.json_? =&gt;
+      () =&gt; addExpense(fromJSON(request.body,account),
+                       account,
+                       result =&gt; JsonResponse(toJSONExp(result), Nil, Nil, 201))
+​
+  // Invalid API request - route to our error handler
+  case Req("api" :: x :: Nil, "", _) =&gt;
+    () =&gt; BadResponse() // Everything else fails
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Our <tt>DispatchRestAPI</tt> object mixes in the <tt>net.liftweb.http.rest.XMLApiHelper</tt> trait, which includes several implicit conversions to simplify writing our REST API. Remember that <tt>LiftRules.DispatchPF</tt> must return a function <span class="formula">() ⇒ <i>Box</i>[<i>LiftResponse</i>]</span> (Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8 on page 1↑</a>), so we’re using the implicit <tt>putResponseInBox</tt> as well as explicitly calling <tt>nodeSeqToResponse</tt> to convert our API return values into the proper format.
+</div>
+<div class="Indented">
+The server will now service <tt>GET</tt> requests with the appropriate formatter function and will handle <tt>PUT</tt> requests with the <tt>addExpense</tt> method (which we’ll define later in this chapter). 
+</div>
+<div class="Indented">
+We hook our new dispatch function into LiftRules by adding the code shown in Listing <a class="Reference" href="index-15.html#lst:Setting-up-REST">15.4.1↓</a> to our <tt>Boot.boot</tt> method.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting up REST Dispatch<a class="Label" name="lst:Setting-up-REST"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.dispatch.prepend(DispatchRestAPI.dispatch)
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.4.2">15.4.2</a> Using the RestHelper Trait
+</h3>
+<div class="Unindented">
+New in Lift 2.0 is the <tt>net.liftweb.http.rest.RestHelper</tt> trait. This trait simplifies the creation of REST APIs that support both XML and JSON. For our example, we’ll define the <tt>RestHelperAPI</tt> object in our <tt>RestAPI.scala</tt> source file.
+</div>
+<div class="Indented">
+Before we get into the details of actual processing with <tt>RestHelper</tt>, we want to point out some useful parts of its API. First, <tt>RestHelper</tt> provides a number of built-in extractors for matching not only what HTTP verb a given request uses, but also the format of the request (JSON or XML). These extractors are:
+</div>
+<ul>
+<li>
+<tt>Get</tt>, <tt>JsonGet</tt>, <tt>XmlGet</tt> - matches a raw GET, or a GET of the specified format
+</li>
+<li>
+<tt>Post</tt>, <tt>JsonPost</tt>, <tt>XmlPost</tt> - matches a raw POST, or a POST of the specified format
+</li>
+<li>
+<tt>Put</tt>, <tt>JsonPut</tt>, <tt>XmlPut</tt> - matches a raw PUT, or a PUT of the specified format
+</li>
+<li>
+<tt>Delete</tt> - matches a DELETE request
+</li>
+<li>
+<tt>JsonReq</tt> - matches a request with the Accept header containing “application/json”, or whose Accept header contains “*/*” and whose path suffix is “json”
+</li>
+<li>
+<tt>XmlReq</tt> - matches a request with the Accept header containing “text/xml”, or whose Accept header contains “*/*” and whose path suffix is “xml”
+</li>
+
+</ul>
+<div class="Unindented">
+We’ll demonstrate in the following sections how to use these extractors. Note that you can add additional rules for the <tt>JsonReq</tt> and <tt>XmlReq</tt> extractors by overriding the <tt><br/>
+RestHelper.suplimentalJsonResponse_?</tt> and <tt>suplimentalXmlResponse_?</tt> (yes, those are spelled incorrectly) methods to perform additional tests on the request. For example, Listing <a class="Reference" href="index-15.html#lst:Using-a-Cookie-request-type">15.4.2↓</a> shows how we can use the existence of a given header to determine whether a request is XML or JSON. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using a Cookie to Determine the Request Type<a class="Label" name="lst:Using-a-Cookie-request-type"> </a>
+</div>
+<pre class="listing brush: scala">override def suplimentalJsonResponse_? (in : Req) = 
+  in.header("This-Is-A-JSON-Request").isDefined
+override def suplimentalXmlResponse_? (in : Req) = 
+  in.header("This-Is-A-XML-Request").isDefined
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+One important difference between <tt>RestHelper</tt> and our <tt>DispatchRestAPI</tt> examples that we want to point out is that <tt>RestHelper</tt> determines whether a request is XML or JSON based on the Accept header and/or the suffix of the path (e.g. <tt>/api/expense/1.xml</tt>), whereas our DispatchRestAPI used the last component of the path (<tt>/api/expense/1/xml</tt>). Either approach is valid, just be aware if you’re copying this example code.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Next, like the <tt>XMLApiHelper</tt> trait, <tt>RestHelper</tt> provides a number of implicit conversions to <tt>LiftResponse</tt> from a variety of inputs. We’re not going to cover these directly here, but we’ll point out where we use them in this section.
+</div>
+<div class="Indented">
+Similar to our <tt>DispatchRestAPI</tt> handler, we need to define a set of patterns that we can match against. Unlike <tt>DispatchRestAPI</tt>, however, <tt>RestHelper</tt> defines four <tt>PartialFunction</tt> methods where we can add our patterns: <tt>serve</tt>, <tt>serveJx</tt>, <tt>serveJxa</tt> and <tt>serveType</tt>. These functions provide increasing automation (and control) over what gets served when the request matches a pattern. We won’t be covering <tt>serveType</tt> here, since it’s essentially the generalized version that <tt>serve</tt>, <tt>serveJx</tt> and <tt>serveJxa</tt> use behind the scenes.
+</div>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-15.4.2.1">15.4.2.1</a> The serve Method
+</h4>
+<div class="Unindented">
+Let’s start with the <tt>serve</tt> method. This method essentially corresponds one-to-one with our <tt>DispatchRestAPI.dispatch</tt> method. Listing <a class="Reference" href="index-15.html#lst:Using-RestHelper.serve">15.4.2.1↓</a> shows how we could handle Atom requests, as well as requests that don’t specify a format, using <tt>RestHelper</tt>. Note our use of the <tt>RestHelper</tt> extractors to match the HTTP Verb being used. Also note that we’re using an implicit conversion from a Box[T] to a Box[LiftResponse] when an implicit function is in scope that can convert T into a LiftResponse. In our example, <tt>Full(toXML(expense))</tt> is equivalent to <tt>boxToResp(Full(toXML(expense)))(nodeToResp)</tt>. Finally, the serve method can be invoked multiple times and the <tt>PartialFunctions</tt> will be chained together.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using RestHelper.serve<a class="Label" name="lst:Using-RestHelper.serve"> </a>
+</div>
+<pre class="listing brush: scala">// Service Atom and requests that don’t request a specific format
+serve {
+  // Default to XML
+  case Get(List("api", "expense", Expense(expense,_)), _) =&gt;
+    () =&gt; Full(toXML(expense))
+  case Get(List("api", "account", Account(account)), _) =&gt;
+    () =&gt; Full(AtomResponse(toAtom(account)))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We use similar calls to hook our PUT handlers, shown in Listing <a class="Reference" href="index-15.html#lst:Using-serve-to-handle-PUT">15.4.2.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using serve to handle PUTs<a class="Label" name="lst:Using-serve-to-handle-PUT"> </a>
+</div>
+<pre class="listing brush: scala">// Hook our PUT handlers
+import DispatchRestAPI.addExpense
+serve {
+  case XmlPut(List("api", "account", Account(account)), (body, request)) =&gt;
+    () =&gt; Full(addExpense(fromXML(Full(body),account),
+                          account,
+                          result =&gt; CreatedResponse(toXML(result), "text/xml")))
+  case JsonPut(List("api", "account", Account(account)), (_, request))  =&gt;
+    () =&gt; Full(addExpense(fromJSON(request.body,account),
+                          account,
+                          result =&gt; JsonResponse(toJSON(result), Nil, Nil, 201)))
+}
+</pre>
+</div>
+
+</div>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-15.4.2.2">15.4.2.2</a> The serveJx Method
+</h4>
+<div class="Unindented">
+Like the serve method, <tt>serveJx</tt> performs pattern matching on the request. However, <tt>serveJx</tt> allows you to specify a conversion function that matches against the requested format<br/>
+(<tt>net.liftweb.http.rest.JsonSelect</tt> or <tt>net.liftweb.http.rest.XmlSelect</tt>) and perform your conversion there. Then, all you need to do is match once against a given path and <tt>serveJx</tt> will utilize your conversion function to return the proper result. Listing <a class="Reference" href="index-15.html#lst:Using-RestHelper.serveJx">15.4.2.2↓</a> shows how we can use a new implicit conversion to handle our format-specific GETs. The single match in our <tt>serveJx</tt> call replaces two lines in our <tt>DispatchRestAPI.dispatch</tt> method.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using RestHelper.serveJx<a class="Label" name="lst:Using-RestHelper.serveJx"> </a>
+</div>
+<pre class="listing brush: scala">// Define an implicit conversion from an Expense to XML or JSON
+import net.liftweb.http.rest.{JsonSelect,XmlSelect}
+implicit def expenseToRestResponse : JxCvtPF[Expense] = {
+  case (JsonSelect, e, _) =&gt; toJSON(e)
+  case (XmlSelect, e, _) =&gt; toXML(e)
+}
+​
+serveJx {
+  case Get(List("api", "expense", Expense(expense,_)), _) =&gt; Full(expense)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In addition to providing your own conversion function, <tt>serveJx</tt> can utilize the <tt>RestHelper</tt> autoconversion functionality. To use this, simply use the <tt>auto</tt> method to wrap whatever you want to return. Listing <a class="Reference" href="index-15.html#lst:Using-auto-to-convert-returns">15.4.2.2↓</a> shows an example of returning a contrived data object with <tt>auto</tt>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using auto to Convert Return Values<a class="Label" name="lst:Using-auto-to-convert-returns"> </a>
+</div>
+<pre class="listing brush: scala">// Just an example of autoconversion
+serveJx {
+  case Get(List("api", "greet", name),_) =&gt;
+     auto(Map("greeting" -&gt;
+              Map("who" -&gt; name,
+                  "what" -&gt; ("Hello at " + new java.util.Date))))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The conversion is actually performed with the <tt>net.liftweb.json.Extraction</tt> object<a class="IndexReference" name="entry-Extraction-0" href="index-Index.html#index-Extraction">↓</a><a class="IndexReference" name="entry-JSON-extraction-0" href="index-Index.html#index-JSON-extraction">↓</a><a class="IndexReference" name="entry-Autoconversion-0" href="index-Index.html#index-Autoconversion">↓</a>, so you can autoconvert anything that <tt>Extraction</tt> can handle. This includes:
+</div>
+<ul>
+<li>
+Primitives
+</li>
+<li>
+Maps
+</li>
+<li>
+Arrays
+</li>
+<li>
+Collections
+</li>
+<li>
+Options
+</li>
+<li>
+Case classes
+</li>
+
+</ul>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-15.4.2.3">15.4.2.3</a> The serveJxa Method
+</h4>
+<div class="Unindented">
+The <tt>serveJxa</tt> method is basically the same as the <tt>serve</tt> and <tt>serveJx</tt> methods, except that anything that is returned will be automatically converted to JSON via the<br/>
+<tt>net.liftweb.json.Extraction.decompose</tt> method.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.5">15.5</a> Processing Expense PUTs<a class="Label" name="sec:Processing-Expense-PUTs"> </a>
+</h2>
+<div class="Unindented">
+Now that we’re handling the API calls, we’ll need to write the code to process and respond to requests. The first thing we need to do is deserialize the <tt>Expense</tt> from the either an XML or JSON request.
+</div>
+<div class="Indented">
+In PocketChange our use of <tt>BigDecimal</tt> values to represent currency amounts means that we can’t simply use the lift-json deserialization support (Section <a class="Reference" href="index-C.html#sec:JSON">C.10 on page 1↓</a>). While lift-json is very good and would make this much simpler, it parses decimal values as doubles which can lead to rounding and precision issues when working with decimal values. Instead, we will need to write our own conversion functions. 
+</div>
+<div class="Indented">
+To simplify error handling, we break this processing up into two format-specific methods that convert to a <tt>Map</tt> representation of the data, and another method that converts the intermediate <tt>Map</tt>/<tt>List</tt> into an <tt>Expense</tt>. Listing <a class="Reference" href="index-15.html#lst:Deserializing-XML-to-Expense">15.5↓</a> shows the <tt>fromXML</tt> method in the <tt>RestFormatters</tt> object. This method performs some basic validation to make sure we have the required parameters, but otherwise doesn’t validate the values of those parameters. Note that we provide the <tt>Account</tt> to <tt>fromXML</tt> so that we can resolve tag names in the <tt>fromMap</tt> method (which we’ll cover momentarily).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Deserializing XML to an Expense<a class="Label" name="lst:Deserializing-XML-to-Expense"> </a>
+</div>
+<pre class="listing brush: scala">def fromXML (rootNode : Box[Elem], account : Account) : Box[Expense] = 
+ rootNode match {
+  case Full(&lt;expense&gt;{parameters @ _*}&lt;/expense&gt;) =&gt; {
+    var data = Map[String,String]()
+​
+    for(parameter &lt;- parameters) {
+      parameter match {
+        case &lt;date&gt;{date}&lt;/date&gt; =&gt; data += "date" -&gt; date.text
+        case &lt;description&gt;{description}&lt;/description&gt; =&gt;
+          data += "description" -&gt; description.text
+        case &lt;amount&gt;{amount}&lt;/amount&gt; =&gt; data += "amount" -&gt; amount.text
+        case &lt;tags&gt;{ tags }&lt;/tags&gt; =&gt; data += "tags" -&gt; tags.text
+        case _ =&gt; // Ignore (could be whitespace)
+      }
+    }
+​
+    fromMap(data, account)
+  }
+  case other =&gt; Failure("Missing root expense element")
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Similarly, Listing <a class="Reference" href="index-15.html#lst:Deserializing-JSON-to-Expense">15.5↓</a> shows our <tt>fromJSON</tt> method.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Deserializing JSON to an Expense<a class="Label" name="lst:Deserializing-JSON-to-Expense"> </a>
+</div>
+<pre class="listing brush: scala">def fromJSON (obj : Box[Array[Byte]], account : Account) : Box[Expense] =
+ obj match {
+  case Full(rawBytes) =&gt; {
+    // We use the Scala util JSON parser here because we want to avoid parsing
+    // numeric values into doubles. We’ll just leave them as Strings
+    import scala.util.parsing.json.JSON
+    JSON.perThreadNumberParser = { in : String =&gt; in }
+​
+    val contents = new String(rawBytes, "UTF-8")
+    JSON.parseFull(contents) match {
+      case Some(data : Map[String,Any]) =&gt; {
+        fromMap(data.mapElements(_.toString), account)
+      }
+      case other =&gt; Failure("Invalid JSON submitted: \"%s\"".format(contents))
+    }
+  }
+  case _ =&gt; Failure("Empty body submitted")
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Finally, Listing <a class="Reference" href="index-15.html#lst:Converting-the-Intermediate-Expense">15.5↓</a> shows our <tt>fromMap</tt> method, which takes the data parsed by <tt>fromJSON</tt> and <tt>fromXML</tt> and converts it into an actual expense.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Converting the Intermediate Data to an Expense<a class="Label" name="lst:Converting-the-Intermediate-Expense"> </a>
+</div>
+<pre class="listing brush: scala">def fromMap (data : scala.collection.Map[String,String],
+             account : Account) : Box[Expense] = {
+  val expense = Expense.create
+​
+  try {
+    val fieldParsers : List[(String, String =&gt; Expense)] =
+      ("date", (date : String) =&gt; expense.dateOf(timestamp.parse(date))) ::
+      ("description", (desc : String) =&gt; expense.description(desc)) ::
+      ("amount", (amount : String) =&gt; expense.amount(BigDecimal(amount))) :: Nil
+​
+    val missing = fieldParsers.flatMap {
+      field =&gt; // We invert the flatMap here to only give us missing values
+        if (data.get(field._1).map(field._2).isDefined) None else Some(field._1)
+    }
+ 
+    if (missing.isEmpty) {
+      expense.account(account)
+      data.get("tags").foreach {
+        tags =&gt; expense.tags(tags.split(",").map(Tag.byName(account.id.is,_)).toList)
+      }
+      Full(expense)
+    } else {
+      Failure(missing.mkString("Invalid expense. Missing: ", ",", ""))
+    }
+  } catch {
+    case pe : java.text.ParseException =&gt; Failure("Failed to parse date")
+    case nfe : java.lang.NumberFormatException =&gt;
+      Failure("Failed to parse amount")
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now that we’ve converted the PUT data into an <tt>Expense</tt>, we need to actually perform our logic and persist the submitted <tt>Expense</tt>. Listing <a class="Reference" href="index-15.html#lst:Saving-the-submitted-Expense">15.5↓</a> shows our <tt>addExpense</tt> method, which matches against the parsed <tt>Expense</tt> and either runs validation if the parse succeeded, or returns an error response to the user if something failed. If validation fails, the user is similarly notified. The <tt>success</tt> parameter is a function that can be used to generate the appropriate response based on the newly created Expense. This allows us to return the new Expense in the same format (JSON, XML) in which it was submitted (see the dispatch function, Listing <a class="Reference" href="index-15.html#lst:REST-Method-Routing">15.4.1↑</a>).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Saving the submitted Expense<a class="Label" name="lst:Saving-the-submitted-Expense"> </a>
+</div>
+<pre class="listing brush: scala">def addExpense(parsedExpense : Box[Expense],
+               account : Account,
+               success : Expense =&gt; LiftResponse): LiftResponse = 
+ parsedExpense match {
+  case Full(expense) =&gt; {
+    val (entrySerial,entryBalance) =
+      Expense.getLastExpenseData(account, expense.dateOf)
+​
+    expense.account(account).serialNumber(entrySerial + 1).
+    currentBalance(entryBalance + expense.amount)
+    expense.validate match {
+      case Nil =&gt; {
+        Expense.updateEntries(entrySerial + 1, expense.amount.is)
+        expense.save
+        account.balance(account.balance.is + expense.amount.is).save
+​
+        success(expense)
+      }
+      case errors =&gt; {
+        val message = errors.mkString("Validation failed:", ",","")
+        logger.error(message)
+        ResponseWithReason(BadResponse(), message)
+      }
+    }
+  }
+  case Failure(msg, _, _) =&gt; {
+    logger.error(msg)
+    ResponseWithReason(BadResponse(), msg)
+  }
+  case error =&gt; {
+    logger.error("Parsed expense as : " + error)
+    BadResponse()
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.6">15.6</a> The Request and Response Cycles for Our API
+</h2>
+<div class="Unindented">
+At the beginning of this chapter, we showed you a request and response conversation for <tt><br/>
+http://demo.liftweb.net/</tt>. Let’s see what that looks like for a request to our API. Listing <a class="Reference" href="index-15.html#lst:Request-and-Response-GET">15.6↓</a> shows an XML GET request for a given expense. Note that we’re not showing the HTTP Basic authentication setup, required by our authentication configuration (Section <a class="Reference" href="index-9.html#sub:HTTP-Authentication">9.9 on page 1↑</a>).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Request and Response for XML GET<a class="Label" name="lst:Request-and-Response-GET"> </a>
+</div>
+<pre class="listing brush: scala">Request:
+http://www.pocketchangeapp.com/api/expense/3 GET
+​
+Response:
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;expense&gt;
+  &lt;id&gt;http://www.pocketchangeapp.com/api/expense/3&lt;/id&gt;
+  &lt;accountname&gt;Test&lt;/accountname&gt;
+  &lt;accountid&gt;1&lt;/accountid&gt;
+  &lt;date&gt;2010-10-06T00:00:00Z&lt;/date&gt;
+  &lt;description&gt;Receipt test&lt;/description&gt;
+  &lt;amount&gt;12.00&lt;/amount&gt;
+  &lt;tags&gt;test,receipt&lt;/tags&gt;
+&lt;/expense&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-15.html#lst:Request-and-Response-GET-JSON">15.6↓</a> shows the same request in JSON format.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Request and Response for JSON GET<a class="Label" name="lst:Request-and-Response-GET-JSON"> </a>
+</div>
+<pre class="listing brush: scala">Request:
+http://www.pocketchangeapp.com/api/expense/3/json GET
+​
+Response:
+{"id":"http://www.pocketchangeapp.com/api/expense/3",
+ "date":"2010-10-06T00:00:00Z",
+ "description":"Receipt test",
+ "accountname":"Test",
+ "accountid":1,
+ "amount":"12.00",
+ "tags":"test,receipt"}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-15.html#lst:Request-and-Response-PUT">15.6↓</a> shows the output for a PUT conversation:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Request and Response for an XML PUT<a class="Label" name="lst:Request-and-Response-PUT"> </a>
+</div>
+<pre class="listing brush: scala">Request:
+http://www.pocketchangeapp.com/api/account/1 - PUT - addEntry(request) + XML Body
+​
+Request Body:
+&lt;expense&gt;
+  &lt;date&gt;2010-07-05T14:22:00Z&lt;/date&gt;
+  &lt;description&gt;Test&lt;/description&gt;
+  &lt;amount&gt;12.41&lt;/amount&gt;
+  &lt;tags&gt;test,api&lt;/tags&gt;
+&lt;/expense&gt;
+​
+Response:
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;expense&gt;
+  &lt;id&gt;http://www.pocketchangeapp.com/api/expense/10&lt;/id&gt;
+  &lt;accountname&gt;Test&lt;/accountname&gt;
+  &lt;accountid&gt;1&lt;/accountid&gt;
+  &lt;date&gt;2010-07-05T14:22:00Z&lt;/date&gt;
+  &lt;description&gt;Test&lt;/description&gt;
+  &lt;amount&gt;12.41&lt;/amount&gt;
+  &lt;tags&gt;api,test&lt;/tags&gt;
+&lt;/expense&gt;   
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.7">15.7</a> Extending the API to Return Atom Feeds<a class="Label" name="sec:Servicing-Atom"> </a>
+</h2>
+<div class="Unindented">
+In addition to being able to fetch specific expenses using our API, it would be nice to be able to provide a feed of expenses for an account as they’re added. For this example, we’ll add support for Atom<span class="FootOuter"><span class="SupFootMarker"> [V] </span><span class="HoverFoot"><span class="SupFootMarker"> [V] </span><a class="FlexURL" href="http://tools.ietf.org/html/rfc4287">http://tools.ietf.org/html/rfc4287</a></span></span>, a simple publishing standard for content syndication. The first thing we need to do is write a method to generate an Atom feed for a given Account. Although Atom is XML-based, it’s sufficiently different enough from our REST API XML format that we’ll just write new methods for it. Listing <a class="Reference" href="index-15.html#lst:The-toAtom-Method">15.7↓</a> shows the <tt>toAtom</tt> methods (one for <tt>Account</tt>, one for <tt>Expense</tt>) in our <tt>RestFormatters</tt> object that will handle the formatting. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The toAtom Methods<a class="Label" name="lst:The-toAtom-Method"> </a>
+</div>
+<pre class="listing brush: scala">def toAtom (a : Account) : Elem = {
+  val entries = Expense.getByAcct(a,Empty,Empty,Empty,MaxRows(10))
+​
+  &lt;feed xmlns="http://www.w3.org/2005/Atom"&gt;
+    &lt;title&gt;{a.name}&lt;/title&gt;
+    &lt;id&gt;urn:uuid:{a.id.is}&lt;/id&gt;
+    &lt;updated&gt;{entries.headOption.map(restTimestamp) getOrElse
+              timestamp.format(new java.util.Date)}&lt;/updated&gt;
+    { entries.flatMap(toAtom) }
+  &lt;/feed&gt;
+}
+​
+def toAtom (e : Expense) : Elem =
+  &lt;entry&gt;
+    &lt;id&gt;urn:uuid:{restId(e)}&lt;/id&gt;
+    &lt;title&gt;{e.description.is}&lt;/title&gt;
+    &lt;updated&gt;{restTimestamp(e)}&lt;/updated&gt;
+    &lt;content type="xhtml"&gt;
+      &lt;div xmlns="http://www.w3.org/1999/xhtml"&gt;
+        &lt;table&gt;
+          &lt;tr&gt;&lt;th&gt;Amount&lt;/th&gt;&lt;th&gt;Tags&lt;/th&gt;&lt;th&gt;Receipt&lt;/th&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;{e.amount.is.toString}&lt;/td&gt;
+              &lt;td&gt;{e.tags.map(_.name.is).mkString(", ")}&lt;/td&gt;
+              &lt;td&gt;{
+                 if (e.receipt.is ne null) {
+                   &lt;img src={"/image/" + e.id} /&gt;
+                 } else Text("None")
+               }&lt;/td&gt;&lt;/tr&gt;
+        &lt;/table&gt;
+      &lt;/div&gt;
+    &lt;/content&gt;
+  &lt;/entry&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now that we have the format, we simply hook into our dispatch method to match a GET request on a URL like:
+</div>
+<pre class="LyX-Code">
+http://www.pocketchangeapp.com/api/account/&lt;accound ID&gt;
+</pre>
+<div class="Unindented">
+Refer to Listing <a class="Reference" href="index-15.html#lst:REST-Method-Routing">15.4.1↑</a> again to see this match.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.7.1">15.7.1</a> An Example Atom Request
+</h3>
+<div class="Unindented">
+An example Atom reqeust/response cycle for a test account is shown in Listing <a class="Reference" href="index-15.html#lst:An-Example-Atom-req-resp">15.7.1↓</a>. We’ve cut off the entries here for brevity.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+An Example Atom Request and Response<a class="Label" name="lst:An-Example-Atom-req-resp"> </a>
+</div>
+<pre class="listing brush: scala">Request:
+http://www.pocketchangeapp.com/api/account/1
+​
+Response:
+&lt;feed xmlns="http://www.w3.org/2005/Atom"&gt;
+  &lt;title&gt;Test&lt;/title&gt;
+  &lt;id&gt;urn:uuid:1&lt;/id&gt;
+  &lt;updated&gt;2010-10-06T00:00:00Z&lt;/updated&gt;
+  &lt;entry&gt;
+      &lt;id&gt;urn:uuid:http://www.pocketchangeapp.com/api/expense/3&lt;/id&gt;
+      &lt;title&gt;Receipt test&lt;/title&gt;
+      &lt;updated&gt;2010-10-06T00:00:00Z&lt;/updated&gt;
+      &lt;content type="xhtml"&gt;
+        &lt;div xmlns="http://www.w3.org/1999/xhtml"&gt;
+          &lt;table&gt;
+          &lt;tr&gt;&lt;th&gt;Amount&lt;/th&gt;&lt;th&gt;Tags&lt;/th&gt;&lt;th&gt;Receipt&lt;/th&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;td&gt;12.00&lt;/td&gt;
+              &lt;td&gt;test, receipt&lt;/td&gt;
+              &lt;td&gt;&lt;img src="/image/3" /&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;/table&gt;
+        &lt;/div&gt;
+      &lt;/content&gt;
+    &lt;/entry&gt;
+    ...
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-15.7.2">15.7.2</a> Add a feed tag for the account page
+</h3>
+<div class="Unindented">
+As an extra nicety, we want to add an appropriate Atom <tt>&lt;link/&gt;</tt> tag to our Account view page so that people can easily subscribe to the feed from their browser. We do this by making two modifications to our template and snippet code. Listing <a class="Reference" href="index-15.html#lst:Adding-a-link-viewAcct">15.7.2↓</a> shows how we insert a new binding point in our <tt>viewAcct.html</tt> template to place the new link in the page head section.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding a binding to viewAcct.html<a class="Label" name="lst:Adding-a-link-viewAcct"> </a>
+</div>
+<pre class="listing brush: xml">...
+&lt;lift:Accounts.detail eager_eval="true"&gt;
+  &lt;head&gt;&lt;acct:atomLink /&gt;&lt;/head&gt;
+...
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-15.html#lst:Binding-the-Atom-link">15.7.2↓</a> shows how we generate a new Atom link based on the current <tt>Account</tt>’s id that points to the proper URL for our API.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Binding the Atom link<a class="Label" name="lst:Binding-the-Atom-link"> </a>
+</div>
+<pre class="listing brush: scala">bind("acct", xhtml,
+     "atomLink" -&gt; &lt;link href={"/api/account/" + acct.id} 
+                      type="application/atom+xml" 
+                      rel="alternate" title={acct.name + " feed"} /&gt;,
+     "name" -&gt; acct.name.asHtml,
+     ...
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-15.8">15.8</a> Conclusion
+</h2>
+<div class="Unindented">
+In this chapter, we outlined a RESTful API for a web application and showed how to implement one using Lift. We then extended that API to return Atom in addition to XML and JSON.
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-14.html#Next">Previous: Chapter 14</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-Part-III.html#prev">Next: Part III</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-12.html#Next">Previous: Chapter 12</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-14.html#prev">Next: Chapter 14</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-13">13</a> Third Party Integrations
+</h1>
+<div class="Unindented">
+In this chapter we’ll explore how you can integrate Lift with some well-known third party libraries and applications
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.1">13.1</a> OpenID Integration
+</h2>
+<div class="Unindented">
+The OpenID Foundation<span class="FootOuter"><span class="SupFootMarker"> [V] </span><span class="HoverFoot"><span class="SupFootMarker"> [V] </span><a class="FlexURL" href="http://openid.net/">http://openid.net/</a></span></span> explain OpenID as:
+</div>
+<div class="Indented">
+“OpenID eliminates the need for multiple usernames across different websites, simplifying your online experience.
+</div>
+<div class="Indented">
+You get to choose the OpenID Provider that best meets your needs and most importantly that you trust. At the same time, your OpenID can stay with you, no matter which Provider you move to. And best of all, the OpenID technology is not proprietary and is completely free. For businesses, this means a lower cost of password and account management, while drawing new web traffic. OpenID lowers user frustration by letting users have control of their login. For geeks, OpenID is an open, decentralized, free framework for user-centric digital identity. OpenID takes advantage of already existing internet technology (URI, HTTP, SSL, Diffie-Hellman) and realizes that people are already creating identities for themselves whether it be at their blog, photostream, profile page, etc. With OpenID you can easily transform one of these existing URIs into an account which can be used at sites which support OpenID logins.
+</div>
+<div class="Indented">
+OpenID is still in the adoption phase and is becoming more and more popular, as large organizations like AOL, Microsoft, Sun, Novell, etc. begin to accept and provide OpenIDs. Today it is estimated that there are over 160-million OpenID enabled URIs with nearly ten-thousand sites supporting OpenID logins.”
+</div>
+<div class="Indented">
+Lift provides openId support using onepID4Java<span class="FootOuter"><span class="SupFootMarker"> [W] </span><span class="HoverFoot"><span class="SupFootMarker"> [W] </span>http://code.google.com/p/openid4java/</span></span>. It provides two fundamental traits <tt>net.liftweb.openId.OpenIdVendor</tt> and <tt>net.liftweb.openId.OpenIdConsumer. OpenIdVendor</tt> contains variables such as:
+</div>
+<ul>
+<li>
+PathRoot - The path sequence for processing OpenID requests. The default value is “openid”
+</li>
+<li>
+LoginPath - The path sequence for processing login requests. The default value is “login”. The login path will be /openid/login
+</li>
+<li>
+LogoutPath - The path sequence for processing logout requests. The default value is “logout”. The login path will be /openid/logour
+</li>
+<li>
+ResponsePath - The path sequence for processing login requests. The default value is “response”. The login path will be /openid/response
+</li>
+<li>
+PostParamName - The form parameter name containing the OpeID identity URL entered by the user
+</li>
+
+</ul>
+<div class="Unindented">
+Also the vendor trait contains the loginForm function that returns the login form containing an input text field for the OpenID identity and the submit button. The form will point to /&lt;PathRoot&gt;/&lt;LoginPath&gt; where PathRoot and LoginPath are the variables described above. Here is an example:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+OpenID example
+</div>
+<pre class="listing brush: scala">// Your template
+​
+&lt;lift:OpenID.form&gt;
+  &lt;openId:renderForm/&gt;
+&lt;/lift:OpenID.form&gt;
+​
+// Your snippet
+​
+class OpenID {
+​
+  def renderForm(xhtml: NodeSeq) : NodeSeq = {
+    SimpleOpenIdVendor.loginForm
+  }
+​
+}
+​
+class Boot {
+​
+  ...
+  // This is needed in order to process the login and logout requests and also to process
+  // the response comming from OpenID provider
+  LiftRules.dispatch.append(SimpleOpenIdVendor.dispatchPF)
+  ...
+​
+}
+​
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+That is pretty much all you need to add into your Lift application. The authentication flow is:
+</div>
+<ol>
+<li>
+User accesses your lift page that contains the OpenID form
+</li>
+<li>
+User enters his/her OpenID identity URL and submits the form. Note that you don’t have to use the default login form asyou can construct your own as long as the form is submitted to the correct path and contains the correct input text parameter name.
+</li>
+<li>
+The dispatchPF function that we appended above will process the /openid/login request and will send the authentication request to the Identity Provider site
+</li>
+<li>
+Identity Provider will validate the user and redirect back to your Lift application to /openid/response path.
+</li>
+<li>
+The response is validated using OpenId4Java library
+</li>
+<li>
+<tt>OpenIdConsumer.postLogin</tt> gets called.
+</li>
+
+</ol>
+<div class="Unindented">
+The SimpleOpenIDVendor looks like:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+SimpleOpenIDVendor
+</div>
+<pre class="listing brush: scala">trait SimpleOpenIdVendor extends OpenIdVendor {   
+  type UserType = Identifier   
+  type ConsumerType = OpenIdConsumer[UserType]
+  
+  def currentUser = OpenIdUser.is
+  def postLogin(id: Box[Identifier],res: VerificationResult): Unit = {
+    id match {
+      case Full(id) =&gt; S.notice("Welcome "+id)
+      case _ =&gt; S.error("Failed to authenticate")
+    }
+    OpenIdUser(id)
+  }
+  def logUserOut() {
+    OpenIdUser.remove   
+  }
+  def displayUser(in: UserType): NodeSeq = Text("Welcome "+in)
+  def createAConsumer = new AnyRef with OpenIDConsumer[UserType]
+}
+object SimpleOpenIdVendor extends SimpleOpenIdVendor 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note the postLogin implementation. Of course if you need a more complex post-login processing you can extend OpenIdVendor by yourself. 
+</div>
+<div class="Indented">
+During this message exchange between the Identity Provider ans your Lift application, Lift utilizes a couple of SessionVars:
+</div>
+<ul>
+<li>
+OpenIdObject - holds an OpenIdConsumer
+</li>
+<li>
+OpenIdUser - holding an org.openid4java.discovery.Identifier
+</li>
+
+</ul>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.2">13.2</a> AMQP 
+</h2>
+<div class="Unindented">
+AMQP stands for <b>A</b>dvanced <b>M</b>essage <b>Q</b>ueuing <b>P</b>rotocol<span class="FootOuter"><span class="SupFootMarker"> [X] </span><span class="HoverFoot"><span class="SupFootMarker"> [X] </span>http://jira.amqp.org/confluence/display/AMQP/Advanced+Message+Queuing+Protocol</span></span>. It is an open Internet protocol for messaging. It is concepted as a binary representation of messages. Lift facilitates the work with AMQP using the RabbitMQ<span class="FootOuter"><span class="SupFootMarker"> [Y] </span><span class="HoverFoot"><span class="SupFootMarker"> [Y] </span>http://www.rabbitmq.com/</span></span> Java implementation. There are two fundamental classes:
+</div>
+<ul>
+<li>
+<tt>net.liftweb.amqp.AMQPSender</tt> - used for sending AMQP messages
+</li>
+<li>
+<tt>net.liftweb.amqp.AMQPDispatcher</tt> - used for receiving AMQP messages
+</li>
+
+</ul>
+<div class="Unindented">
+Let’s see how we can use Lift to send AMQP messages
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+AMQP sending messages example<a class="Label" name="lst:AMQP-sending-messages"> </a>
+</div>
+<pre class="listing brush: scala">​
+  import net.liftweb.amqp._
+  import com.rabbitmq.client._ 
+​
+  val params = new ConnectionParameters
+  // All of the params, exchanges, and queues are all just example data.
+  params.setUsername("guest")
+  params.setPassword("guest")
+  params.setVirtualHost("/")
+  params.setRequestedHeartbeat(0)
+  val factory = new ConnectionFactory(params)
+  val amqp = new StringAMQPSender(factory, "localhost", 5672, "mult", "routeroute")
+  amqp.start
+  amqp ! AMQPMessage("hi") 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see the <tt>AMQSender</tt> is leveraging Scala actors to send messages. Scala actors and AMQP messaging concepts play very well together.
+</div>
+<div class="Indented">
+Now let’s see how we can receive and process AMQP messages:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+AMQP receiving messages example
+</div>
+<pre class="listing brush: scala">​
+import net.liftweb.amqp._
+import com.rabbitmq.client._ 
+​
+/**
+ * Example Dispatcher that listens on an example queue and exchange. Use this
+ * as your guiding example for creating your own Dispatcher.
+ *
+ */
+class ExampleSerializedAMQPDispatcher[T](factory: ConnectionFactory, host: String, port: Int)
+    extends AMQPDispatcher[T](factory, host, port) {
+​
+  override def configure(channel: Channel) {
+    // Get the ticket.
+    val ticket = channel.accessRequest("/data")
+    // Set up the exchange and queue
+    channel.exchangeDeclare(ticket, "mult", "direct")
+    channel.queueDeclare(ticket, "mult_queue")
+    channel.queueBind(ticket, "mult_queue", "mult", "routeroute")
+    // Use the short version of the basicConsume method for convenience.
+    channel.basicConsume(ticket, "mult_queue", false, new SerializedConsumer(channel, this))
+  }
+}
+​
+/**
+ * Example class that accepts Strings coming in from the
+ * ExampleSerializedAMQPDispatcher.
+ */
+class ExampleStringAMQPListener {
+  val params = new ConnectionParameters
+  params.setUsername("guest")
+  params.setPassword("guest")
+  params.setVirtualHost("/")
+  params.setRequestedHeartbeat(0)
+  val factory = new ConnectionFactory(params)
+  // thor.local is a machine on your network with rabbitmq listening on port 5672
+  val amqp = new ExampleSerializedAMQPDispatcher[String](factory, "thor.local", 5672)
+  amqp.start
+​
+  // Example Listener that just prints the String it receives.
+  class StringListener extends Actor {
+    def act = {
+      react {
+        case msg@AMQPMessage(contents: String) =&gt; println("received: " + msg); act
+      }
+    }
+  }
+  val stringListener = new StringListener()
+  stringListener.start
+  amqp ! AMQPAddListener(stringListener) 
+} 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+First of all don’t get scared about this. The above classes are already existent so you can just reuse them. However the point of showing them here is to understand how to use a AMQP consumer, how to configure it to match the client settings from the Listing 1.3<a class="Reference" href="index-13.html#lst:AMQP-sending-messages">13.2↑</a>. The key here is to see how the actual messages are consumed. Note the StringListener actor is consumming the <tt>AMQPMessage</tt> but the actor itself it provided to <tt>AMQPDispatcher</tt>. What happens is that when a real AMQP message is received by <tt>AMQPDispatcher</tt> it will just forward it to the user’sActor for actuall processing. SerializedConsumer class is actually doing the transformation of the raw data (array of byte-s) into <tt>AMQPMessage</tt> messages.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.3">13.3</a> PayPal
+</h2>
+<div class="Unindented">
+Paypal<span class="FootOuter"><span class="SupFootMarker"> [Z] </span><span class="HoverFoot"><span class="SupFootMarker"> [Z] </span>https://www.paypal.com</span></span> is the notorious service that allows you to do online payment transactions. Lift supports both 
+</div>
+<div class="Indented">
+PDT(Payment Data Transferr)<span class="FootOuter"><span class="SupFootMarker"> [A] </span><span class="HoverFoot"><span class="SupFootMarker"> [A] </span>https://www.paypal.com/en_US/i/IntegrationCenter/scr/scr_ppPDTDiagram_513x282.gif</span></span>as well as 
+</div>
+<div class="Indented">
+IPN(Instant Payment Notification)<span class="FootOuter"><span class="SupFootMarker"> [B] </span><span class="HoverFoot"><span class="SupFootMarker"> [B] </span>https://www.paypal.com/en_US/i/IntegrationCenter/scr/scr_ppIPNDiagram_555x310.gif</span></span> API’ sprovided by PayPal. We won’t be getting into PayPal API details as this information can be found on PayPal site. However let’s see how we’d use PDT and IPN.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+PDT Example
+</div>
+<pre class="listing brush: scala">import net.liftweb.paypal._
+​
+object MyPayPalPDT extends PayPalPDT {
+  override def pdtPath = "paypal_complete"
+  def paypalAuthToken = Props.get("paypal.authToken") openOr "cannot find auth token from props file"
+​
+  def pdtResponse: PartialFunction[(PayPalInfo, Req), LiftResponse] = {
+    case (info, req) =&gt; println("— in pdtResponse"); DoRedirectResponse("/account_admin/index");
+  }
+}
+​
+// in Boot
+​
+def boot(){
+  ...
+  LiftRules.statelessDispatchTable.append(MyPayPalPDT)
+  ...
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+That is pretty much it. <tt>pdtResponse</tt> function allows you to determine the behavior of you application upon receiving the reponse from PayPal.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+IPN Example
+</div>
+<pre class="listing brush: scala">import net.liftweb.paypal._
+​
+object MyPayPalIPN extends PayPalIPN {
+  def actions = {
+    case (ClearedPayment, info, req) =&gt; // do your processing here
+    case (RefundedPayment, info, req) =&gt; // do refund processing 
+  }
+}
+​
+// in Boot
+​
+def boot(){
+  ...
+  LiftRules.statelessDispatchTable.append(MyPayPalIPN)
+  ...
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see everything is pretty strightforward. Just pattern match on the <tt>PaypalTransactionStatus</tt>. It is worth to note sthat IPN is a ’machine-to-machine’ API which happens in the background without the end user interraction.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.4">13.4</a> Facebook
+</h2>
+<div class="Unindented">
+Facebook<span class="FootOuter"><span class="SupFootMarker"> [C] </span><span class="HoverFoot"><span class="SupFootMarker"> [C] </span>http://www.facebook.com</span></span> is the well known site that simply allows people to easily interract, build social graphs share photos etc. Facebook also exposes HTTP API’s<span class="FootOuter"><span class="SupFootMarker"> [D] </span><span class="HoverFoot"><span class="SupFootMarker"> [D] </span>http://wiki.developers.facebook.com/index.php/API</span></span> that allows other applications to interract with it. Lift framework allows your application to easily interract with Facebook by providing an abstraction layer over the Facebook API. Here is an example:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Facebook example
+</div>
+<pre class="listing brush: scala">​
+import net.liftweb.ext_api.facebook._
+​
+FacebookRestApi.apiKey = &lt;your API key&gt;;
+FacebookRestApi.secret = &lt;your secret&gt;;
+​
+// The api key is ontained from System.getProperty("com.facebook.api_key")
+// The secreat is obtained from System.setProperty("com.facebook.secret", key) 
+​
+​
+// Invoke stateless calls
+val respNode: Node = FacebookClient !? AuthCreateToken
+val authToken = // extract authToken from respNode
+​
+// Obtain a stateful client based on the authToken
+val faceBookClient = FacebookClient fromAuthToken(authToken)
+​
+faceBookClient !? GetFriendLists
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Once you have the FacebookClient you can invoke numerous API methods described by <tt>FacebookMethod</tt> or <tt>SessionlessFacebookMethod</tt>. In the above examplewe are creating the FaceBook context by first obtaining an authToken and then obtaining a <tt>faceBookClient</tt> reference bound to the newly created session. After that we’re just ontaining the friends list.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.5">13.5</a> XMPP
+</h2>
+<div class="Unindented">
+XMPP<span class="FootOuter"><span class="SupFootMarker"> [E] </span><span class="HoverFoot"><span class="SupFootMarker"> [E] </span>http://xmpp.org/</span></span> stands for e<b>X</b>tensible <b>M</b>essaging and <b>P</b>resence <b>P</b>rotocol. It is an XML-based protocol used for presence and realtime communication such as instant messaging (Jabber and GoogleTalk being two of the more famous users). It is developed by the Jabber<span class="FootOuter"><span class="SupFootMarker"> [F] </span><span class="HoverFoot"><span class="SupFootMarker"> [F] </span>http://xmpp.org/about/jabber.shtml</span></span> open-source community. Lift provides an XMPP dispatcher implementation that your application can use to receive instant messages, manage rosters etc. This support relies on the Smack <span class="FootOuter"><span class="SupFootMarker"> [G] </span><span class="HoverFoot"><span class="SupFootMarker"> [G] </span>http://www.igniterealtime.org/downloads/index.jsp</span></span> XMPP client library and utilizes Scala actors for the interface. Here is an example:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+XMPP Example
+</div>
+<pre class="listing brush: scala">import net.liftweb.xmpp._
+​
+/**
+ * An example Chat application that prints to stdout.
+ *
+ * @param username is the username to login to at Google Talk: format: something@gmail.com
+ * @param password is the password for the user account at Google Talk.
+ */
+class ConsoleChatActor(val username: String, val password: String) extends Actor {
+  def connf() = new ConnectionConfiguration("talk.google.com", 5222, "gmail.com")
+  def login(conn: XMPPConnection) = conn.login(username, password)
+  val xmpp = new XMPPDispatcher(connf, login)
+  xmpp.start
+​
+  val chats: Map[String, List[Message]] = new HashMap[String, List[Message]]
+  val rosterMap: HashMap[String, Presence] = new HashMap[String, Presence]
+  var roster: Roster = null
+  def act = loop
+​
+  def loop { 
+   react {
+      case Start =&gt; {
+        xmpp ! AddListener(this)
+        xmpp ! SetPresence(new Presence(Presence.Type.available))
+        loop
+      }
+      case NewChat(c) =&gt; {
+        chats += (c.getParticipant -&gt; Nil)
+        loop
+      }
+      case RecvMsg(chat, msg) =&gt; {
+        println("RecvMsg from: " + msg.getFrom + ": " + msg.getBody);
+        loop 
+      }
+      case NewRoster(r) =&gt; {
+        println("getting a new roster: " + r)
+        this.roster = r
+        val e: Array[Object] = r.getEntries.toArray.asInstanceOf[Array[Object]]
+        for (entry &lt;- e) {
+          val user: String = entry.asInstanceOf[RosterEntry].getUser
+          rosterMap += (user -&gt; r.getPresence(user))
+        }
+        loop
+      }
+​
+      case RosterPresenceChanged(p) =&gt; { 
+        val user = StringUtils.parseBareAddress(p.getFrom)
+        println("Roster Update: " + user + " " + p)
+        // It’s best practice to ask the roster for the presence. This is because
+        // multiple presences can exist for one user and the roster knows which one 
+        // has priority. 
+        rosterMap += (user -&gt; roster.getPresence(user))
+        loop
+      }
+      case RosterEntriesDeleted(e) =&gt; {
+        println(e) 
+        loop 
+      } 
+      case RosterEntriesUpdated(e) =&gt; {
+        println(e)
+        loop
+      }
+      case RosterEntriesAdded(e) =&gt; { 
+        println(e)
+        loop 
+      }
+      case a =&gt; println(a); loop
+    }
+  }
+  def createChat(to: String) {
+    xmpp ! CreateChat(to)
+  }
+  def sendMessage(to: String, msg: String) {
+    xmpp ! SendMsg(to, msg)
+  }
+​
+ /**
+  * @returns an Iterable of all users who aren’t unavailable along with their Presence
+  */
+ def availableUsers: Iterable[(String, Presence)] = {
+   rosterMap.filter((e) =&gt; e._2.getType() != Presence.Type.unavailable)
+ }
+}
+​
+object ConsoleChatHelper {
+  /**
+   * @param u is the username
+   * @param p is the password
+   */
+  def run(u: String, p: String) = {
+    val ex = new ConsoleChatActor(u, p)
+    ex.start 
+    ex ! Start 
+    ex 
+  }
+}
+​
+// To start the dispatcher just call:
+​
+ConsoleChatHelper.run(userName, password);
+​
+...
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The above is an example how you can integrate your application with an XMPP server and how messages are pocessed.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-13.6">13.6</a> Lucene/Compass Integration
+</h2>
+<div class="Unindented">
+<div class="Framed" style="width: 100%;">
+This chapter is still under active development. The contents will change.
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-12.html#Next">Previous: Chapter 12</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-14.html#prev">Next: Chapter 14</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

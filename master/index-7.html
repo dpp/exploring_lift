@@ -1,0 +1,866 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-6.html#Next">Previous: Chapter 6</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-8.html#prev">Next: Chapter 8</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-7">7</a> SiteMap<a class="Label" name="cha:SiteMap"> </a>
+</h1>
+<div class="Unindented">
+SiteMap is a very powerful part of Lift that does essentially what it says: provides a map (menu) for your site. Of course, if all it did was generate a set of links on your page, we wouldn’t have a whole chapter dedicated to it. SiteMap not only handles the basic menu generation functionality, but also provides:
+</div>
+<ul>
+<li>
+Access control mechanisms that deal not only with whether a menu item is visible, but also whether the page it points to is accessible
+</li>
+<li>
+Grouping of menu items so that you can easily display portions of menus where you want them
+</li>
+<li>
+Nested menus so you can have hierarchies
+</li>
+<li>
+Request rewriting (similar to Section <a class="Reference" href="index-3.html#sec:URL-Rewriting">3.7↑</a>)
+</li>
+<li>
+State-dependent computations for such things as page titles, page-specific snippets, etc.
+</li>
+
+</ul>
+<div class="Unindented">
+The beauty of SiteMap is that it’s very easy to start out with the basic functionality and then expand on it as you grow.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.1">7.1</a> Basic SiteMap Definition<a class="Label" name="sec:Basic-SiteMap-Definition"> </a>
+</h2>
+<div class="Unindented">
+Let’s start with our basic menu for PocketChange. To keep things simple, we’ll just define four menu items to begin:
+</div>
+<ol>
+<li>
+A home page that displays the user’s entries when the user is logged in, or a welcome page when the user is not
+</li>
+<li>
+A logout link when the user is logged in, log in and registration links and pages when the user is not
+</li>
+<li>
+Pages to view or edit the user’s profile, available only when the user is logged in
+</li>
+<li>
+A help page, available whether the user is logged in or not
+</li>
+
+</ol>
+<div class="Unindented">
+We’ll assume that we have the corresponding pages, "<tt>homepage</tt>", "<tt>login</tt>", "<tt>logout</tt>", and "<tt>profile</tt>," written and functional. We’ll also assume that the help page(s) reside under the "<tt>help</tt>" subdirectory to keep things neat, and that the entry to help is <tt>/help/index</tt>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.1.1">7.1.1</a> The Link Class<a class="Label" name="sub:The-Link-Class"> </a>
+</h3>
+<div class="Unindented">
+The Link class<span class="FootOuter"><span class="SupFootMarker"> [Y] </span><span class="HoverFoot"><span class="SupFootMarker"> [Y] </span><tt>net.liftweb.sitemap.Loc.Link</tt></span></span> is a fundamental part of Menu definitions. The <tt>Link </tt>class contains two parameters: a <tt>List[String]</tt> of path components, and a boolean value that controls whether prefix matching is enabled. The path components represent the portion of the URI following your web context, split on the "/" character. Listing <a class="Reference" href="index-7.html#lst:Link-Path-Components">7.1.1↓</a> shows how you would use Link to represent the "/utils/index" page. Of course, instead of <tt>“utils” :: “index” :: Nil</tt>, you could as easily use <tt>List(“utils”, “index”)</tt> if you prefer.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Link Path Components<a class="Label" name="lst:Link-Path-Components"> </a>
+</div>
+<pre class="listing brush: scala">val myUtilsIndex = new Link("utils" :: "index" :: Nil, false)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Prefix matching allows the path components you specify to match any longer paths as well. Following our first example, if you wanted to match anything under the utils directory (say, for access control), you would set the second parameter to <tt>true</tt>, as shown in Listing <a class="Reference" href="index-7.html#lst:Link-Prefix-Matching">7.1.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Link Prefix Matching<a class="Label" name="lst:Link-Prefix-Matching"> </a>
+</div>
+<pre class="listing brush: scala">val allUtilPages = new Link("utils" :: Nil, true)
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.1.2">7.1.2</a> ExtLink
+</h3>
+<div class="Unindented">
+The ExtLink object can be used to create a Link instance using your own full link URL. As its name implies, it would usually be used for an external location. Listing <a class="Reference" href="index-7.html#lst:Using-ExtLink">7.1.2↓</a> shows a menu item that points to a popular website.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using ExtLink<a class="Label" name="lst:Using-ExtLink"> </a>
+</div>
+<pre class="listing brush: scala">val goodReference = Menu(Loc("reference",
+                             ExtLink("http://www.liftweb.net/"),
+                             "LiftWeb"))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.1.3">7.1.3</a> Creating Menu Entries
+</h3>
+<div class="Unindented">
+Menu entries are created using the Menu<span class="FootOuter"><span class="SupFootMarker"> [Z] </span><span class="HoverFoot"><span class="SupFootMarker"> [Z] </span><tt>net.liftweb.sitemap.Menu</tt></span></span> class, and its corresponding Menu object. A Menu, in turn, holds a Loc<span class="FootOuter"><span class="SupFootMarker"> [A] </span><span class="HoverFoot"><span class="SupFootMarker"> [A] </span><tt>net.liftweb.sitemap.Loc</tt></span></span> trait instance, which is where most of the interesting things happen. A menu can also hold one or more child menus, which we’ll cover in Section <a class="Reference" href="index-7.html#sub:Nested-Menus">7.1.4↓</a>. Note that the Loc object has several implicit methods that make defining Locs easier, so you generally want to import them into scope . The simplest way is to import <tt>net.liftweb.sitemap.Loc._</tt>, but you can import specific methods by name if you prefer. A Loc can essentially be thought of as a link in the menu, and contains four basic items:
+</div>
+<ol>
+<li>
+The name of the Loc: this must be unique across your sitemap because it can be used to look up specific Menu items if you customize your menu display (Section <a class="Reference" href="index-7.html#sub:Using-lift-Menu">7.2.3↓</a>)
+</li>
+<li>
+The link to which the Loc refers: usually this will referernce a specific page, but Lift allows a single Loc to match based on prefix as well (Section <a class="Reference" href="index-7.html#sub:The-Link-Class">7.1.1↑</a>)
+</li>
+<li>
+The text of the menu item, which will be displayed to the user: you can use a static string or you can generate it with a function (Section <a class="Reference" href="index-7.html#sub:menu-LinkText">7.2.2↓</a>)
+</li>
+<li>
+An optional set of LocParam parameters that control the behavior and appearance of the menu item (see Sections <a class="Reference" href="index-7.html#sec:Customizing-Display">7.2↓</a>,<a class="Reference" href="index-7.html#sec:SiteMap-Access-Control">7.3↓</a>, <a class="Reference" href="index-7.html#sec:Misc-Menu">7.5↓</a>, and <a class="Reference" href="index-7.html#sec:Page-Specific-Rendering">7.4↓</a>)
+</li>
+
+</ol>
+<div class="Unindented">
+For our example, we’ll tackle the help page link first, because it’s the simplest (essentially, it’s a static link). The definition is shown in Listing <a class="Reference" href="index-7.html#lst:Help-Menu-Definition">7.1.3↓</a>. We’re assuming that you’ve imported the Loc implicit methods to keep things simple. We’ll cover instantiating the classes directly in later sections of this chapter.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Help Menu Definition<a class="Label" name="lst:Help-Menu-Definition"> </a>
+</div>
+<pre class="listing brush: scala">val helpMenu = Menu(Loc("helpHome",
+                        ("help" :: "" :: Nil) -&gt; true,
+                        "Help"))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Here we’ve named the menu item "helpHome." We can use this name to refer back to this menu item elsewhere in our code. The second parameter is a <tt>Pair[List[String],Boolean]</tt> which converts directly to a Link class with the given parameters (see Section <a class="Reference" href="index-7.html#sub:The-Link-Class">7.1.1↑</a> above). In this instance, by passing in true, we’re saying that anything under the help directory will also match. If you just use a List[String], the implicit conversion is to a Link with prefix matching disabled. Note that SiteMap won’t allow access to any pages that don’t match any Menu entries, so by doing this we’re allowing full access to all of the help files without having to specify a menu entry for each. The final parameter, "Help," is the text for the menu link, should we choose to generate a menu link from this SiteMap entry.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.1.4">7.1.4</a> Nested Menus<a class="Label" name="sub:Nested-Menus"> </a>
+</h3>
+<div class="Unindented">
+The Menu class supports child menus by passing them in as final constructor parameters. For instance, if we wanted to have an "about" menu under Help, we could define the menu as shown in Listing <a class="Reference" href="index-7.html#lst:Nested-Menu-Definition">7.1.4↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Nested Menu Definition<a class="Label" name="lst:Nested-Menu-Definition"> </a>
+</div>
+<pre class="listing brush: scala">val aboutMenu = Menu(Loc("about", "help" :: "about" :: Nil, "About"))
+val helpMenu = Menu(Loc(...as defined above...), aboutMenu)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When the menu is rendered it will have a child menu for About. Child menus are only rendered by default when the current page matches their parent’s Loc. That means that, for instance the following links would show in an "About" child menu item:
+</div>
+<ul>
+<li>
+<tt>/help/index</tt>
+</li>
+<li>
+<tt>/help/usage</tt>
+</li>
+
+</ul>
+<div class="Unindented">
+But the following would not:
+</div>
+<ul>
+<li>
+<tt>/index</tt>
+</li>
+<li>
+<tt>/site/example</tt>
+</li>
+
+</ul>
+<div class="Unindented">
+We’ll cover how you can customize the rendering of the menus in Section <a class="Reference" href="index-7.html#sub:Using-lift-Menu">7.2.3↓</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.1.5">7.1.5</a> Setting the Global SiteMap
+</h3>
+<div class="Unindented">
+Once you have all of your menu items defined, you need to set them as your SiteMap. As usual, we do this in the Boot class by calling the <tt>setSiteMap</tt> method on LiftRules, as shown in Listing <a class="Reference" href="index-7.html#lst:Setting-the-SiteMap">7.1.5↓</a>. The <tt>setSiteMap</tt> method takes a SiteMap object that can be constructed using your menu items as arguments.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Setting the SiteMap<a class="Label" name="lst:Setting-the-SiteMap"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.setSiteMap(SiteMap(homeMenu, profileMenu, ...))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+When you’re dealing with large menus, and in particular when your model objects create their own menus (see MegaProtoUser, Section <a class="Reference" href="index-8.html#sub:ProtoUser-and-MegaProtoUser">8.2.8↓</a> ), then it can be more convenient to define List[Menu] and set that. Listing <a class="Reference" href="index-7.html#lst:Using-List-Menu-for">7.1.5↓</a> shows this usage.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using List[Menu] for SiteMap<a class="Label" name="lst:Using-List-Menu-for"> </a>
+</div>
+<pre class="listing brush: scala">val menus = Menu(Loc("HomePage", "", "Home"),...) ::
+            ...
+            Menu(...) :: Nil
+LiftRules.setSiteMap(SiteMap(menus : _*))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The key to using List for your menus is to explicitly define the type of the parameter as "_*" so that it’s treated as a set of varargs instead of a single argument of type List[Menu].
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.2">7.2</a> Customizing Display<a class="Label" name="sec:Customizing-Display"> </a>
+</h2>
+<div class="Unindented">
+There are many cases where you may want to change the way that particular menu items are displayed. For instance, if you’re using a Menu item for access control on a subdirectory, you may not want the menu item displayed at all. We’ll discuss how you can control appearance, text, etc. in this section.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.2.1">7.2.1</a> Hidden<a class="Label" name="sub:menu-Hidden"> </a>
+</h3>
+<div class="Unindented">
+The Hidden LocParam does exactly what it says: hides the menu item from the menu display. All other menu features still work. There is a variety of reasons why you might not want a link displayed. A common use, shown in Listing <a class="Reference" href="index-7.html#lst:Hidden-Menus">7.2.1↓</a>, is where the point of the item is to restrict access to a particular subdirectory based on some condition. (We’ll cover the <tt>If</tt> tag in Section <a class="Reference" href="index-7.html#sub:menu-If">7.3.1↓</a>.)
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Hidden Menus<a class="Label" name="lst:Hidden-Menus"> </a>
+</div>
+<pre class="listing brush: scala">val receiptImages =
+  Menu(Loc("receipts", 
+          ("receipts" :: Nil) -&gt; true,
+          "Receipts",
+          Hidden, If(...)))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that in this example we’ve used the implicit conversion from <tt>Pair[String,Boolean]</tt> to <tt>Link</tt> to make this Menu apply to everything under the "<tt>receipts</tt>" directory.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.2.2">7.2.2</a> Controlling the Menu Text<a class="Label" name="sub:menu-LinkText"> </a>
+</h3>
+<div class="Unindented">
+The <tt>LinkText</tt> class is what defines the function that will return the text to display for a given menu item. As we’ve shown, this can easily be set using the implicit conversion for string<span class="formula"> → </span><tt>LinkText</tt> from <tt>Loc</tt>. As an added bonus, the implicit conversion actually takes a by-name <tt>String</tt> for the parameter. This means that you can just as easily pass in a function to generate the link text as a static string. For example, with our profile link we may want to make the link say "&lt;username&gt;’s profile". Listing <a class="Reference" href="index-7.html#lst:Customizing-Link-Text">7.2.2↓</a> shows how we can do this by defining a helper method, assuming that there’s another method that will return the current user’s name (we use the ubiquitous <tt>Foo</tt> object here).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Customizing Link Text<a class="Label" name="lst:Customizing-Link-Text"> </a>
+</div>
+<pre class="listing brush: scala">def profileText = Foo.currentUser + "’s profile"
+val profileMenu = Menu(Loc("Profile", 
+                           "profile" :: Nil,
+                           profileText, ...))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Of course, if you want you can construct the <tt>LinkText</tt> instance directly by passing in a constructor function that returns a <tt>NodeSeq</tt>. The function that you use with <tt>LinkText</tt> takes a type-safe input parameter, which we’ll discuss in more detail in Section <a class="Reference" href="index-7.html#sub:Type-Safe-Params">7.6.2↓</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.2.3">7.2.3</a> Using &lt;lift:Menu&gt;<a class="Label" name="sub:Using-lift-Menu"> </a>
+</h3>
+<div class="Unindented">
+So far we’ve covered the Scala side of things. The other half of the magic is the special <tt>&lt;lift:Menu&gt;</tt> tag. It’s this tag that handles the rendering of your menus into XHTML. The Menu tag uses a built-in snippet<span class="FootOuter"><span class="SupFootMarker"> [B] </span><span class="HoverFoot"><span class="SupFootMarker"> [B] </span>net.liftweb.builtin.snippet.Menu</span></span> to provide several rendering methods. The most commonly used method is the <tt>Menu.builder</tt> snippet. This snippet renders your entire menu structure as an unordered list (<tt>&lt;ul&gt;</tt> in XHTML). Listing <a class="Reference" href="index-7.html#lst:Rendering-with-Menu.title">7.2.3↓</a> shows an example of using the Menu tag to build the default menu (yes, it’s that easy).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Rendering with &lt;lift:Menu.title&gt;<a class="Label" name="lst:Rendering-with-Menu.title"> </a>
+</div>
+<pre class="listing brush: xml">&lt;div class="menu"&gt;
+  &lt;lift:Menu.builder /&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Of course, Lift offers more customization on this snippet than just emitting some XHTML. By specifying some prefixed attributes on the tag itself, you can add attributes directly to the menu elements. The following prefixes are valid for attributes:
+</div>
+<ul>
+<li>
+<tt>ul</tt> - Adds the specified attribute to the <tt>&lt;ul&gt;</tt> element that makes up the menu
+</li>
+<li>
+<tt>li</tt> - Adds the specified attribute to each <tt>&lt;li&gt;</tt> element for the menu
+</li>
+<li>
+<tt>li_item</tt> - Adds the specified attribute to the current page’s menu item
+</li>
+<li>
+<tt>li_path</tt> - Adds the specified attribute to the current page’s breadcrumb trail (the breadcrumb trail is the set of menu items that are direct ancestors in the menu tree)
+</li>
+
+</ul>
+<div class="Unindented">
+The suffix of the attributes represents the name of the HTML attribute that will be added to that element, and can be anything. It will be passed directly through. For instance, we can add CSS<a class="IndexReference" name="entry-CSS-1" href="index-Index.html#index-CSS">↓</a> classes to our menu and elements fairly easily, as shown in Listing <a class="Reference" href="index-7.html#lst:Using-Attribues-with-Menu.builder">7.2.3↓</a>. Notice that we also add a little JavaScript to our current menu item.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using Attribues with Menu.builder<a class="Label" name="lst:Using-Attribues-with-Menu.builder"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:Menu.builder
+  li:class="menuitem"
+  li_item:class="selectedMenu"
+  li_item:onclick="javascript:alert(’Already selected!’);" /&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In addition to rendering the menu itself, the Menu class offers a few other tricks. The <tt>Menu.title</tt><a class="IndexReference" name="entry-Menu.title-0" href="index-Index.html#index-Menu.title">↓</a> snippet can be used to render the title of the page, which by default is the name parameter of the Loc for the menu (the first parameter). If you write your own Loc implementation (Section <a class="Reference" href="index-7.html#sec:Writing-Your-Own-Loc">7.6↓</a>), or you use the Title<a class="IndexReference" name="entry-Title-0" href="index-Index.html#index-Title">↓</a> <tt>LocParam</tt> (Section <a class="Reference" href="index-7.html#sub:menu-Title">7.4.3↓</a>), you can overide the title to be whatever you’d like. Listing <a class="Reference" href="index-7.html#lst:Rendering-the-Title">7.2.3↓</a> shows how you use <tt>Menu.title</tt>. In this particular example the title will be rendered as "<tt>Home Page</tt>".
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Rendering the Menu Title<a class="Label" name="lst:Rendering-the-Title"> </a>
+</div>
+<pre class="listing brush: scala">// In Boot:
+val MyMenu = Menu(Loc("Home Page", "index" :: Nil, "Home"))
+// In template (or wherever)
+&lt;title&gt;&lt;lift:Menu.title/&gt;&lt;/title&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The next snippet in the Menu class is <tt>item</tt>. The <tt>Menu.item</tt> snippet allows you to render a particular menu item by specifying the name attribute (matching the first parameter to Loc). As with <tt>Menu.builder</tt>, it allows you to specify additional prefixed attributes for the link to be passed to the emitted item. Because it applies these attributes to the link itself, the only valid prefix is "<tt>a</tt>". Additionally, if you specify child elements for the snippet tag, they will be used instead of the default link text. Listing <a class="Reference" href="index-7.html#lst:Using-Menu.item">7.2.3↓</a> shows an example using our "<tt>Home Page</tt>" menu item defined in Listing <a class="Reference" href="index-7.html#lst:Rendering-the-Title">7.2.3↑</a>. As you can see, we’ve added some replacement text as well as specifying a CSS<a class="IndexReference" name="entry-CSS-2" href="index-Index.html#index-CSS">↓</a> class for the link.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using Menu.item<a class="Label" name="lst:Using-Menu.item"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:Menu.item name="Home Page"
+  a:class="homeLink"&gt;
+  &lt;b&gt;Go Home&lt;/b&gt;
+&lt;/lift:Menu.item&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The final snippet that the Menu class provides is the <tt>Menu.group</tt> method. We’re going to cover the use of <tt>Menu.group</tt> in detail in Section <a class="Reference" href="index-7.html#sub:LocGroup">7.5.2↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.3">7.3</a> Access Control<a class="Label" name="sec:SiteMap-Access-Control"> </a>
+</h2>
+<div class="Unindented">
+So far we’ve covered how to control the display side of Menus; now we’ll take a look at some of the plumbing behind the scenes. One important function of a Menu is that it controls access to the pages in your application. If no Menu matches a given request, then the user gets a 404 Not Found error. Other than this binary control of "matches<span class="formula"> → </span>display" and "doesn’t match<span class="formula"> → </span>don’t display", <tt>SiteMap</tt> provides for arbitrary access checks through the <tt>If</tt> and <tt>Unless</tt> <tt>LocParams</tt>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.3.1">7.3.1</a> If<a class="Label" name="sub:menu-If"> </a>
+</h3>
+<div class="Unindented">
+The <tt>If</tt><a class="IndexReference" name="entry-If-0" href="index-Index.html#index-If">↓</a> <tt>LocParam</tt> takes a test function, <span class="formula">() ⇒ <i>Boolean</i></span>, as well as failure message function, <span class="formula">() ⇒ <i>LiftResponse</i></span>, as its arguments. When the <tt>Loc</tt> that uses the <tt>If</tt> clause matches a given path, the test function is executed, and if true then the page is displayed as normal. If the function evaluates to false, then the failure message function is executed and its result is sent to the user. There’s an implicit conversion in <tt>Loc</tt> from a <tt>String</tt> to a response which converts to a <tt>RedirectWithState</tt><a class="IndexReference" name="entry-RedirectWithState-0" href="index-Index.html#index-RedirectWithState">↓</a> instance (Section <a class="Reference" href="index-3.html#sec:HTTP-redirects">3.9↑</a>). The redirect is to the location specified by <tt>LiftRules.siteMapFailRedirectLocation</tt>, which is the root of your webapp ("/") by default. If you want, you can change this in <tt>LiftRules</tt> for a global setting, or you can provide your own <tt>LiftResponse</tt><a class="IndexReference" name="entry-LiftResponse-0" href="index-Index.html#index-LiftResponse">↓</a>. Listing <a class="Reference" href="index-7.html#lst:Using-the-If-LocParam">7.3.1↓</a> shows a revision of the profile menu that we defined in Listing <a class="Reference" href="index-7.html#lst:Customizing-Link-Text">7.2.2↑</a>, extended to check whether the user is logged in. If the user isn’t logged in, we redirect to the login page.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using the If LocParam<a class="Label" name="lst:Using-the-If-LocParam"> </a>
+</div>
+<pre class="listing brush: scala">val loggedIn = If(() =&gt; User.loggedIn_?,
+                  () =&gt; RedirectResponse("/login"))
+val profileMenu = Menu(Loc("Profile", 
+                           "profile" :: Nil,
+                           profileText, loggedIn))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.3.2">7.3.2</a> Unless<a class="Label" name="sub:menu-Unless"> </a>
+</h3>
+<div class="Unindented">
+The <tt>Unless</tt><a class="IndexReference" name="entry-Unless-0" href="index-Index.html#index-Unless">↓</a> <tt>LocParam</tt> is essentially the mirror of <tt>If</tt>. The exact same rules apply, except that the page is displayed only if the test function returns false. The reason that there are two classes to represent this behavior is that it’s generally clearer when a predicate is read as "working" when it returns true.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.4">7.4</a> Page-Specific Rendering<a class="Label" name="sec:Page-Specific-Rendering"> </a>
+</h2>
+<div class="Unindented">
+Page specific rendering with <tt>SiteMap</tt> is an advanced technique that provides a lot of flexibility for making pages render differently depending on state.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.4.1">7.4.1</a> The Template Parameter<a class="Label" name="sub:The-Template-Parameter"> </a>
+</h3>
+<div class="Unindented">
+Generally, the template that will be used for a page is derived from the path of the request. The <tt>Template</tt> <tt>LocParam</tt>, however, allows you to completely override this mechanism and provide any template you want by passing in a function <span class="formula">() ⇒ <i>NodeSeq</i></span>. Going back to our example menus (Section <a class="Reference" href="index-7.html#sec:Basic-SiteMap-Definition">7.1↑</a>), we’d like the welcome page to show either the user’s entries or a plain welcome screen depending on whether they’re logged in. One approach to this is shown in Listing <a class="Reference" href="index-7.html#lst:Override-Templates">7.4.1↓</a>. In this example, we create a <tt>Template</tt> class that generates the appropriate template and then bind it into the home page menu <tt>Loc</tt>. (See the Lift API for more on the Template class.)
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Overriding Templates<a class="Label" name="lst:Override-Templates"> </a>
+</div>
+<pre class="listing brush: scala">val homepageTempl = Template({ () =&gt;
+  &lt;lift:surround with="default" at="content"&gt;
+  { if (User.loggedIn_?) { 
+      &lt;lift:Entries.list /&gt; 
+    } else {
+      &lt;lift:embed what="welcome" /&gt;
+    }
+  }
+  &lt;/lift:surround&gt;
+})
+val homeMenu = Menu(Loc("Home Page",
+                        "" :: Nil,
+                        "Home Page", homepageTempl))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.4.2">7.4.2</a> The Snippet and LocSnippets Parameters
+</h3>
+<div class="Unindented">
+Besides overriding the template for a page render (admittedly, a rather coarse approach), SiteMap has two mechanisms for overriding or defining the behavior of specific snippets. The first, Snippet, allows you to define the dispatch for a single snippet based on the name of the snippet. Listing <a class="Reference" href="index-7.html#lst:Using-the-Snippet-locparam">7.4.2↓</a> shows how we could use Snippet to achieve the same result for the home page rendering as we just did with the Template parameter. All we need to do is use the &lt;lift:homepage&gt; snippet on our main page and the snippet mapping will dispatch based on the state. (Here we’ve moved the welcome text into a Utils.welcome snippet.)
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using the Snippet LocParam<a class="Label" name="lst:Using-the-Snippet-locparam"> </a>
+</div>
+<pre class="listing brush: scala">val homeSnippet = Snippet("homepage",
+  if (User.loggedIn_?) {
+    Entries.list _
+  } else {
+    Utils.welcome _
+  })
+val homeMenu = Menu(Loc("Home Page",
+                        "" :: Nil,
+                        "Home Page", homeSnippet))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The LocSnippets trait extends the concept of Snippet to provide a full dispatch partial function. This allows you to define multiple snippet mappings associated with a particular Loc. To simplify things, Lift provides a DispatchLocSnippets trait that has default implementations for <tt>apply</tt> and <tt>isDefinedAt</tt>; that means you only need to provide a <tt>dispatch</tt> method implementation for it to work. Listing <a class="Reference" href="index-7.html#lst:Using-LocSnippets">7.4.2↓</a> shows an example of using DispatchLocSnippets for a variety of snippets.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using LocSnippets<a class="Label" name="lst:Using-LocSnippets"> </a>
+</div>
+<pre class="listing brush: scala">val entrySnippets = new DispatchLocSnippets {
+  def dispatch = {
+    case "entries" =&gt; Entries.list _
+    case "add" =&gt; Entries.newEntry _
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.4.3">7.4.3</a> Title<a class="Label" name="sub:menu-Title"> </a>
+</h3>
+<div class="Unindented">
+As we mentioned in Section <a class="Reference" href="index-7.html#sub:Using-lift-Menu">7.2.3↑</a>, the Title LocParam can be used to provide a state-dependent title for a page. The Title case class simply takes a function <span class="formula">(<i>T</i>) ⇒ <i>NodeSeq</i></span>, where T is a type-safe parameter (we’ll cover this in Section <a class="Reference" href="index-7.html#sub:Type-Safe-Params">7.6.2↓</a>). Generally you can ignore this parameter if you want to, which is what we do in Listing <a class="Reference" href="index-7.html#lst:Customizing-the-Title">7.4.3↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Customizing the Title<a class="Label" name="lst:Customizing-the-Title"> </a>
+</div>
+<pre class="listing brush: scala">val userTitle = Title((_) =&gt; 
+  if (User.loggedIn_?) {
+    Text(User.name + "’s Account")
+  } else {
+    Text("Welcome to PocketChange")
+  })
+val homeMenu = Menu(Loc("Home Page",
+                        "" :: Nil,
+                        "Home Page", homepageTempl, userTitle))
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.5">7.5</a> Miscellaneous Menu Functionality<a class="Label" name="sec:Misc-Menu"> </a>
+</h2>
+<div class="Unindented">
+These are LocParams that don’t quite fit into the other categories.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.5.1">7.5.1</a> Test<a class="Label" name="sub:menu-Test"> </a>
+</h3>
+<div class="Unindented">
+Test is intended to be used to ensure that a given request has the proper parameters before servicing. With Test, you provide a function, <span class="formula">(<i>Req</i>) ⇒ <i>Boolean</i></span> that is passed the full Req object. Note that the test is performed when SiteMap tries to locate the correct menu, as opposed to If and Unless, which are tested after the proper Loc has been identified. Returning a false means that this Loc doesn’t match the request, so SiteMap will continue to search through your Menus to find an appropriate Loc. As an example, we could check to make sure that a given request comes from Opera (the Req object provides convenience methods to test for different browsers; see the Lift API for a full list) with the code in Listing <a class="Reference" href="index-7.html#lst:Testing-the-Request">7.5.1↓</a>. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Testing the Request<a class="Label" name="lst:Testing-the-Request"> </a>
+</div>
+<pre class="listing brush: scala">val onlyOpera = Test(req =&gt; req.isOpera)
+val operaMenu = Menu(Loc("Opera", "opera" :: Nil, "Only Opera", onlyOpera))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.5.2">7.5.2</a> LocGroup<a class="Label" name="sub:LocGroup"> </a>
+</h3>
+<div class="Unindented">
+The LocGroup param allows you to categorize your menu items. The <tt>Menu.group</tt> snippet (mentioned in Section <a class="Reference" href="index-7.html#sub:Using-lift-Menu">7.2.3↑</a>) allows you to render the menu items for a specific group. A menu item may be associated with one or more groups. Simply add a LocGroup param with string arguments for the group names, as shown in Listing <a class="Reference" href="index-7.html#lst:Categorizing-your-Menu">7.5.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Categorizing Your Menu<a class="Label" name="lst:Categorizing-your-Menu"> </a>
+</div>
+<pre class="listing brush: scala">val siteMenu = Menu(Loc(...,LocGroup("admin", "site")))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In your templates, you then specify the binding of the menu as shown in Listing <a class="Reference" href="index-7.html#lst:Binding-a-Menu-group">7.5.2↓</a>. As you can see, we’ve also added a prefixed attribute to control the CSS<a class="IndexReference" name="entry-CSS-3" href="index-Index.html#index-CSS">↓</a> class of the links ("a" is the only valid prefix), and we’ve added some body XHTML for display. In particular, the &lt;menu:bind&gt; tag controls where the menu items are rendered. If you don’t provide body elements, or if you provide body elements without the &lt;menu:bind&gt; element, your body XHTML will be ignored and the menu will be rendered directly.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Binding a Menu Group<a class="Label" name="lst:Binding-a-Menu-group"> </a>
+</div>
+<pre class="listing brush: scala">&lt;div class="site"&gt;
+  &lt;ul&gt;
+  &lt;lift:Menu.group group="site"
+    a:class="siteLink"&gt;
+   &lt;li&gt;&lt;menu:bind /&gt;&lt;/li&gt;
+  &lt;/lift:Menu.group&gt;
+  &lt;/ul&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.6">7.6</a> Writing Your Own Loc<a class="Label" name="sec:Writing-Your-Own-Loc"> </a>
+</h2>
+<div class="Unindented">
+As we’ve shown, there’s a lot of functionality available for your Menu items. If you need more control, though, the Loc trait offers some functionality, such as rewriting, that doesn’t have a direct correspondence in a LocParam element. The basic definition of a Loc implementation covers a lot of the same things. The following vals and defs are abstract, so you must implement them yourself:
+</div>
+<ul>
+<li>
+def name: the name that can be used to retrieve the menu via Menu.item
+</li>
+<li>
+def link: the actual link; you can use the implicit conversions from List[String] or Pair[List[String],Boolean], or you can create the Link object yourself
+</li>
+<li>
+def text: the text that will be displayed to the user; you can use the implicit conversion from String, or you can provide your own LinkText instance
+</li>
+<li>
+def params: must return a List[LocParam] that is used to control behavior as we’ve shown in the previous sections
+</li>
+<li>
+def defaultParams: used for type-safe rewriting, which we’ll cover in Section <a class="Reference" href="index-7.html#sub:Type-Safe-Params">7.6.2↓</a>
+</li>
+
+</ul>
+<div class="Unindented">
+Essentially, these mirror the params that are required when you use Loc.apply to generate a Loc. We’re going to write our own Loc implementation for our Expenses in this section to demonstrate how this works. Because this overlaps with existing functionality in the PocketChange application, we’ll be using a branch in the PocketChange app. You can pull the new branch with the command
+</div>
+<pre class="LyX-Code">
+git checkout --track -b custom-loc origin/custom-loc
+</pre>
+<div class="Unindented">
+You can then switch back and forth between the branches with the commands:
+</div>
+<pre class="LyX-Code">
+git checkout master
+git checkout custom-loc
+</pre>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.6.1">7.6.1</a> Corresponding Functions
+</h3>
+<div class="Unindented">
+Table <a class="Reference" href="index-7.html#tab:LocParam-Methods-in-loc">7.1↓</a> lists the LocParams and their corresponding methods in Loc, with notes to explain any differences in definition or usage. If yould prefer to use the LocParams instead, just define the <tt>params</tt> method on Loc to return a list of the LocParams you want.
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="tab:LocParam-Methods-in-loc"> </a><div class="table">
+<div class="center">
+<table>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+Hidden
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+N/A
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+To make your Loc hidden, add a Hidden LocParam to your params method return value
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+If/Unless
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override testAccess
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+You need to return an Either to indicate success (Left[Boolean]) or failure (Right[Box[LiftResponse]])
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+Template
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override calcTemplate
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+Return a Box[NodeSeq]
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+Snippet and LocSnippets
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override snippets
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+Snippet is a PartialFunction[String, Box[ParamType]), NodeSeq =&gt; NodeSeq], which lets you use the type-safe parameter to control behavior.
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+Title
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override title
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+You can override "def title" or "def title(in: ParamType)" depending on whether you want to use type-safe parameters
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+Test
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override doesMatch_?
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+It’s your responsibility to make sure that the <i>path</i> of the request matches your Loc, since this method is what SiteMap uses to find the proper Loc for a request
+</td>
+
+</tr>
+<tr>
+<td align="center" valign="top" style="width: 1in;">
+LocGroup
+</td>
+<td align="center" valign="top" style="width: 1.5in;">
+override inGroup_?
+</td>
+<td align="center" valign="top" style="width: 2.5in;">
+Nothing special here
+</td>
+
+</tr>
+
+</table>
+
+</div>
+<div class="caption">
+Table 7.1 LocParam Methods in Loc
+</div>
+
+</div>
+
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.6.2">7.6.2</a> Type Safe Parameters<a class="Label" name="sub:Type-Safe-Params"> </a>
+</h3>
+<div class="Unindented">
+One of the nice features of Loc is that it allows you to rewrite requests in a type-safe manner. What this means is that we can define a rewrite function on our Loc instance that returns not only a standard RewriteResponse, but also a parameter that we can define to pass information back to our menu to control behavior. The reason that this is type-safe is that we define our Loc on the type of the parameter itself. For instance, let’s expand the functionality of our app so that we have a page called "acct" that shows the expense entries for a given account. We would like this page to be viewable only by the owner of the account under normal circumstances, but to allow them to share it with other members if they wish to. Let’s start by defining our type-safe parameter class as shown in Listing <a class="Reference" href="index-7.html#lst:Defining-LedgerInfo">7.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining AccountInfo<a class="Label" name="lst:Defining-LedgerInfo"> </a>
+</div>
+<pre class="listing brush: scala">abstract class AccountInfo
+case object NoSuchAccount extends AccountInfo
+case object NotPublic extends AccountInfo
+case class FullAccountInfo(account : Account,
+                           entries : List[Expense]) extends AccountInfo
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We define a few case classes to indicate various states. The FullAccountInfo holds the account itself as well as some flags for behavior. Now that we have our parameter type, we can start to define our Loc, as shown in Listing <a class="Reference" href="index-7.html#lst:Defining-a-Type-Safe-loc">7.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining a Type-Safe Loc<a class="Label" name="lst:Defining-a-Type-Safe-loc"> </a>
+</div>
+<pre class="listing brush: scala">class AccountLoc extends Loc[AccountInfo] {
+...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Assuming that an Account instance has a unique string ID, we would like to use URL rewriting so that we can access a ledger via "/acct/&lt;unique id&gt;". Our rewrite function, shown in Listing <a class="Reference" href="index-7.html#lst:The-Rewrite-Function">7.6.2↓</a>, handles a few different things at once. It handles locating the correct account and then checking the permissions if everything else is OK.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Rewrite Function<a class="Label" name="lst:The-Rewrite-Function"> </a>
+</div>
+<pre class="listing brush: scala">override def rewrite = Full({
+  case RewriteRequest(ParsePath(List("acct", aid), _, _, _), _, _) =&gt; {
+    Account.findAll(By(Account.stringId, aid)) match {
+      case List(account) if account.is_public.is =&gt; {
+        (RewriteResponse("account" :: Nil),
+         FullAccountInfo(account, account.entries))
+      }
+      case List(account) =&gt; {
+        (RewriteResponse("account" :: Nil),
+         NotPublic)
+      }
+      case _ =&gt; {
+        (RewriteResponse("account" :: Nil),
+         NoSuchAccount)
+      }
+    }
+  }
+})
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now that we’ve defined the transformation from URL to parameter, we need to define the behaviors based on that parameter. The account page will show a list of expense entries only if the account is located and is public. For this example we’ll use a single template and we’ll change the snippet behavior based on our parameter, as shown in Listing <a class="Reference" href="index-7.html#lst:Defining-Snippet-Behavior">7.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining Snippet Behavior<a class="Label" name="lst:Defining-Snippet-Behavior"> </a>
+</div>
+<pre class="listing brush: scala">override def snippets = {
+  case ("entries", Full(NoSuchAccount)) =&gt; {ignore : NodeSeq =&gt;
+    Text("Could not locate the requested account")}
+  case ("entries", Full(NotPublic)) =&gt; {ignore : NodeSeq =&gt;
+    Text("This account is not publicly viewable")}
+  case ("entries", Full(FullAccountInfo(account, List()))) =&gt; {ignore : NodeSeq =&gt;
+    Text("No entries for " + account.name.is)}
+  case ("entries", Full(FullAccountInfo(account, entries))) =&gt;
+    Accounts.show(entries) _ 
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In this example, we simply return some text if the <tt>Account</tt> can’t be located, isn’t public, or doesn’t have any <tt>Expense</tt> entries. Remember that this function needs to return a snippet function, which expects a NodeSeq parameter. This is why we need to include the <tt>ignore</tt> parameter as part of our closures. If our <tt>Account</tt> does have entries, we return a real snippet method defined in our <tt>Accounts</tt> object. In our template, we simply use an entries snippet tag, as shown in Listing <a class="Reference" href="index-7.html#lst:Our-Public-Template">7.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Our Public Template<a class="Label" name="lst:Our-Public-Template"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:entries  eager_eval="true"&gt;
+    &lt;h1&gt;&lt;lift:Menu.title /&gt;&lt;/h1&gt;
+    &lt;lift:embed what="entry_table" /&gt;
+  &lt;/lift:entries&gt;
+&lt;/lift:surround&gt; 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We’re using our embedded table template for the body of the table along with the <tt>eager_eval</tt> attribute so that we can use the same markup for all occurrences of our expense table display. We can also define the title of the page based on the <tt>title</tt> parameter, as shown in Listing <a class="Reference" href="index-7.html#lst:Defining-the-Title">7.6.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining the Title<a class="Label" name="lst:Defining-the-Title"> </a>
+</div>
+<pre class="listing brush: scala">override def title(param : AccountInfo) = param match {
+  case FullAccountInfo(acct, _) =&gt; 
+    Text("Expense summary for " + acct.name.is)
+  case _ =&gt; Text("No account")
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.6.3">7.6.3</a> Dynamically Adding Child Menus
+</h3>
+<div class="Unindented">
+TBW
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-7.6.4">7.6.4</a> Binding Your Custom Loc
+</h3>
+<h2 class="Section">
+<a class="toc" name="toc-Section-7.7">7.7</a> Conclusion
+</h2>
+<div class="Unindented">
+As we’ve shown in this chapter, SiteMap offers a wide range of functionality to let you control site navigation and access. You can customize the display of your individual items using the <tt>LinkText</tt> <tt>LocParam</tt> as well as through the functionality of the built-in <tt>Menu</tt> <tt>builder</tt> and <tt>item</tt> snippets. You can use the <tt>If</tt> and <tt>Unless</tt> <tt>LocParam</tt>s to control access to your pages programmatically, and you can use the <tt>Test</tt> <tt>LocParam</tt> to check the request before it’s even dispatched. Page-specific rendering can be customized with the <tt>Template</tt>, <tt>Snippet</tt>, and <tt>LocSnippet</tt> <tt>LocParam</tt>s, and you can group menu items together via the <tt>LocGroup</tt> <tt>LocParam</tt>. Finally, you can consolidate all of these functions by writing your own <tt>Loc</tt> trait subclass directly, and gain the additional benefit of type-safe URL rewriting. Together these offer a rich set of tools for building your web site exactly they way you want to.
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-6.html#Next">Previous: Chapter 6</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-8.html#prev">Next: Chapter 8</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

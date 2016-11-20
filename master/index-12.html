@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-11.html#Next">Previous: Chapter 11</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-13.html#prev">Next: Chapter 13</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-12">12</a> JPA Integration<a class="Label" name="cha:JPA-Integration"> </a>
+</h1>
+<div class="Unindented">
+<div class="Framed" style="width: 100%;">
+This chapter is still under active development. The contents will change.
+</div>
+
+</div>
+<div class="Indented">
+The Java Persistence API<span class="FootOuter"><span class="SupFootMarker"> [J] </span><span class="HoverFoot"><span class="SupFootMarker"> [J] </span><a class="FlexURL" href="http://java.sun.com/javaee/overview/faq/persistence.jsp">http://java.sun.com/javaee/overview/faq/persistence.jsp</a></span></span>, or JPA<a class="IndexReference" name="entry-JPA-0" href="index-Index.html#index-JPA">↓</a> for short, is the evolution of a number of frameworks in Java to provide a simple database access layer for plain java objects (and, transitively, Scala objects). JPA was developed as part of the Enterprise Java Beans 3 (EJB3) specification, with the goal of simplifying the persistence model. Prior versions had used the Container Managed Persistence (CMP<a class="IndexReference" name="entry-CMP-0" href="index-Index.html#index-CMP">↓</a>) framework, which required many boilerplate artifacts in the form of interfaces and XML descriptors. As part of the overarching theme of EJB3 to simplify and use convention over configuration, JPA uses sensible defaults and annotations<a class="IndexReference" name="entry-annotations-0" href="index-Index.html#index-annotations">↓</a> heavily, while allowing for targetted overrides of behavior via XML descriptors. JPA also does away with many of the interfaces used in CMP and provides a single <tt>javax.persistence.EntityManager</tt><a class="IndexReference" name="entry-EntityManager-0" href="index-Index.html#index-EntityManager">↓</a> class for all persistence operations. An additional benefit is that JPA was designed so that it could be used both inside and outside of the Enterprise container, and several projects (Hibernate<a class="IndexReference" name="entry-Hibernate-0" href="index-Index.html#index-Hibernate">↓</a>, TopLink<a class="IndexReference" name="entry-TopLink-0" href="index-Index.html#index-TopLink">↓</a>, JPOX<a class="IndexReference" name="entry-JPOX-0" href="index-Index.html#index-JPOX">↓</a>, etc) provide standalone implementations of <tt>EntityManager</tt>.
+</div>
+<div class="Indented">
+As we’ve seen in chapter <a class="Reference" href="index-8.html#cha:mapper_and_record">8↑</a>, Lift already comes with a very capable database abstraction layer, so why would we want to use something else? There are a number of reasons:
+</div>
+<ol>
+<li>
+JPA is easily accessible from both Java and Scala. If you are using Lift to complement part of a project that also contains Java components, JPA allows you to use a common database layer between both and avoid duplication of effort. It also means that if you have an existing project based on JPA, you can easily integrate it into Lift
+</li>
+<li>
+JPA gives you more flexibility with complex and/or large schemas. While Lift’s Mapper provides most of the functionality you would need, JPA provides additional lifecycle methods and mapping controls when you have complex needs. Additionally, JPA has better support for joins and relationships between entities.
+</li>
+<li>
+JPA can provide additional performance improvements via second-level object caching. It’s possible to roll your own in Lift, but JPA allows you to cache frequently-accessed objects in memory so that you avoid hitting the database entirely
+</li>
+
+</ol>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.1">12.1</a> Introducing JPA
+</h2>
+<div class="Unindented">
+In order to provide a concrete example to build on while learning how to integrate JPA, we’ll be building a small Lift app to manage a library of books. The completed example is available under the Lift Git<a class="IndexReference" name="entry-Git-0" href="index-Index.html#index-Git">↓</a> repository in the sites directory, and is called “JPADemo”. Basic coverage of the JPA operations is in section <a class="Reference" href="index-12.html#sec:JPA-Examples">12.5 on page 1↓</a>; if you want more detail on JPA, particularly with advanced topics like locking and hinting, there are several very good tutorials to be found online<span class="FootOuter"><span class="SupFootMarker"> [K] </span><span class="HoverFoot"><span class="SupFootMarker"> [K] </span><a class="FlexURL" href="http://java.sun.com/developer/technicalArticles/J2EE/jpa/">http://java.sun.com/developer/technicalArticles/J2EE/jpa/</a>, <a class="FlexURL" href="http://www.jpox.org/docs/1_2/tutorials/jpa_tutorial.html">http://www.jpox.org/docs/1_2/tutorials/jpa_tutorial.html</a></span></span>. Our first step is to set up a master project<a class="IndexReference" name="entry-master-project-0" href="index-Index.html#index-master-project">↓</a> for Maven. This project will have two modules under it, one for the JPA library and one for the Lift application. In a working directory of your choosing, issue the following command:
+</div>
+<pre class="LyX-Code">
+mvn archetype:generate \
+  -DarchetypeRepository=http://scala-tools.org/repo-snapshots \
+  -DarchetypeGroupId=net.liftweb \
+  -DarchetypeArtifactId=lift-archetype-jpa-basic \
+  -DarchetypeVersion=1.1-SNAPSHOT \
+  -DgroupId=com.foo.jpaweb \
+  -DartifactId=JPADemo \
+  -Dversion=1.0-SNAPSHOT
+</pre>
+<div class="Unindented">
+This will use the JPA archetype to create a new project for you with modules for the persistence and web portions of the project.
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: The reason we have split the module out into two projects is that it aids deployment on Jave EE servers to have the Persistence module be an independent JAR file. If you don’t need that, you can simply merge the contents of the two modules into a single project and it will work standalone. Note that you’ll need to merge the pom.xml file’s dependencies and plugin configurations from all three POMs. Lift comes with an archetype that handles this already, albeit without the demo code we show here. Simply use the lift-archetype-jpa-blank-single archetype and you’ll get a blank project (with minimal files for JPA and Lift) that you can use for your app. There’s also a blank archetype that uses two modules if you want that, called lift-archetype-jpa-blank.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+You will get a prompt asking you to confirm the settings we’ve chosen; just hit <tt>&lt;enter&gt;</tt>. As of this writing we have to use the snapshot version of the archetype because it didn’t make the Lift 1.0 deadline, but otherwise it’s a stable archetype. You will also see some Velocity warnings about invalid references; these can be safely ignored and will hopefully be fixed by 1.1. After the archetype is generated, you should have the following tree structure:
+</div>
+<pre class="LyX-Code">
+JPADemo
+|-- README
+|-- pom.xml
+|-- spa
+|   |-- pom.xml
+|   ‘-- src ...
+‘-- web
+    |-- pom.xml
+    ‘-- src ...
+</pre>
+<div class="Unindented">
+If you look at the source directories, you’ll see that our code is already in place! If you’re making your own application you can either use the previously mentioned blank archetypes to start from scratch, or use the basic archetype and modify the POMs, Scala code and templates to match your needs. For now, let’s go over the contents of the project.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.1.1">12.1.1</a> Using Entity Classes<a class="IndexReference" name="entry-entity-class-0" href="index-Index.html#index-entity-class">↓</a> in Scala
+</h3>
+<div class="Unindented">
+The main components of a JPA library are the entity classes that comprise your data model. For our example application we need two primary entities: Author and Book. Let’s take a look at the Author class first, shown in listing <a class="Reference" href="index-G.html#lst:Author.scala">G.1.1 on page 1↓</a>. The listing shows our import of the entire javax.persistence package as well as several annotations on a basic class. For those of you coming from the Java world in JPA, the annotations should look very familiar. The major difference between Java and Scala annotations is that each parameter in a Scala annotation is considered a val, which explains the presence of the val keyword in lines 12, 15 and 17-18. In line 17 you may also note that we must specify the target entity class; although Scala uses generics, the generic types aren’t visible from Java, so the Java JPA libraries can’t deduce the correct type. You may also notice that on line 18 we need to use the Java collections classes for Set, List, etc. With a little bit of implicit conversion magic (to be shown later), this has very little impact on our code. On final item item to note is that the Scala compiler currently does not support nested annotations <span class="FootOuter"><span class="SupFootMarker"> [L] </span><span class="HoverFoot"><span class="SupFootMarker"> [L] </span><a class="FlexURL" href="https://lampsvn.epfl.ch/trac/scala/ticket/294">https://lampsvn.epfl.ch/trac/scala/ticket/294</a></span></span>, so where we would normally use them (join tables, named queries, etc), we will have to use the orm.xml descriptor, which we cover next.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.1.2">12.1.2</a> <a class="Label" name="sub:Using-the-orm.xml"> </a>Using the orm.xml<a class="IndexReference" name="entry-orm.xml-0" href="index-Index.html#index-orm.xml">↓</a> descriptor
+</h3>
+<div class="Unindented">
+As we stated in the last section, there are some instances where the Scala compiler doesn’t fully cover the JPA annotations (nested annotations in particular). Some would also argue that queries and other ancillary data (table names, column names, etc) should be separate from code. Because of that, JPA allows you to specify an external mapping descriptor to define and/or override the mappings for your entity classes<a class="IndexReference" name="entry-entity-classes-0" href="index-Index.html#index-entity-classes">↓</a>. The basic orm.xml file starts with the DTD type declaration, as shown in listing <a class="Reference" href="index-G.html#lst:orm.xml">G.1.2 on page 1↓</a>. Following the preamble, we can define a package that will apply to all subsequent entries so that we don’t need to use the fully-qualified name for each class. In our example, we would like to define some named queries for each class. Putting them in the orm.xml allows us to modify them without requiring a recompile. The complete XML Schema Definition can be found at <a class="FlexURL" href="http://java.sun.com/xml/ns/persistence/orm_1_0.xsd">http://java.sun.com/xml/ns/persistence/orm_1_0.xsd</a>.
+</div>
+<div class="Indented">
+In this case we have used the orm.xml file to augment our entity classes. If, however, we would like to override the configuration, we may use that as well on a case-by-case basis. Suppose we wished to change the column name for the Author’s <tt>name</tt> property. We can add (per the XSD) a section to the Author entity element as shown in listing <a class="Reference" href="index-12.html#lst:JPA-Author-override">12.1.2↓</a>. The <tt>attribute-override</tt> element lets us change anything that we would normally specify on the <tt>@Column</tt> annotation. This gives us an extremely powerful method for controlling our schema mapping outside of the source code. We can also add named queries<a class="IndexReference" name="entry-named-queries-0" href="index-Index.html#index-named-queries">↓</a> in the orm.xml so that we have a central location for defining or altering the queries.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:JPA-Author-override"> </a>Author override
+</div>
+  &lt;entity class="Author"&gt;<pre class="listing brush: xml">    &lt;named-query name="findAllAuthors"&gt;
+      &lt;query&gt;&lt;![CDATA[from Author a order by a.name]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+    &lt;attribute-override name="name"&gt;
+      &lt;column name="author_name" length="30" /&gt;
+    &lt;/attribute-override&gt;
+  &lt;/entity&gt;
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.1.3">12.1.3</a> Working with Attached and Detached Objects<a class="Label" name="sub:Working-with-Attached"> </a>
+</h3>
+<div class="Unindented">
+JPA operates with entities in one of two modes: attached and detached. An attached object is one that is under the direct control of a live JPA session. That means that the JPA provider monitors the state of the object and writes it to the database at the appropriate time. Objects can be attached either explicitly via the <tt>persist</tt> and <tt>merge</tt> methods (section <a class="Reference" href="index-12.html#sub:Persisting,-merging-and-removing">12.5.1↓</a>), or implicitly via query results, the <tt>getReference</tt> method or the <tt>find</tt> method.
+</div>
+<div class="Indented">
+As soon as the session ends, any formerly attached objects are now considered detached. You can still operate on them as normal objects but any changes are not directly applied to the database. If you have a detached object, you can re-attach it to your current session with the <tt>merge</tt> method; any changes since the object was detached, as well as any subsequent changes to the attached object, will be applied to the database at the appropriate time. The concept of object attachment is particularly useful in Lift because it allows us to generate or query for an object in one request cycle and then make modifications and merge in a different cycle.
+</div>
+<div class="Indented">
+As an example, our library application provides a summary listing of authors on one page (<tt>src/main/webapp/authors/list.html</tt>) and allows editing of those entities on another (<tt>src/main/webapp/authors/add.html</tt>). We can use the <tt>SHtml.link</tt> generator on our list page, combined with a <tt>RequestVar</tt>, to pass the instance (detached once we return from the list snippet) to our edit snippet. Listing <a class="Reference" href="index-12.html#lst:Passing-Detached-Instances">12.1.3↓</a> shows excerpts from our library application snippets demonstrating how we hand off the instance and do a merge within our edit snippets submission processing function (<tt>doAdd</tt>).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Passing Detached Instances Around an Application<a class="Label" name="lst:Passing-Detached-Instances"> </a>
+</div>
+<pre class="listing brush: scala">// in src/main/scala/net/liftweb/jpademo/snippets/Author.scala
+...package and imports ... 
+class AuthorOps {
+  def list (xhtml : NodeSeq) : NodeSeq = {
+    val authors = ...
+    authors.flatMap(author =&gt; bind("author", xhtml, ...
+        // use the link closure to capture the current
+        // instance for edit insertion
+        "edit" -&gt; SHtml.link("add.html",
+           () =&gt; authorVar(author), Text(?("Edit")))))
+  }
+  ...
+  // Set up a requestVar to track the author object for edits and adds
+  object authorVar extends RequestVar(new Author())
+  // helper def
+  def author = authorVar.is
+  def add (xhtml : NodeSeq) : NodeSeq = {
+    def doAdd () = {
+      ...
+      // merge and save the detached instance
+      Model.mergeAndFlush(author)
+      ...
+    }
+    // Hold a val here so that the closure grabs it instead of the def
+    val current = author
+    // Use a hidden element to reinsert the instance on form submission
+    bind("author", xhtml,
+      "id" -&gt; SHtml.hidden(() =&gt; authorVar(current)), ...,
+      "submit" -&gt; SHtml.submit(?("Save"), doAdd))
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.2">12.2</a> <a class="Label" name="sec:Obtaining-an-EM"> </a>Obtaining a Per-Session EntityManager
+</h2>
+<div class="Unindented">
+Ideally, we would like our JPA access to be as seamless as possible, particularly when it comes to object lifecycle. In JPA, objects can be attached to a current persistence session, or they can be detached from a JPA session. This gives us a lot of flexibility (which we’ll use later) in dealing with the objects themselves, but it also means that we need to be careful when we’re accessing object properties. JPA can use lazy retrieval for instance properties; in particular, this is the default behavior for collection-based properties. What this means is that if we’re working on a detached object and we attempt to access a collection contained in the instance, we’re going to get an exception that the session that the object was loaded in is no longer live. What we’d really like to do is have some hooks into Lift’s request cycle that allows us to set up a session when the request starts and properly close it down when the request ends. We still have to be careful with objects that have been passed into our request (from form callbacks, for instance), but in general this will guarantee us that once we’ve loaded an object in our snippet code we have full access to all properties at any point within our snippets.
+</div>
+<div class="Indented">
+Fortunately for us, Lift provides just such a mechanism. In fact, Lift supports several related mechanisms for lifecycle management<span class="FootOuter"><span class="SupFootMarker"> [M] </span><span class="HoverFoot"><span class="SupFootMarker"> [M] </span>Notably, <tt>S.addAround</tt> with the <tt>LoanWrapper</tt></span></span>, but for now we’re going to focus on just one: the <tt>RequestVar</tt><a class="IndexReference" name="entry-RequestVar-1" href="index-Index.html#index-RequestVar">↓</a>. A <tt>RequestVar</tt> represents a variable associated with the lifetime of the request. This is in contrast to <tt>SessionVar</tt>, which defines a variable for the lifetime of the user’s session. <tt>RequestVar</tt> gives us several niceties over handling request parameters ourselves, including type safety and a default value. We go into more detail on <tt>RequestVars</tt> and <tt>SessionVars</tt> in section <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11 on page 1↑</a>. In addition to the Lift facilities, we also use the ScalaJPA project<span class="FootOuter"><span class="SupFootMarker"> [N] </span><span class="HoverFoot"><span class="SupFootMarker"> [N] </span><a class="FlexURL" href="http://scala-tools.org/mvnsites-snapshots/scalajpa/">http://scala-tools.org/mvnsites-snapshots/scalajpa/</a>, source code available at <a class="URL" href="http://github.com/dchenbecker/scalajpa/tree">http://github.com/dchenbecker/scalajpa/tree</a></span></span> to handle some of the boilerplate of utilizing JPA. ScalaJPA provides some nice traits that “Scalafy” the JPA <tt>EntityManager</tt> and <tt>Query</tt> interfaces, as well as accessors that make retrieving an EM simple. To use ScalaJPA we simply add the following dependency to our POM. 
+</div>
+<pre class="LyX-Code">
+&lt;dependency&gt;
+  &lt;groupId&gt;org.scala-tools&lt;/groupId&gt;
+  &lt;artifactId&gt;scalajpa&lt;/artifactId&gt;
+  &lt;version&gt;1.0-SNAPSHOT&lt;/version&gt;
+&lt;/dependency&gt;
+</pre>
+<div class="Unindented">
+Note that at the time of writing the library is at 1.0-SNAPSHOT, but should be promoted to 1.0 soon.
+</div>
+<div class="Indented">
+We leverage ScalaJPA’s <tt>LocalEMF</tt> and <tt>RequestVarEM</tt> traits to provide a simple <tt>RequestVar</tt> interface to obtain the EM via local lookup (i.e. via the <tt>javax.persistence.Persistence</tt> class), as shown in listing <a class="Reference" href="index-12.html#lst:Setting-up-EM">12.2 on page 1↓</a>. It’s trivial to use JNDI instead by substituting the <tt>JndiEMF</tt> trait for the <tt>LocalEMF</tt> trait, but the details of setting up the JNDI persistence module are beyond the scope of this book.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Setting-up-EM"> </a>Setting up an EntityManager via RequestVar
+</div>
+<pre class="listing brush: scala">import _root_.org.scala_libs.jpa._
+object Model extends LocalEMF("jpaweb") with RequestVarEM
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Once we have this object set up, we can access all of the <tt>ScalaEntityManager</tt> methods directly on <tt>Model</tt>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.3">12.3</a> Handling Transactions<a class="IndexReference" name="entry-Transactions-0" href="index-Index.html#index-Transactions">↓</a>
+</h2>
+<div class="Unindented">
+We’re not going to go into too much detail here; there are better documents available<span class="FootOuter"><span class="SupFootMarker"> [O] </span><span class="HoverFoot"><span class="SupFootMarker"> [O] </span><a class="FlexURL" href="http://java.sun.com/developer/EJTechTips/2005/tt0125.html">http://java.sun.com/developer/EJTechTips/2005/tt0125.html</a></span></span> if you want to go into depth on how the Java Transaction API (JTA) or general transactions work. Essentially, a transaction is a set of operations that are performed atomically; that is, they either all complete successfully or none of them do. The classic example is transferring funds between two bank accounts: you subtract the amount from one account and add it to the other. If the addition fails and you’re not operating in the context of a transaction, the client has lost money!
+</div>
+<div class="Indented">
+In JPA, transactions are required. If you don’t perform your operations within the scope of a transaction you will either get an exception (if you’re using JTA), or you will spend many hours trying to figure out why nothing is being saved to the database. There are two ways of handling transactions under JPA: resource local and JTA. Resource local transactions are what you use if you are managing the EM factory yourself (corresponding to the <tt>LocalEMF</tt> trait). Similarly, JTA is what you use when you obtain your EM via JNDI. Technically it’s also possible to use JTA with a locally managed EM, but that configuration is beyond the scope of this book.
+</div>
+<div class="Indented">
+Generally, we would recommend using JTA where it’s free (i.e., when deploying to a Java EE container) and using resource-local when you’re using a servlet container such as Jetty or Tomcat. If you will be accessing multiple databases or involving resources like EJBs, it is much safer to use JTA so that you can utilize distributed transactions. Choosing between the two is as simple as setting a property in your persistence.xml file (and changing the code to open and close the EM). Listing <a class="Reference" href="index-12.html#lst:Setting-the-transaction-type">12.3↓</a> shows examples of setting the <tt>transaction-type</tt> attribute to <tt>RESOURCE_LOCAL</tt> and to JTA. If you want to use JTA, you can also omit the <tt>transaction-type</tt> attribute since JTA is the default.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Setting-the-transaction-type"> </a>Setting the transaction type
+</div>
+<pre class="listing brush: xml">&lt;persistence-unit name="jpaweb" transaction-type="RESOURCE_LOCAL"&gt;
+  &lt;non-jta-datasource&gt;myDS&lt;/non-jta-datasource&gt;
+​
+&lt;persistence-unit name="jpaweb" transaction-type="JTA"&gt;
+  &lt;jta-datasource&gt;myDS&lt;/jta-datasource&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+You must make sure that your EM setup code matches what you have in your <tt>persistence.xml</tt>. Additionally, the database connection must match; with JTA, you <i>must</i> use a <tt>jta-data-source</tt> (obtained via JNDI) for your database connection. For resource-local, you can either use a <tt>non-jta-datasource</tt> element or you can set the provider properties, as shown in listing <a class="Reference" href="index-12.html#lst:Setting-resource-local-properties">12.3 on page 1↓</a>. In this particular example we’re setting the properties for Hibernate, but similar properties exist for TopLink<span class="FootOuter"><span class="SupFootMarker"> [P] </span><span class="HoverFoot"><span class="SupFootMarker"> [P] </span><a class="FlexURL" href="http://www.oracle.com/technology/products/ias/toplink/JPA/essentials/toplink-jpa-extensions.html">http://www.oracle.com/technology/products/ias/toplink/JPA/essentials/toplink-jpa-extensions.html</a></span></span>, JPOX<span class="FootOuter"><span class="SupFootMarker"> [Q] </span><span class="HoverFoot"><span class="SupFootMarker"> [Q] </span><a class="FlexURL" href="http://www.jpox.org/docs/1_2/persistence_unit.html">http://www.jpox.org/docs/1_2/persistence_unit.html</a></span></span>, and others.
+</div>
+<div class="Indented">
+If you’ll be deploying into a JEE container, such as JBoss or GlassFish, then you get JTA support almost for free since JTA is part of the JEE spec. If you want to deploy your application on a lightweight container like Jetty or Tomcat, we would recommend that you look into using an external JTA coordinator such as JOTM, Atomikos, or JBoss Transaction Manager, since embedding a JTA provider in your container is a nontrivial task.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Setting-resource-local-properties"> </a>Setting resource-local properties for Hibernate
+</div>
+<pre class="listing brush: xml">&lt;persistence&gt;
+   &lt;persistence-unit name="jpaweb" transaction-type="RESOURCE_LOCAL"&gt;
+      &lt;properties&gt;
+         &lt;property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/&gt;
+         &lt;property name="hibernate.connection.driver_class" value="org.postgresql.Driver"/&gt;
+         &lt;property name="hibernate.connection.username" value="somUser"/&gt;
+         &lt;property name="hibernate.connection.password" value="somePass"/&gt;
+         &lt;property name="hibernate.connection.url" value="jdbc:postgresql:jpaweb"/&gt;
+      &lt;/properties&gt;
+   &lt;/persistence-unit&gt;
+&lt;/persistence&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+One final note in regard to transactions is how they’re affected by Exceptions. Per the spec, any exceptions thrown during the scope of a transaction, other than<br/>
+<tt>javax.persistence.NoResultException</tt> or <tt>javax.persistence.NonUniqueResultException</tt>, will cause the transaction to be marked for rollback.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.4">12.4</a> <a class="Label" name="sec:ScalaEntityManager-and-ScalaQuery"> </a>ScalaEntityManager and ScalaQuery
+</h2>
+<div class="Unindented">
+Now that we’ve gone through setting up our <tt>EntityManager</tt>, let’s look at how we actually use them in an application. As a convenience, ScalaJPA defines two thin wrappers on the existing <tt>EntityManager</tt><span class="FootOuter"><span class="SupFootMarker"> [R] </span><span class="HoverFoot"><span class="SupFootMarker"> [R] </span><a class="FlexURL" href="http://java.sun.com/javaee/5/docs/api/javax/persistence/EntityManager.html">http://java.sun.com/javaee/5/docs/api/javax/persistence/EntityManager.html</a></span></span> and <tt>Query</tt><span class="FootOuter"><span class="SupFootMarker"> [S] </span><span class="HoverFoot"><span class="SupFootMarker"> [S] </span><a class="FlexURL" href="http://java.sun.com/javaee/5/docs/api/javax/persistence/Query.html">http://java.sun.com/javaee/5/docs/api/javax/persistence/Query.html</a></span></span> interfaces to provide more Scala-friendly methods. This means that we get Scala’s collection types (i.e. <tt>List</tt> instead of <tt>java.util.List</tt>) and generic signatures so that we can avoid explicit casting. The <tt>ScalaEntityManager</tt> trait provides a wrapper on the <tt>EntityManager</tt> class, and is included as part of the <tt>RequestVarEM</tt> trait that we’ve mixed into our <tt>Model</tt> object. The API for <tt>ScalaEntityManager</tt> can be found at <a class="FlexURL" href="http://scala-tools.org/mvnsites/scalajpa/scaladocs/org/scala_libs/jpa/ScalaEntityManager.html">http://scala-tools.org/mvnsites/scalajpa/scaladocs/org/scala_libs/jpa/ScalaEntityManager.html</a>.
+</div>
+<div class="Indented">
+Next, we have the <tt>ScalaQuery</tt> trait, with API docs at <a class="FlexURL" href="http://scala-tools.org/mvnsites/scalajpa/scaladocs/org/scala_libs/jpa/ScalaQuery.html">http://scala-tools.org/mvnsites/scalajpa/scaladocs/org/scala_libs/jpa/ScalaQuery.html</a>. Like <tt>ScalaEntityManager</tt>, this is a thin wrapper on the <tt>Query</tt> interface. In particular, methods that return entities are typed against the <tt>ScalaQuery</tt> itself, so that you don’t need to do any explicit casting in your client code. We also have some utility methods to simplify setting a parameter list as well as obtaining the result(s) of the query. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.5">12.5</a> <a class="Label" name="sec:JPA-Examples"> </a>Operating on Entities
+</h2>
+<div class="Unindented">
+In this section we’ll demonstrate how to work with entities and cover some important tips on using JPA effectively.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.1">12.5.1</a> <a class="Label" name="sub:Persisting,-merging-and-removing"> </a>Persisting, Merging and Removing Entities
+</h3>
+<div class="Unindented">
+The first step to working with any persistent entities is to actually persist them. If you have a brand new object, you can do this with the <tt>persist</tt> method:
+</div>
+<pre class="LyX-Code">
+val myNewAuthor = new Author; myNewAuthor.name = "Wilma"
+Model.persist(myNewAuthor)
+</pre>
+<div class="Unindented">
+This attaches the <tt>myNewAuthor</tt> object to the current persistence session. Once the object is attached it should be visible in any subsequent queries, although it may not be written to the database just yet (see section <a class="Reference" href="index-12.html#sub:The-importance-of-flush">12.5.6↓</a>). Note that the <tt>persist</tt> method is only intended for brand new objects. If you have a detached object and you try to use <tt>persist</tt> you will most likely get an <tt>EntityExistsException</tt> as the instance you’re merging is technically conflicting with itself. Instead, you want to use the <tt>merge</tt> method to re-attach detached objects:
+</div>
+<pre class="LyX-Code">
+val author = Model.merge(myOldAuthor)
+</pre>
+<div class="Unindented">
+An important thing to note is that the <tt>merge</tt> method doesn’t actually attach the object passed to it; instead, it makes an attached <i>copy</i> of the passed object and returns the copy. If you mistakenly merge without using the returned value:
+</div>
+<pre class="LyX-Code">
+Model.merge(myOldAuthor)
+myOldAuthor.name = “Fred”
+</pre>
+<div class="Unindented">
+you’ll find that subsequent changes to the object won’t be written to the database. One nice aspect of the <tt>merge</tt> method is that it intelligently detects whether the entity you’re merging is a new object or a detached object. That means that you can use <tt>merge</tt> everywhere and let it sort out the semantics. For example, in our library application, using <tt>merge</tt> allows us to combine the adding and editing functionality into a single snippet; if we want to edit an existing <tt>Author</tt> we pass it into the method. Otherwise, we pass a brand new <tt>Author</tt> instance into the method and the merge takes care of either case appropriately.
+</div>
+<div class="Indented">
+Removing an object is achieved by calling the <tt>remove</tt> method:
+</div>
+<pre class="LyX-Code">
+Model.remove(myAuthor)
+</pre>
+<div class="Unindented">
+The passed entity is detached from the session immediately and will be removed from the database at the appropriate time. If the entity has any associations on it (to collections or other entities), they will be cascaded as indicated by the entity mapping. An example of a cascade is shown in the <tt>Author</tt> listing on page <a class="Reference" href="index-G.html#lst:Author.scala">1↓</a>. The books collection has the cascade set to REMOVE, which means that if an author is deleted, all of the books by that author will be removed as well. The default is to not cascade anything, so it’s important that you properly set the cascade on collections to avoid constraint violations when you remove entities. It’s also useful to point out that you don’t actually need to have an entity loaded to remove it. You can use the <tt>getReference</tt> method to obtain a proxy that will cause the corresponding database entry to be removed:
+</div>
+<pre class="LyX-Code">
+Model.remove(Model.getReference(classOf[Author], someId))
+</pre>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.2">12.5.2</a> Loading an Entity
+</h3>
+<div class="Unindented">
+There are actually three ways to load an entity object in your client code: using <tt>find</tt>, <tt>getReference</tt> or a query. The simplest is to use the <tt>find</tt> method: 
+</div>
+<pre class="LyX-Code">
+val myBook = Model.find(classOf[Book], someId)
+</pre>
+<div class="Unindented">
+The <tt>find</tt> method takes two parameters: the class that you’re trying to load and the value of the ID field of the entity. In our example, the <tt>Book</tt> class uses the <tt>Long</tt> type for its ID, so we would put a <tt>Long</tt> value here. It returns either a <tt>Full</tt> <tt>Box</tt> (section <a class="Reference" href="index-C.html#sec:Box-(or-Scala's">C.2 on page 1↓</a>) if the entity is found in the database, otherwise it returns <tt>Empty</tt>. With <tt>find</tt>, the entity is loaded immediately from the database and can be used in both attached and detached states. 
+</div>
+<div class="Indented">
+The next method you can use is the <tt>getReference</tt> method:
+</div>
+<pre class="LyX-Code">
+val myBook = Model.getReference(classOf[Book], someId)
+</pre>
+<div class="Unindented">
+This is very similar to the <tt>find</tt> method with a few key differences. First, the object that is returned is a lazy proxy for the entity. That means that no database load is required to occur when you execute the method, although providers may do at least a check on the existence of the ID. Because this is a lazy proxy, you usually don’t want to use the returned object in a detached state unless you’ve accessed its fields while the session was open. The normal use of <tt>getReference</tt> is when you want to set up a relationship between two (or more) entities, since you don’t need to query all of the fields just to set a foreign key. For example:
+</div>
+<pre class="LyX-Code">
+myBook.author = Model.getReference(classOf[Author], authorId)
+</pre>
+<div class="Unindented">
+When <tt>myBook</tt> is flushed to the database the EM will correctly set up the relationship. The final difference is in how unknown entities are handled. Recall that the <tt>find</tt> method returns <tt>Empty</tt> if the entity cannot be found; with <tt>getReference</tt>, however, we don’t query the database until the reference is used. Because of this, the <tt>javax.persistence.EntityNotFoundException</tt> is thrown when you try to access an undefined entity for the first time (this also marks the transaction for rollback). 
+</div>
+<div class="Indented">
+The third method for loading an entity would be to use a query (named or otherwise) to fetch the entity. As an example, here’s a query equivalent of the <tt>find</tt> method:
+</div>
+<pre class="LyX-Code">
+val myBook = 
+  Model.createQuery[Book]("from Book bk where bk.id = :id")
+       .setParams("id" -&gt; someId).findOne
+</pre>
+<div class="Unindented">
+The advantage here is that we have more control over what is selected by using the query language to specify other properties. One caveat is that when you use the <tt>findOne</tt> method you need to ensure that the query will actually result in a unique entity; otherwise, the EM will throw a <tt>NonUniqueResultException</tt>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.3">12.5.3</a> Loading Many Entities
+</h3>
+<div class="Unindented">
+Corresponding to the <tt>findOne</tt> method is the <tt>findAll</tt> method, which returns all entities based on a query. There are two ways to use <tt>findAll</tt>; the first is to use the convenience <tt>findAll</tt> method defined in the <tt>ScalaEntityManager</tt> class:
+</div>
+<pre class="LyX-Code">
+val myBooks = Model.findAll("booksByYear", "year" -&gt; myYear)
+</pre>
+<div class="Unindented">
+This requires the use of a named query for the first arg, and subsequent args are of the form (“paramName” -&gt; value). Named queries<a class="IndexReference" name="entry-named-queries-1" href="index-Index.html#index-named-queries">↓</a> can be defined in your orm.xml<a class="IndexReference" name="entry-orm.xml-1" href="index-Index.html#index-orm.xml">↓</a>, as shown in section <a class="Reference" href="index-12.html#sub:Using-the-orm.xml">12.1.2 on page 1↑</a>. Named queries are highly recommended over ad-hoc queries since they allow you to keep the queries in one location instead of being scattered all over your code. Named queries can also be pre-compiled by the JPA provider, which will catch errors at startup (or in your unit tests, hint hint) instead of when the query is run inside your code.
+</div>
+<div class="Indented">
+The second method is to create a <tt>ScalaQuery</tt> instance directly and then set parameters and execute it. In reality this is exactly what the <tt>Model.findAll</tt> method is doing. The advantage here is that with the <tt>ScalaQuery</tt> instance you can do things like set hinting, paging, and so on. For instance, if you wanted to do paging on the books query, you could do
+</div>
+<pre class="LyX-Code">
+val myBooks = Model.createNamedQuery(“booksByYear”)
+                   .setParams(“year” -&gt; myYear)
+                   .setMaxResults(20)
+                   .setFirstResult(pageOffset).findAll
+</pre>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.4">12.5.4</a> Using Queries Wisely
+</h3>
+<div class="Unindented">
+In general we recommend that you use named queries throughout your code. In our experience, the extra effort involved in adding a named query is more than offset by the time it saves you if you ever need to modify the query. Additionally, we recommend that you use named parameters in your queries. Named parameters are just that: parameters that are inserted into your query by name, in contrast to positional parameters. As an example, here is the same query using named and positional parameters:
+</div>
+<div class="List">
+<span class="List-entry">Named parameters</span><span class="List-contents"><tt>select user from User where (user.name like :searchString or user.email like :searchString) and user.widgets &gt; :widgetCount</tt></span>
+</div>
+<div class="List">
+<span class="List-entry">Positional parameters</span><span class="List-contents"><tt>select user from User where (user.name like ? or user.email like ?) and user.widgets &gt; ?</tt></span>
+</div>
+<div class="Unindented">
+This example shows several advantages of named parameters over positional parameters:
+</div>
+<ol>
+<li>
+You can reuse the same parameter within the same query and you only set it once. In the example about we would set the same parameter twice using positional params
+</li>
+<li>
+The parameters can have meaningful names.
+</li>
+<li>
+With positional params you may have to edit your code if you need to alter your query to add or remove parameters
+</li>
+
+</ol>
+<div class="Unindented">
+In any case, you should generally use the parameterized query types as opposed to hand constructing your queries; using things like string concatenation opens up your site to SQL injection attacks unless you’re very careful. For more information on queries there’s an excellent reference for the EJBQL on the Hibernate website at <a class="FlexURL" href="http://www.hibernate.org/hib_docs/entitymanager/reference/en/html/queryhql.html">http://www.hibernate.org/hib_docs/entitymanager/reference/en/html/queryhql.html</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.5">12.5.5</a> Converting Collection Properties
+</h3>
+<div class="Unindented">
+The <tt>ScalaEntityManager</tt> and <tt>ScalaQuery</tt> methods are already defined so that they return Scala-friendly collections such as <tt>scala.collection.jcl.BufferWrapper</tt> or <tt>SetWrapper</tt>. We have to use Java Collections<span class="FootOuter"><span class="SupFootMarker"> [T] </span><span class="HoverFoot"><span class="SupFootMarker"> [T] </span><a class="FlexURL" href="http://java.sun.com/docs/books/tutorial/collections/index.html">http://java.sun.com/docs/books/tutorial/collections/index.html</a></span></span> “under the hood” and then wrap them because JPA doesn’t understand Scala collections. For the same reason, collections in your entity classes must also use the Java Collections classes. Fortunately, Scala has a very nice framework for wrapping Java collections. In particular, the <tt>scala.collection.jcl.Conversions</tt> class contains a number of implicit conversions<a class="IndexReference" name="entry-implicit-conversions-0" href="index-Index.html#index-implicit-conversions">↓</a>; all you have to do is import them at the top of your source file like so:
+</div>
+<pre class="LyX-Code">
+import scala.collection.jcl.Conversions._
+</pre>
+<div class="Unindented">
+Once you’ve done that the methods are automatically in scope and you can use collections in your entities as if they were real Scala collections. For example, we may want to see if our Author has written any mysteries:
+</div>
+<pre class="LyX-Code">
+val suspenseful = author.books.exists(_.genre = Genre.Mystery)
+</pre>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.6">12.5.6</a> <a class="Label" name="sub:The-importance-of-flush"> </a>The importance of flush() and Exceptions
+</h3>
+<div class="Unindented">
+It’s important to understand that in JPA the provider isn’t required to write to the database until the session closes or is flushed. That means that constraint violations aren’t necessarily checked at the time that you persist, merge or remove and object. Using the flush method forces the provider to write any pending changes to the database and immediately throw any exceptions resulting from any violations. As a convenience, we’ve written the <tt>mergeAndFlush</tt>, <tt>persistAndFlush</tt>, and <tt>removeAndFlush</tt> methods to do persist, merge and remove with a subsequent flush, as shown in listing <a class="Reference" href="index-12.html#lst:Auto-flush-methods">12.5.6↓</a>, taken from the Author snippet code. You can also see that because we flush at this point, we can catch any JPA-related exceptions and deal with them here. If we don’t flush at this point, the exception would be thrown when the transaction commits, which is often very far (in code) from where you would want to handle it.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Auto-flush methods<a class="Label" name="lst:Auto-flush-methods"> </a>
+</div>
+def doAdd () = {<pre class="listing brush: scala">  if (author.name.length == 0) {
+    error("emptyAuthor", "The author’s name cannot be blank")
+  } else {
+    try {
+      Model.mergeAndFlush(author)
+     redirectTo("list.html")
+    } catch {
+      case ee : EntityExistsException =&gt; error("Author already exists")
+      case pe : PersistenceException =&gt; 
+        error("Error adding author"); Log.error("Error adding author", pe)
+    }
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Although the combo methods simplify things, we recommend that if you will be doing multiple operations in one session cycle that you use a single flush at the end:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Multiple JPA ops<a class="Label" name="lst:Multiple-JPA-ops"> </a>
+</div>
+<pre class="listing brush: scala">val container = Model.find(classOf[Container], containerId)
+Model.remove(container.widget)
+container.widget = new Widget("Foo!")
+// next line only required if container.widget doesn’t cascade PERSIST
+Model.persist(container.widget)
+Model.flush()
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-12.5.7">12.5.7</a> Validating Entities
+</h3>
+<div class="Unindented">
+Since we’ve already covered the Mapper framework and all of the extra functionality that it provides beyond being a simple ORM, we felt that we should discuss one of the more important aspects of data handling as it pertains to JPA: validation of data.
+</div>
+<div class="Indented">
+JPA itself doesn’t come with a built-in validation framework, although the upcoming JPA 2.0 may use the JSR 303 (Bean Validation) framework as its default. Currently, Hibernate Validator is one of the more popular libraries for validating JPA entities, and can be used with any JPA provider. More information is available at the project home page: <a class="URL" href="http://www.hibernate.org/412.html">http://www.hibernate.org/412.html</a>.
+</div>
+<div class="Indented">
+The validation of entities with Hibernate Validator is achieved, like the JPA mappings, with annotations. Listing <a class="Reference" href="index-12.html#lst:The-Author-class-validations">12.5.7↓</a> shows a modified Author class with validations for the name. In this case we have added a NotNull validation as well as a Length check to ensure we are within limits. 
+</div>
+<div class="Indented">
+<div class="smallskip"> </div>
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: Unfortunately, due to the way that the validator framework extracts entity properties, we have to rework our entity to use a getter/setter for any properties that we want to validate; even the <tt>scala.reflect.BeanProperty</tt> annotation won’t work. 
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+<div class="smallskip"> </div>
+</div>
+<div class="Indented">
+Validation can be performed automatically via the <tt>org.hibernate.validator.event.JPAValidateListener</tt> EntityListener, or programmatically via the <tt>org.hibernate.validator.ClassValidator</tt> utility class. In the listing we use <tt>ClassValidator</tt> and match on the array returned from <tt>getInvalidValues</tt> for processing. Further usage and configuration is beyond the scope of this book.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Author class with Hibernate Validations<a class="Label" name="lst:The-Author-class-validations"> </a>
+</div>
+<pre class="listing brush: scala">...
+class Author {
+  ...
+  var name : String = ""
+  @Column{val unique = true, val nullable = false}
+  @NotNull
+  @Length{val min = 3, val max = 100}
+  def getName() = name
+  def setName(nm : String) { name = nm }
+  ...
+} 
+// In the snippet class
+class AuthorOps {
+  ...
+  val authorValidator = new ClassValidator(classOf[Author])
+  def add (xhtml : NodeSeq) : NodeSeq = {
+    def doAdd () = {
+      authorValidator.getInvalidValues(author) match {
+        case Array() =&gt;
+          try {
+            Model.mergeAndFlush(author)
+            ...
+          } catch {
+            ...
+          }     
+        case errors =&gt; {
+          errors.foreach(err =&gt; S.error(err.toString)) 
+        }      
+      }
+    ...
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.6">12.6</a> Supporting User Types
+</h2>
+<div class="Unindented">
+JPA can handle any Java primitive type, their corresponding Object versions (java.lang.Long, java.lang.Integer, etc), and any entity classes comprised of these types <span class="FootOuter"><span class="SupFootMarker"> [U] </span><span class="HoverFoot"><span class="SupFootMarker"> [U] </span>It can technically handle more; see the JPA spec, section 2.1.1 for details</span></span>. Occasionally, though, you may have a requirement for a type that doesn’t fit directly with those specifications. One example in particular would be Scala’s enumerations<a class="IndexReference" name="entry-enumerations-0" href="index-Index.html#index-enumerations">↓</a>. Unfortunately, the JPA spec currently doesn’t have a means to handle this directly, although the various JPA providers such as Toplink and Hibernate provide mechanisms for resolving custom user types. JPA does provide direct support for <i>Java</i> enumerations, but that doesn’t help us here since Scala enumerations aren’t an extension of Java enumerations. In this example, we’ll be using Hibernate’s <tt>UserType</tt> to support an enumeration for the <tt>Genre</tt> of a <tt>Book</tt>.
+</div>
+<div class="Indented">
+We begin by implementing a few helper classes besides the Genre enumeration itself. First, we define an <tt>Enumv</tt> trait, shown in listing <a class="Reference" href="index-G.html#lst:Enumv-Trait">G.1.3 on page 1↓</a>. Its main purpose is to provide a <tt>valueOf</tt> method that we can use to resolve the enumerations database value to the actual enumeration. We also add some extra methods so that we can encapsulate a description along with the database value. Scala enumerations can use either <tt>Ints</tt> or <tt>Strings</tt> for the identity of the enumeration value (unique to each val), and in this case we’ve chosen <tt>Strings</tt>. By adding a map for the description (since Scala enumeration values must extend the <tt>Enumeration#Value</tt> class and therefore can’t carry the additional string) we allow for the additional info. We could extend this concept to make the <tt>Map</tt> carry additional data, but for our purposes this is sufficient. 
+</div>
+<div class="Indented">
+In order to actually convert the <tt>Enumeration</tt> class into the proper database type (<tt>String</tt>, <tt>Int</tt>, etc), we need to implement the Hibernate <tt>UserType</tt> interface, shown in listing <a class="Reference" href="index-G.html#lst:EnumvType">G.1.4 on page 1↓</a>. We can see on line 18 that we will be using a <tt>varchar</tt> column for the enumeration value. Since this is based on the Scala <tt>Enumeration</tt>’s <tt>Value</tt> method, we could technically use either <tt>Integer</tt> or character types here. We override the <tt>sqlTypes</tt> and <tt>returnedClass</tt> methods to match our preferred type, and set the <tt>equals</tt> and <tt>hashCode</tt> methods accordingly. Note that in Scala, the “==” operator on objects delegates to the <tt>equals</tt> method, so we’re not testing reference equality here. The actual resolution of database column value to <tt>Enumeration</tt> is done in the <tt>nullSafeGet</tt> method; if we decided, for instance, that the null value should be returned as unknown, we could do this here with some minor modifications to the <tt>Enumv</tt> class (defining the unknown value, for one).The rest of the methods are set appropriately for an immutable object (<tt>Enumeration</tt>). The great thing about the <tt>EnumvType</tt> class, is that it can easily be used for a variety of types due to the “et” constructor argument; as long as we mix in the <tt>Enumv</tt> trait to our <tt>Enumeration</tt> objects, we get persistence essentially for free. If we determined instead that we want to use <tt>Integer</tt> enumeration IDs, we need to make minor modifications to the <tt>EnumvType</tt> to make sure arguments match and we’re set.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Genre-and-GenreType"> </a>Genre and GenreType
+</div>
+package com.foo.jpaweb.model<pre class="listing brush: scala">​
+object Genre extends Enumeration with Enumv {
+  val Mystery = Value("Mystery", "Mystery")
+  val Science = Value("Science", "Science")
+  val Theater = Value("Theater", "Drama literature")
+  // more values here...
+}
+​
+class GenreType extends EnumvType(Genre) {}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Finally, the <tt>Genre</tt> object and the associated <tt>GenreType</tt> is shown in listing <a class="Reference" href="index-12.html#lst:Genre-and-GenreType">12.6↑</a>. You can see that we create a singleton <tt>Genre</tt> object with specific member values for each enumeration value. The <tt>GenreType</tt> class is trivial now that we have the <tt>EnumvType</tt> class defined. To use the <tt>Genre</tt> type in our entity classes, we simply need to add the proper <tt>var</tt> and annotate it with the <tt>@Type</tt> annotation, as shown in listing <a class="Reference" href="index-12.html#lst:Using-the-@Type">12.6↓</a>. We need to specify the type of the var due to the fact that the actual enumeration values are of the type <tt>Enumeration.Val</tt>, which doesn’t match our <tt>valueOf</tt> method in the <tt>Enumv</tt> trait. We also want to make sure we set the enumeration to some reasonable default; in our example we have an <i>unknown</i> value to cover that case.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Using-the-@Type"> </a>Using the @Type annotation
+</div>
+  @Type{val ‘type‘ = "com.foo.jpaweb.model.GenreType"}<pre class="listing brush: scala">  var genre : Genre.Value = Genre.unknown
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.7">12.7</a> Running the Application
+</h2>
+<div class="Unindented">
+Now that we’ve gone over everything, it’s time to run the application. Because we’ve split up the app into separate SPA and WEB modules, we need to first run
+</div>
+<pre class="LyX-Code">
+mvn install
+</pre>
+<div class="Unindented">
+From the SPA module directory to get the persistence module added to your maven repository. Once that is done, you can go to the WEB module directory and run
+</div>
+<pre class="LyX-Code">
+mvn jetty:run
+</pre>
+<div class="Unindented">
+To get it started.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-12.8">12.8</a> Summing Up
+</h2>
+<div class="Unindented">
+As we’ve shown in this chapter, the Java Persistence API provides a robust, flexibile framework for persisting data to your database, and does so in a manner that integrates fairly well with Lift. We’ve demonstrated how you can easily write entities using a combination of annotations and the orm.xml descriptor, how to define your own custom user types to handle enumerations, the intricacies of working with transactions in various contexts, and leveraging the ScalaJPA framework to simplify your persistence setup. 
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-11.html#Next">Previous: Chapter 11</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-13.html#prev">Next: Chapter 13</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

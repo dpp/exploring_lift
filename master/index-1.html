@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-I.html#Next">Previous: Part I</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-2.html#prev">Next: Chapter 2</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-1">1</a> Welcome to Lift!<a class="Label" name="cha:Welcome-to-Lift!"> </a>
+</h1>
+<div class="Unindented">
+Welcome to <i>Exploring Lift</i>. We’ve created this book to educate you about Lift, which we think is a great framework for building compelling web applications. Lift is designed to make powerful techniques easily accessible while keeping the overall framework simple and flexible. It may sound like a cliché, but in our experience Lift makes it fun to develop because it lets you focus on the interesting parts of coding. Our goal for this book is that by the end, you’ll be able to create and extend any web application you can think of.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-1.1">1.1</a> Why Lift?
+</h2>
+<div class="Unindented">
+For those of you have experience with other web frameworks such as Struts, Tapestry, Rails, et cetera, you must be asking yourself, "Why another framework? Does Lift really solve problems any differently or more effectively than the ones I’ve used before?" Based on our experience (and that of others in the growing Lift community), the answer is an emphatic, "Yes!" Lift has cherry-picked the best ideas from a number of other frameworks, while creating some novel ideas of its own. It’s this combination of a solid foundation and new techniques that makes Lift so powerful. At the same time, Lift has been able to avoid the mistakes made in the past by other frameworks. In the spirit of “convention over configuration,” Lift has sensible defaults for everything while making it easy to customize precisely what you need to: no more and no less. Gone are the days of XML file after XML file providing <i>basic configuration</i> for your application. Instead, a simple Lift app requires only that you add the LiftFilter to your web.xml and add one or more lines telling Lift what package your classes sit in (Section <a class="Reference" href="index-3.html#sec:Bootstrap">3.2↓</a>). The methods you code aren’t required to implement a specific interface (called a trait), although there are support traits that make things that much simpler. In short, you don’t need to write anything that isn’t explicitly necessary for the task at hand. Lift is intended to work out of the box, and to make you as efficient and productive as possible.
+</div>
+<div class="Indented">
+One of the key strengths of Lift is the clean separation of presentation content and logic, based on the bedrock concept of the Model-View-Controller<a class="IndexReference" name="entry-MVC-0" href="index-Index.html#index-MVC">↓</a> pattern<span class="FootOuter"><span class="SupFootMarker"> [A] </span><span class="HoverFoot"><span class="SupFootMarker"> [A] </span><a class="FlexURL" href="http://java.sun.com/blueprints/patterns/MVC.html">http://java.sun.com/blueprints/patterns/MVC.html</a></span></span>. One of the original Java web application technologies that’s still in use today is JSP, or Java Server Pages<span class="FootOuter"><span class="SupFootMarker"> [B] </span><span class="HoverFoot"><span class="SupFootMarker"> [B] </span><a class="FlexURL" href="http://java.sun.com/products/jsp/">http://java.sun.com/products/jsp/</a></span></span>. JSP allows you to mix HTML and Java code directly within the page. While this may have seemed like a good idea at the start, it has proven to be painful in practice. Putting code in your presentation layer makes it more difficult to debug and understand what is going on within a page, and makes it more difficult for the people writing the HTML portion because the contents aren’t valid HTML. While many modern programming and HTML editors have been modified to accomodate this mess, proper syntax highlighting and validation don’t make up for having to switch back and forth between one or more files to follow the page flow. Lift takes the approach that there should be no code in the presentation layer, but that the presentation layer has to be flexible enough to accomodate any conceivable use. To that end, Lift uses a powerful templating system, à la Wicket<span class="FootOuter"><span class="SupFootMarker"> [C] </span><span class="HoverFoot"><span class="SupFootMarker"> [C] </span><a class="FlexURL" href="http://wicket.apache.org/">http://wicket.apache.org/</a></span></span>, to bind user-generated data into the presentation layer. Lift’s templating is built on the XML processing capabilities of the Scala language<span class="FootOuter"><span class="SupFootMarker"> [D] </span><span class="HoverFoot"><span class="SupFootMarker"> [D] </span>Not only does Scala have extensive library support for XML, but XML syntax is actually part of the language. We’ll cover this in more detail as we go through the book.</span></span>, and allows such things as nested templates, simple injection of user-generated content, and advanced data binding capabilities. For those coming from JSP, Lift’s advanced template and XML processing allows you essentially to write custom tag libraries at a fraction of the cost in time and effort.
+</div>
+<div class="Indented">
+Lift has another advantage over many other web frameworks: it’s designed specifically to leverage the Scala<a class="IndexReference" name="entry-Scala-0" href="index-Index.html#index-Scala">↓</a> programming language. Scala is a relatively new language developed by Martin Odersky<span class="FootOuter"><span class="SupFootMarker"> [E] </span><span class="HoverFoot"><span class="SupFootMarker"> [E] </span>Martin created the Pizza programming language, which led to the Generic Java (GJ) project that was eventually incorporated into Java 1.5. His home page is at <a class="FlexURL" href="http://lamp.epfl.ch/~odersky/">http://lamp.epfl.ch/~odersky/</a></span></span> and his programming language research group at EPFL Switzerland. It compiles to Java bytecode and runs on the JVM, which means that you can leverage the vast ecosystem of Java libraries just as you would with any other Java web framework. At the same time, Scala introduces some very powerful features designed to make you, the developer, more productive. Among these features are an extremely rich type system along with powerful type inference, native XML processing, full support for closures and functions as objects, and an extensive high-level library. The power of the type system together with type inference has led people to call it “the statically-typed dynamic language”<span class="FootOuter"><span class="SupFootMarker"> [F] </span><span class="HoverFoot"><span class="SupFootMarker"> [F] </span><a class="FlexURL" href="http://scala-blogs.org/2007/12/scala-statically-typed-dynamic-language.html">http://scala-blogs.org/2007/12/scala-statically-typed-dynamic-language.html</a></span></span>. That means you can write code as quickly as you can with dynamically-typed languages (e.g. Python, Ruby, etc.), but you have the compile-time type safety of a statically-typed language such as Java. Scala is also a hybrid functional (FP) and object-oriented (OO) language, which means that you can get the power of higher-level functional languages such as Haskell or Scheme while retaining the modularity and reusability of OO components. In particular, the FP concept of immutability is encouraged by Scala, making it well-suited for writing highly-concurrent programs that achieve high throughput scalability. The hybrid model also means that if you haven’t touched FP before, you can gradually ease into it. In our experience, Scala allows you to do more in Lift with fewer lines of code. Remember, Lift is all about making you more productive!
+</div>
+<div class="Indented">
+Lift strives to encompass advanced features in a very concise and straightforward manner. Lift’s powerful support for AJAX and Comet allows you to use Web 2.0 features with very little effort. Lift leverages Scala’s Actor library to provide a message-driven framework for Comet updates. In most cases, adding Comet support to a page involves nothing more than extending a trait<span class="FootOuter"><span class="SupFootMarker"> [G] </span><span class="HoverFoot"><span class="SupFootMarker"> [G] </span>A trait is a Scala construct that’s almost like a Java interface. The main difference is that traits may implement methods and have fields.</span></span> to define the rendering method of your page and adding an extra function call to your links to dispatch the update message. Lift handles all of the back-end and page-side coding to provide the Comet polling. AJAX support includes special handlers for doing AJAX form submission via JSON, and almost any link function can easily be turned into an AJAX version with a few keystrokes. In order to perform all of this client-side goodness, Lift has a class hierarchy for encapsulating JavaScript calls via direct JavaScript, jQuery, and YUI. The nice part is that you, too, can utilize these support classes so that code can be generated for you and you don’t have to put JavaScript logic into your templates.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-1.2">1.2</a> What You Should Know before Starting
+</h2>
+<div class="Unindented">
+First and foremost, this is a book on the Lift framework. There are several things we expect you to be familiar with before continuing:
+</div>
+<ul>
+<li>
+The Scala language and standard library. This book is not intended to be an introduction to Scala: there are several very good books available that fill that role. You can find a list of Scala books at the Scala website, <a class="URL" href="http://www.scala-lang.org/node/959">http://www.scala-lang.org/node/959</a>.
+</li>
+<li>
+HTML and XML. Lift relies heavily on XHTML for its template support, so you should understand such things as DocTypes, elements, attributes, and namespaces.
+</li>
+<li>
+General HTTP processing, including GET and POST submission, response codes, and content types.
+</li>
+
+</ul>
+<h2 class="Section">
+<a class="toc" name="toc-Section-1.3">1.3</a> Typographical Conventions
+</h2>
+<div class="Unindented">
+In order to better communicate concepts and techniques in this book, we have adopted the following typographical conventions:
+</div>
+<div class="List">
+<span class="List-entry"><tt>ClassName</tt></span><span class="List-contents">Monospaced typewriter text is used to indicate types, class names, and other code-related information.</span>
+</div>
+<div class="List">
+<span class="List-entry">...</span><span class="List-contents">Ellipses within code listings are used to indicate omission of code to condense listings. Unless otherwise noted, the example code in this book comes from the PocketChange app (Chapter <a class="Reference" href="index-2.html#cha:PocketChange">2 on page 1↓</a>), which has full source code available on GitHub.</span>
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-1.4">1.4</a> For More Information about Lift<a class="Label" name="sec:For-more-information"> </a>
+</h2>
+<div class="Unindented">
+Lift has a very active community of users and developers. Since its inception in early 2007 the community has grown to hundreds of members from all over the world. The project’s leader, David Pollak<span class="FootOuter"><span class="SupFootMarker"> [H] </span><span class="HoverFoot"><span class="SupFootMarker"> [H] </span><a class="FlexURL" href="http://blog.lostlake.org/">http://blog.lostlake.org/</a></span></span>, is constantly attending to the mailing list, answering questions, and taking feature requests. There is a core group of developers who work on the project, but submissions are taken from anyone who makes a good case and can turn in good code. While we strive to cover everything you’ll need to know in this book, there are several additional resources available for information on Lift:
+</div>
+<ol>
+<li>
+The first place to look is the Lift website at <a class="FlexURL" href="http://liftweb.net/">http://liftweb.net/</a>. There are links to lots of information on the site. In particular:<ol>
+<li>
+The Lift Wiki is hosted at <a class="FlexURL" href="http://www.assembla.com/wiki/show/liftweb">http://www.assembla.com/wiki/show/liftweb</a>. The Wiki is maintained not only by David, but also by many active members of the Lift community, including the authors. Portions of this book are inspired by and borrow from content on the Wiki. In particular, it has links to all of the generated documentation not only for the stable branch, but also for the unstable head, if you’re feeling adventurous. There’s also an extensive section of HowTos and articles on advanced topics that cover a wealth of information.
+</li>
+<li>
+The mailing list at <a class="FlexURL" href="http://groups.google.com/group/liftweb">http://groups.google.com/group/liftweb</a> is very active, and if there are things that this book doesn’t cover, you should feel free to ask questions there. There are plenty of very knowledgeable people on the list that should be able to answer your questions. Please post specific questions about the book to the Lift Book Google Group at <a class="FlexURL" href="http://groups.google.com/group/the-lift-book">http://groups.google.com/group/the-lift-book</a>. Anything else that is Lift-specific is fair game for the mailing list.
+</li>
+
+</ol>
+
+</li>
+<li>
+Tim Perrett, another Lift committer, is writing a book on Lift for Manning called <i>Lift in Action</i>. More details can be found at the book’s site at <a class="FlexURL" href="http://www.manning.com/perrett/">http://www.manning.com/perrett/</a>.
+</li>
+<li>
+Lift has an IRC channel at <a class="FlexURL" href="irc://irc.freenode.net/lift">irc://irc.freenode.net/lift</a> that usually has several people on it at any given time. It’s a great place to chat about issues and ideas concerning Lift.
+</li>
+
+</ol>
+<h2 class="Section">
+<a class="toc" name="toc-Section-1.5">1.5</a> Your First Lift Application
+</h2>
+<div class="Unindented">
+We’ve talked a lot about Lift and its capabilities, so now let’s get hands-on and try out an application. Before we start, though, we need to take care of some prerequisites:
+</div>
+<div class="Description">
+<span class="Description-entry">Java 1.5 JDK</span> Lift runs on Scala, which runs on top of the JVM. The first thing you’ll need to install is a modern version of the Java SE JVM, available at <a class="FlexURL" href="http://java.sun.com/">http://java.sun.com/</a>. Recently Scala’s compiler was changed to target Java version 1.5. Version 1.4 is still available as a target, but we’re going to assume you’re using 1.5. Examples in this book have only been tested with Sun’s version of the JDK, although most likely other versions (e.g. Blackdown or OpenJDK) should work with little or no modification. 
+</div>
+<div class="Description">
+<span class="Description-entry">Maven 2</span> Maven<a class="IndexReference" name="entry-Maven-0" href="index-Index.html#index-Maven">↓</a> is a project management tool that has extensive capabilities for building, dependency management, testing, and reporting. We assume that you are familiar with basic Maven usage for compilation, packaging, and testing. If you haven’t used Maven before, you can get a brief overview in appendix <a class="Reference" href="index-A.html#cha:Maven">A↓</a>. You can download the latest version of Maven from <a class="FlexURL" href="http://maven.apache.org/">http://maven.apache.org/</a>. Brief installation instructions (enough to get us started) are on the download page, at <a class="FlexURL" href="http://maven.apache.org/download.html">http://maven.apache.org/download.html</a>.
+</div>
+<div class="Description">
+<span class="Description-entry">A programming editor</span> This isn’t a strict requirement for this example, but when we start getting into coding, it’s very helpful to have something a little more capable than Notepad. If you’d like a full-blown IDE with support for such things as debugging, continuous compile checking, etc., then there are plugins available on the Scala website at <a class="FlexURL" href="http://www.scala-lang.org/node/91">http://www.scala-lang.org/node/91</a>. The plugins support:
+</div>
+<ul>
+<li class="nested">
+<div class="List">
+<span class="List-entry">Eclipse</span><span class="List-contents"><a class="FlexURL" href="http://www.eclipse.org/">http://www.eclipse.org/</a> The Scala Plugin developer recommends using the Eclipse Classic version of the IDE</span>
+</div>
+<div class="List">
+<span class="List-entry">NetBeans</span><span class="List-contents"><a class="FlexURL" href="http://www.netbeans.org">http://www.netbeans.org</a> Requires using NetBeans 6.5</span>
+</div>
+<div class="List">
+<span class="List-entry">IntelliJ</span><span class="List-contents">IDEA <a class="FlexURL" href="http://www.jetbrains.com/idea/index.html">http://www.jetbrains.com/idea/index.html</a> Requires Version 8 Beta</span>
+</div>
+<div class="Unindented">
+If you’d like something more lightweight, the Scala language distribution comes with plugins for editors such as Vim, Emacs, jEdit, etc. You can either download the full Scala distribution from <a class="FlexURL" href="http://www.scala-lang.org/">http://www.scala-lang.org/</a> and use the files under <tt>misc/scala-tool-support</tt>, or you can access the latest versions directly via the SVN (Subversion) interface at <a class="FlexURL" href="https://lampsvn.epfl.ch/trac/scala/browser/scala-tool-support/trunk/src">https://lampsvn.epfl.ch/trac/scala/browser/scala-tool-support/trunk/src</a>. Getting these plugins to work in your IDE or editor of choice is beyond the scope of this book.
+</div>
+
+</li>
+
+</ul>
+<div class="Unindented">
+Now that we have the prerequisites out of the way, it’s time to get started. We’re going to leverage Maven’s archetypes<span class="FootOuter"><span class="SupFootMarker"> [I] </span><span class="HoverFoot"><span class="SupFootMarker"> [I] </span>An archetype is essentially a project template for Maven that provides prompt-driven customization of basic attributes.</span></span> to do 99% of the work for us in this example. First, change to whatever directory you’d like to work in:
+</div>
+<pre class="LyX-Code">
+cd work
+</pre>
+<div class="Unindented">
+Next, we use Maven’s <tt>archetype:generate</tt> command to create the skeleton of our project:
+</div>
+<pre class="LyX-Code">
+mvn archetype:generate -U \
+  -DarchetypeGroupId=net.liftweb \
+  -DarchetypeArtifactId=lift-archetype-blank \
+  -DarchetypeVersion=2.0 \
+  -DarchetypeRepository=http://scala-tools.org/repo-releases \
+  -DgroupId=demo.helloworld \
+  -DartifactId=helloworld \
+  -Dversion=1.0-SNAPSHOT
+</pre>
+<div class="Unindented">
+Maven should output several pages of text. It may stop and ask you to confirm the properties configuration, in which case you can just hit <tt>&lt;enter&gt;</tt>. At the end you should get a message that says <tt>BUILD SUCCESSFUL</tt>. You’ve now successfully created your first project! Don’t believe us? Let’s run it to confirm:
+</div>
+<pre class="LyX-Code">
+cd helloworld
+mvn jetty:run
+</pre>
+<div class="Unindented">
+Maven should produce more output, ending with
+</div>
+<pre class="LyX-Code">
+[INFO] Starting scanner at interval of 5 seconds.
+</pre>
+<div class="Unindented">
+This means that you now have a web server (Jetty<span class="FootOuter"><span class="SupFootMarker"> [J] </span><span class="HoverFoot"><span class="SupFootMarker"> [J] </span><a class="FlexURL" href="http://www.mortbay.org/jetty/">http://www.mortbay.org/jetty/</a></span></span>) running on port 8080 of your machine. Just go to <a class="FlexURL" href="http://localhost:8080/">http://localhost:8080/</a> and you’ll see your first Lift page, the standard “Hello, world!” With just a few simple commands, we’ve built a functional (albeit limited) web app. Let’s go into a little more detail and see exactly how these pieces fit together. First, let’s examine the index page. Whenever Lift serves up a request in which the URL ends with a forward slash, Lift automatically looks for a file called <tt>index.html</tt><span class="FootOuter"><span class="SupFootMarker"> [K] </span><span class="HoverFoot"><span class="SupFootMarker"> [K] </span>Technically, it also searches for some variations on index.html, including any localized versions of the page, but we’ll cover that later in section </span></span> in that directory. For instance, if you tried to go to <tt>http://localhost:8080/test/</tt>, Lift would look for <tt>index.html</tt> under the <tt>test/</tt> directory in your project. The HTML sources will be located under <tt>src/main/webapp/</tt> in your project directory. Here’s the <tt>index.html</tt> file from our Hello World project:
+</div>
+<div class="Indented">
+<div class="listing">
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;h2&gt;Welcome to your project!&lt;/h2&gt;
+  &lt;p&gt;&lt;lift:helloWorld.howdy /&gt;&lt;/p&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This may look a little strange at first. For those with some XML experience, you may recognize the use of prefixed elements here. For those who don’t know what a prefixed element is, it’s an XML element of the form
+</div>
+<pre class="LyX-Code">
+&lt;prefix:element&gt;
+</pre>
+<div class="Unindented">
+In our case we have two elements in use: <tt>&lt;lift:surround&gt;</tt> and<tt><br/>
+&lt;lift:helloWorld.howdy /&gt;</tt>. Lift assigns special meaning to elements that use the “lift” prefix: they form the basis of lift’s extensive templating support, which we will cover in more detail in section <a class="Reference" href="index-4.html#sec:Templates">4.1↓</a>. When lift processes an XML template<a class="IndexReference" name="entry-template-0" href="index-Index.html#index-template">↓</a>, it does so from the outermost element inward. In our case, the outermost element is <tt>&lt;lift:surround with=”default” at=”content”&gt;</tt>. The <tt>&lt;lift:surround&gt;</tt> element basically tells Lift to find the template named by the <i>with</i> attribute (<i>default</i>, in our case) and to put the contents of our element inside of that template. The <i>at</i> attribute tells Lift where in the template to place our content. In Lift, this “filling in the blanks” is called <i>binding</i><a class="IndexReference" name="entry-binding-0" href="index-Index.html#index-binding">↓</a>, and it’s a fundamental concept of Lift’s template system. Just about everything at the HTML/XML level can be thought of as a series of nested binds. Before we move on to the <tt>&lt;lift:helloWorld.howdy/&gt;</tt> element, let’s look at the default template. You can find it in the <tt>templates-hidden</tt> directory of the web app. Much like the <tt>WEB-INF</tt> and <tt>META-INF</tt> directories in a Java web application, the contents of <tt>templates-hidden</tt> cannot be accessed directly by clients; they can, however, be accessed when they’re referenced by a <tt>&lt;lift:surround&gt;</tt> element. Here is the <tt>default.html</tt> file:
+</div>
+<div class="Indented">
+<div class="listing">
+<pre class="listing brush: scala">&lt;html xmlns="http://www.w3.org/1999/xhtml" xmlns:lift="http://liftweb.net/"&gt;
+  &lt;head&gt;
+    &lt;meta http-equiv="content-type" content="text/html; charset=UTF-8" /&gt;
+    &lt;meta name="description" content="" /&gt;
+    &lt;meta name="keywords" content="" /&gt;
+                
+    &lt;title&gt;demo.helloworld:helloworld:1.0-SNAPSHOT&lt;/title&gt;
+    &lt;script id="jquery" src="/classpath/jquery.js" type="text/javascript"&gt;&lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;lift:bind name="content" /&gt;
+    &lt;lift:Menu.builder /&gt;
+    &lt;lift:msgs/&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see in the listing, this is a proper XHTML file, with <tt>&lt;html&gt;</tt>, <tt>&lt;head&gt;</tt>, and <tt>&lt;body&gt;</tt> tags. This is required since Lift doesn’t add these itself. Lift simply processes the XML from each template it encounters. The <tt>&lt;head&gt;</tt> element and its contents are boilerplate; the interesting things happen inside the <tt>&lt;body&gt;</tt> element. There are three elements here:
+</div>
+<ol>
+<li>
+The <tt>&lt;lift:bind name=”content” /&gt;</tt> element determines where the contents of our <tt>index.html</tt> file are bound (inserted). The <i>name</i> attribute should match the corresponding <i>at</i> attribute from our <tt>&lt;lift:surround&gt;</tt> element.
+</li>
+<li>
+The <tt>&lt;lift:Menu.builder /&gt;</tt> element is a special element that builds a menu based on the SiteMap<a class="IndexReference" name="entry-SiteMap-0" href="index-Index.html#index-SiteMap">↓</a> (to be covered in chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↓</a>). The SiteMap is a high-level site directory component that not only provides a centralized place to define a site menu, but allows you to control when certain links are displayed (based on, say, whether users are logged in or what roles they have) and provides a page-level access control mechanism.
+</li>
+<li>
+The <tt>&lt;lift:msgs /&gt;</tt> element allows Lift (or your code) to display messages on a page as it’s rendered. These could be status messages, error messages, etc. Lift has facilities to set one or more messages from inside your logic code.
+</li>
+
+</ol>
+<div class="Unindented">
+Now let’s look back at the <tt>&lt;lift:helloWorld.howdy /&gt;</tt> element from the <tt>index.html</tt> file. This element (and the <tt>&lt;lift:Menu.builder /&gt;</tt> element, actually) is called a <i>snippet</i>, and it’s of the form
+</div>
+<pre class="LyX-Code">
+&lt;lift:class.method&gt;
+</pre>
+<div class="Unindented">
+Where <tt>class</tt> is the name of a Scala class defined in our project in the <tt>demo.helloworld.snippets</tt> package and <tt>method</tt> is a method defined on that class. Lift does a little translation on the class name to change camel-case back into title-case and then locates the class. In our demo the class is located under <tt>src/main/scala/demo/helloworld/snippet/HelloWorld.scala</tt>, and is shown here:
+</div>
+<div class="Indented">
+<div class="listing">
+<pre class="listing brush: scala">package demo.helloworld.snippet
+​
+class HelloWorld {
+  def howdy = &lt;span&gt;Welcome to helloworld at 
+    {new _root_.java.util.Date}&lt;/span&gt;
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, the howdy method is pretty straightforward. Lift binds the result of executing the method (in this case a <tt>span</tt>) into the location of the snippet element. It’s interesting to note that a method may itself return other <tt>&lt;lift:...&gt;</tt> elements in its content and they will be processed as well. This recursive nature of template composition is part of the fundamental power of Lift; it means that reusing snippets and template pieces across your application is essentially free. You should never have to write the same functionality more than once.
+</div>
+<div class="Indented">
+Now that we’ve covered all of the actual content elements, the final piece of the puzzle is the <tt>Boot<a class="IndexReference" name="entry-Boot-0" href="index-Index.html#index-Boot">↓</a></tt> class. The <tt>Boot</tt> class is responsible for the configuration and setup of the Lift framework. As we’ve stated earlier in the chapter, most of Lift has sensible defaults, so the <tt>Boot</tt> class generally contains only the extras that you need. The <tt>Boot</tt> class is always located in the <tt>bootstrap.liftweb</tt> package and is shown here (we’ve skipped imports, etc):
+</div>
+<div class="Indented">
+<div class="listing">
+<pre class="listing brush: scala">package bootstrap.liftweb
+​
+import net.liftweb.util._
+import net.liftweb.http._
+import net.liftweb.sitemap._
+import net.liftweb.sitemap.Loc._
+import Helpers._
+ 
+/**
+  * A class that’s instantiated early and run.  It allows the application
+  * to modify Lift’s environment
+  */
+class Boot {
+  def boot {
+    // where to search snippet
+    LiftRules.addToPackages("demo.helloworld")     
+​
+    // Build SiteMap
+    val entries = 
+      Menu(Loc("Home", List("index"), "Home")) :: 
+      Nil 
+    LiftRules.setSiteMap(SiteMap(entries:_*))
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+There are two basic configuration elements, placed in the <tt>boot </tt>method. The first is the 
+</div>
+<div class="Indented">
+<tt>LiftRules.addToPackages</tt> method. It tells lift to base its searches in the <tt>demo.helloworld</tt> package. That means that snippets would be located in the <tt>demo.helloworld.snippets</tt> package, views (section <a class="Reference" href="index-4.html#sec:Views">4.4↓</a>) would be located in the <tt>demo.helloworld.views</tt> package, etc. If you have more than one hierarchy (i.e. multiple packages), you can just call <tt>addToPackages</tt> multiple times. The second item in the Boot class is the SiteMenu setup. Obviously this is a pretty simple menu in this demo, but we’ll cover more interesting examples in the SiteMap chapter.
+</div>
+<div class="Indented">
+Now that we’ve covered a basic example we hope you’re beginning to see why Lift is so powerful and why it can make you more productive. We’ve barely scratched the surface of Lift’s templating and binding capabilities, but what we’ve shown here is already a big step. In roughly ten lines of Scala code and about thirty in XML, we have a functional site. If we wanted to add more pages, we’ve already got our default template set up so we don’t need to write the same boilerplate HTML multiple times. In our example we’re directly generating the content for our <tt>helloWorld.howdy</tt> snippet, but in later examples we’ll show just how easy it is to pull content <i>from the template itself</i> into the snippet and modify it as needed.
+</div>
+<div class="Indented">
+In the following chapters we’ll be covering
+</div>
+<ul>
+<li>
+Much more complex templating and snippet binding, including input forms and programmatic template selection
+</li>
+<li>
+How to use SiteMap and its ancillary classes to provide a context-aware site menu and access control layer
+</li>
+<li>
+How to handle state within your application
+</li>
+<li>
+Lift’s ORM layer, Mapper (Chapter <a class="Reference" href="index-8.html#cha:mapper_and_record">8↓</a>), which provides a powerful yet lightweight interface to databases
+</li>
+<li>
+Advanced AJAX and Comet support in Lift for Web 2.0 style applications
+</li>
+
+</ul>
+<div class="Unindented">
+We hope you’re as excited about getting started with Lift as we are!
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-I.html#Next">Previous: Part I</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-2.html#prev">Next: Chapter 2</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

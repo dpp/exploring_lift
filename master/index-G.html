@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-F.html#Next">Previous: Appendix F</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-Index.html#prev">Next: Index</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-G">G</a> JPA Code Listings<a class="Label" name="cha:Code-Listings"> </a>
+</h1>
+<div class="Unindented">
+To conserve space and preserve flow in the main text, we’ve placed full code listings for the JPA chapter in this appendix.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-G.1">G.1</a> JPA Library Demo
+</h2>
+<div class="Unindented">
+The full library demo is available under the main Lift Git repository at <a class="FlexURL" href="http://github.com/lift/lift/tree/master/examples/JPADemo/">http://github.com/lift/lift/tree/master/examples/JPADemo/</a>. To illustrate some points, we’ve included selected listings from the project.
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-G.1.1">G.1.1</a> Author Entity
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Author.scala"> </a>Author.scala
+</div>
+<pre class="listing brush: scala">package com.foo.jpaweb.model
+​
+import javax.persistence._
+​
+/**
+  An author is someone who writes books.
+*/
+@Entity
+class Author {
+  @Id
+  @GeneratedValue(){val strategy = GenerationType.AUTO}
+  var id : Long = _
+​
+  @Column{val unique = true, val nullable = false}
+  var name : String = ""
+​
+  @OneToMany(){val mappedBy = "author", val targetEntity = classOf[Book], 
+               val cascade = Array(CascadeType.REMOVE)}
+  var books : java.util.Set[Book] = new java.util.HashSet[Book]()
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-G.1.2">G.1.2</a> orm.xml<a class="IndexReference" name="entry-orm.xml-2" href="index-Index.html#index-orm.xml">↓</a> Mapping
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:orm.xml"> </a>orm.xml
+</div>
+&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<pre class="listing brush: xml">&lt;entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm
+        http://java.sun.com/xml/ns/persistence/orm_1_0.xsd" version="1.0"&gt;
+​
+  &lt;package&gt;com.foo.jpaweb.model&lt;/package&gt;
+​
+  &lt;entity class="Book"&gt;
+    &lt;named-query name="findBooksByAuthor"&gt;
+      &lt;query&gt;&lt;![CDATA[from Book b where b.author.id = :id order by b.title]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+    &lt;named-query name="findBooksByDate"&gt;
+      &lt;query&gt;&lt;![CDATA[from Book b where b.published between :startDate and :endDate]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+    &lt;named-query name="findBooksByTitle"&gt;
+      &lt;query&gt;&lt;![CDATA[from Book b where lower(b.title) like :title order by b.title]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+    &lt;named-query name="findAllBooks"&gt;
+      &lt;query&gt;&lt;![CDATA[from Book b order by b.title]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+  &lt;/entity&gt;
+​
+  &lt;entity class="Author"&gt;
+    &lt;named-query name="findAllAuthors"&gt;
+      &lt;query&gt;&lt;![CDATA[from Author a order by a.name]]&gt;&lt;/query&gt;
+    &lt;/named-query&gt;
+  &lt;/entity&gt;
+​
+&lt;/entity-mappings&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-G.1.3">G.1.3</a> Enumv Trait
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Enumv-Trait"> </a>Enumv Trait
+</div>
+package com.foo.jpaweb.model<pre class="listing brush: scala">​
+/* adds a valueOf function, assumes name is defined
+add optional description */
+trait Enumv  {
+  
+  this: Enumeration =&gt;
+​
+  private var nameDescriptionMap = scala.collection.mutable.Map[String, String]()
+​
+  /* store a name and description for forms */
+  def Value(name: String, desc: String) : Value = {
+    nameDescriptionMap += (name -&gt; desc)
+    new Val(name)
+  }
+  
+    /* get description if it exists else name */
+  def getDescriptionOrName(ev: this.Value) = {
+    try {
+      nameDescriptionMap(""+ev)
+    } catch {
+      case e: NoSuchElementException =&gt; ev.toString
+    }
+  }
+​
+  /* get name description pair list for forms */
+  def getNameDescriptionList =  this.elements.toList.map(v =&gt; (v.toString, getDescriptionOrName(v) ) ).toList
+​
+  /* get the enum given a string */
+  def valueOf(str: String) = this.elements.toList.filter(_.toString == str) match {
+    case Nil =&gt; null
+    case x =&gt; x.head
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-G.1.4">G.1.4</a> EnumerationType
+</h3>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:EnumvType"> </a>EnumvType class
+</div>
+package com.foo.jpaweb.model<pre class="listing brush: scala">​
+import java.io.Serializable
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Types
+​
+import org.hibernate.HibernateException
+import org.hibernate.usertype.UserType
+​
+/**
+ * Helper class to translate enum for hibernate
+ */
+abstract class EnumvType(val et: Enumeration with Enumv) extends UserType {
+  
+  val SQL_TYPES = Array({Types.VARCHAR})
+​
+  override def sqlTypes() = SQL_TYPES
+​
+  override def returnedClass = classOf[et.Value]
+​
+  override def equals(x: Object, y: Object): Boolean = {
+    return x == y
+  }
+​
+  override def hashCode(x: Object) = x.hashCode
+​
+  override def nullSafeGet(resultSet: ResultSet, names: Array[String], owner: Object): Object = {
+    val value = resultSet.getString(names(0))
+    if (resultSet.wasNull()) return null
+    else {
+      return et.valueOf(value)
+    }
+  }
+  
+  override def nullSafeSet(statement: PreparedStatement, value: Object, index: Int): Unit = {
+    if (value == null) {
+      statement.setNull(index, Types.VARCHAR)
+    } else {
+      val en = value.toString
+      statement.setString(index, en)
+    }
+  }
+​
+  override def deepCopy(value: Object): Object = value
+​
+  override def isMutable() = false
+    
+  override def disassemble(value: Object) = value.asInstanceOf[Serializable]
+​
+  override def assemble(cached: Serializable, owner: Object): Serializable = cached
+​
+  override def replace(original: Object, target: Object, owner: Object) = original
+​
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<p><br/>
+</p>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-G.1.5">G.1.5</a> JPA web.xml<a class="IndexReference" name="entry-web.xml-2" href="index-Index.html#index-web.xml">↓</a>
+</h3>
+<div class="Unindented">
+This shows the LiftFilter setup as well as the persistence-context-ref.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:JPA-web.xml"> </a>JPA web.xml
+</div>
+<pre class="listing brush: xml">&lt;?xml version="1.0" encoding="ISO-8859-1"?&gt;
+​
+&lt;!DOCTYPE web-app
+PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+"http://java.sun.com/j2ee/dtds/web-app_2_3.dtd"&gt;
+​
+&lt;web-app&gt;
+&lt;filter&gt;
+  &lt;filter-name&gt;LiftFilter&lt;/filter-name&gt;
+  &lt;display-name&gt;Lift Filter&lt;/display-name&gt;
+  &lt;description&gt;The Filter that intercepts lift calls&lt;/description&gt;
+  &lt;filter-class&gt;net.liftweb.http.LiftFilter&lt;/filter-class&gt;
+  &lt;persistence-context-ref&gt;
+    &lt;description&gt;
+      Persistence context for the library app
+    &lt;/description&gt;
+    &lt;persistence-context-ref-name&gt;
+      persistence/jpaweb
+    &lt;/persistence-context-ref-name&gt;
+    &lt;persistence-unit-name&gt;
+      jpaweb
+    &lt;/persistence-unit-name&gt;
+  &lt;/persistence-context-ref&gt;
+&lt;/filter&gt;
+        
+​
+&lt;filter-mapping&gt;
+  &lt;filter-name&gt;LiftFilter&lt;/filter-name&gt;
+  &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+&lt;/filter-mapping&gt;
+​
+&lt;/web-app&gt;
+​
+</pre>
+</div>
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-F.html#Next">Previous: Appendix F</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-Index.html#prev">Next: Index</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

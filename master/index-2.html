@@ -1,0 +1,605 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-1.html#Next">Previous: Chapter 1</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-3.html#prev">Next: Chapter 3</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-2">2</a> PocketChange<a class="Label" name="cha:PocketChange"> </a>
+</h1>
+<div class="Unindented">
+As a way to demonstrate the concepts in the book, we’re going to build a basic application and then build on it as we go along. As it evolves, so will your understanding of Lift. The application we’ve picked is an Expense Tracker. We call it <i>PocketChange.</i>
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="Figure-2.1"> </a><div class="figure">
+<div class="center">
+<img class="embedded" src="images/pocketchange.png" alt="figure images/pocketchange.png" style="width: 6in; max-width: 966px; height: auto; max-height: 488px;"/>
+
+</div>
+<div class="caption">
+Figure 2.1 The PocketChange App
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+PocketChange will track your expenses, keep a running total of what you’ve spent, allow you to organize your data using tags, and help you to visualize the data. During the later chapters of the book we’ll add a few fun features, such as AJAX charting and allowing multiple people per account (with Comet update of entries). Above all, we want to keep the interface lean and clean.
+</div>
+<div class="Indented">
+We’re going to be using the <i>View First</i> pattern for the design of our app, because Lift’s separation of presentation and logic via templating, views, and snippets lends itself to the <i>View First</i> pattern so well. For an excellent article on the design decisions behind Lift’s approach to templating and logic, read David Pollak’s <i>Lift View First </i>article on the Wiki<span class="FootOuter"><span class="SupFootMarker"> [L] </span><span class="HoverFoot"><span class="SupFootMarker"> [L] </span><a class="FlexURL" href="http://www.assembla.com/wiki/show/liftweb/View_First">http://www.assembla.com/wiki/show/liftweb/View_First</a></span></span>.
+</div>
+<div class="Indented">
+Another important thing to note is that we’re going to breeze through the app and touch on a lot of details. We’ll provide plenty of references to the chapters where things are covered. This chapter is really intended just to give you a taste of Lift, so feel free to read ahead if you want more information on how something works. The full source for the entire PocketChange application is available at GitHub<span class="FootOuter"><span class="SupFootMarker"> [M] </span><span class="HoverFoot"><span class="SupFootMarker"> [M] </span><a class="FlexURL" href="http://github.com/tjweir/pocketchangeapp">http://github.com/tjweir/pocketchangeapp</a></span></span>. Enough chatter, let’s go!
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-2.1">2.1</a> Defining the Model
+</h2>
+<div class="Unindented">
+The first step we’ll take is to define the database entities that we’re going to use for our app. The base functionality of a categorized expense tracker is covered by the following items:
+</div>
+<ul>
+<li>
+User: A user of the application
+</li>
+<li>
+Account: A specific expense account - we want to support more than one per user
+</li>
+<li>
+Expense: A specific expense transaction tied to a particular account
+</li>
+<li>
+Tag: A word or phrase that permits us a to categorize each expense for later searching and reporting
+</li>
+
+</ul>
+<div class="Unindented">
+We’ll start out with the User, as shown in listing <a class="Reference" href="index-2.html#lst:PocketChange-User-entity">2.1↓</a>. We leverage Lift’s MegaProtoUser (Section <a class="Reference" href="index-8.html#sub:ProtoUser-and-MegaProtoUser">8.2.8 on page 1↓</a>) class to handle pretty much everything we need for user management. For example, with just the code you see, we define an entire user management function for our site, including a signup page, a lost password page, and a login page. The accompanying SiteMap (Section <a class="Reference" href="index-7.html#cha:SiteMap">7 on page 1↓</a>) menus are generated with a single call to <tt>User.siteMap</tt>. As you can see, we can customize the XHTML that’s generated for the user management pages with a few simple defs. The opportunities for customization provided by MetaMegaProtoUser are extensive.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The PocketChange User Entity<a class="Label" name="lst:PocketChange-User-entity"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.model
+​
+// Import all of the mapper classes
+import _root_.net.liftweb.mapper._
+​
+// Create a User class extending the Mapper base class
+// MegaProtoUser, which provides default fields and methods
+// for a site user.
+class User extends MegaProtoUser[User] {
+  def getSingleton = User // reference to the companion object below
+  def allAccounts : List[Account] = 
+    Account.findAll(By(Account.owner, this.id))
+}
+​
+// Create a "companion object" to the User class (above).
+// The companion object is a "singleton" object that shares the same
+// name as its companion class. It provides global (i.e. non-instance)
+// methods and fields, such as find, dbTableName, dbIndexes, etc.
+// For more, see the Scala documentation on singleton objects
+object User extends User with MetaMegaProtoUser[User] {
+  override def dbTableName = "users" // define the DB table name
+​
+  // Provide our own login page template.
+  override def loginXhtml =
+    &lt;lift:surround with="default" at="content"&gt;
+      { super.loginXhtml }
+    &lt;/lift:surround&gt;
+​
+  // Provide our own signup page template.
+  override def signupXhtml(user: User) = 
+    &lt;lift:surround with="default" at="content"&gt;
+      { super.signupXhtml(user) }
+    &lt;/lift:surround&gt;
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that we’ve also added a utility method, <tt>allAccounts</tt>, to the User class to retrieve all of the accounts for a given user. We use the MetaMapper.findAll method to do a query by owner ID (Section <a class="Reference" href="index-8.html#sub:Querying-for-Entities">8.1.8 on page 1↓</a>) supplying this user’s ID as the owner ID.
+</div>
+<div class="Indented">
+Defining the Account entity is a little more involved, as shown in Listing <a class="Reference" href="index-2.html#lst:PocketChange-Account-entity">2.1↓</a>. Here we define a class with a Long primary key and some fields associated with the accounts. We also define some helper methods for object relationship joins (Section <a class="Reference" href="index-8.html#sub:helper-joins">8.1.11 on page 1↓</a>). The Expense and Tag entities (along with some ancillary entities) follow suit, so we won’t cover them here.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The PocketChange Account Entity<a class="Label" name="lst:PocketChange-Account-entity"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.model
+​
+import _root_.java.math.MathContext
+import _root_.net.liftweb.mapper._
+import _root_.net.liftweb.util.Empty
+​
+// Create an Account class extending the LongKeyedMapper superclass
+// (which is a "mapped" (to the database) trait that uses a Long primary key)
+// and mixes in trait IdPK, which adds a primary key called "id".
+class Account extends LongKeyedMapper[Account] with IdPK {
+  // Define the singleton, as in the "User" class
+  def getSingleton = Account
+​
+  // Define a many-to-one (foreign key) relationship to the User class
+  object owner extends MappedLongForeignKey(this, User) {
+    // Change the default behavior to add a database index 
+    // for this column.
+    override def dbIndexed_? = true
+  }
+​
+  // Define an "access control" field that defaults to false. We’ll
+  // use this in the SiteMap chapter to allow the Account owner to
+  // share out an account view.
+  object is_public extends MappedBoolean(this) {
+    override def defaultValue = false
+  }
+​
+  // Define the field to hold the actual account balance with up to 16
+  // digits (DECIMAL64) and 2 decimal places
+  object balance extends MappedDecimal(this, MathContext.DECIMAL64, 2)
+​
+  
+  object name extends MappedString(this,100)
+  object description extends MappedString(this, 300)
+  
+  // Define utility methods for simplifying access to related classes. We’ll 
+  // cover how these methods work in the Mapper chapter
+  def admins = AccountAdmin.findAll(By(AccountAdmin.account, this.id))
+  def addAdmin (user : User) = 
+    AccountAdmin.create.account(this).administrator(user).save
+  def viewers = AccountViewer.findAll(By(AccountViewer.account, this.id))
+  def entries = Expense.getByAcct(this, Empty, Empty, Empty)
+  def tags = Tag.findAll(By(Tag.account, this.id))
+  def notes = AccountNote.findAll(By(AccountNote.account, this.id))
+}
+​
+// The companion object to the above Class
+object Account extends Account with LongKeyedMetaMapper[Account] {
+  // Define a utility method for locating an account by owner and name
+  def findByName (owner : User, name : String) : List[Account] = 
+    Account.findAll(By(Account.owner, owner.id.is), By(Account.name, name))
+​
+  ... more utility methods ...
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-2.2">2.2</a> Our First Template
+</h2>
+<div class="Unindented">
+Our next step is to figure out how we’ll present this data to the user. We’d like to have a home page on the site that shows, depending on whether the user is logged in, either a welcome message or a summary of account balances with a place to enter new expenses. Listing <a class="Reference" href="index-2.html#lst:The-welcome-template">2.2↓</a> shows a basic template to handle this. We’ll save this as <tt>index.html</tt>. The astute reader will notice that we have a head element but no body. This is XHTML, so how does that work? This template uses the <tt>&lt;lift:surround&gt;</tt> tag (Section <a class="Reference" href="index-4.html#sub:surround-tag">4.5.17 on page 1↓</a>) to embed itself into a master template (<tt>/templates_hidden/default</tt>). Lift actually does what’s called a “head merge” (Section <a class="Reference" href="#sec:Head-Merge"> on page 1↓</a>) to merge the contents of the <tt>head</tt> tag in our template below with the <tt>head</tt> element of the master template. The <tt>&lt;lift:HomePage.summary&gt;</tt> and <tt>&lt;lift:AddEntry.addentry&gt;</tt> tags are calls to snippet methods. Snippets are the backing Scala code that provides the actual page logic. We’ll be covering them in the next section.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Welcome Template<a class="Label" name="lst:The-welcome-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+&lt;head&gt;
+  &lt;!-- include the required plugins --&gt;
+  &lt;script type="text/javascript" src="/scripts/date.js"&gt;&lt;/script&gt;
+  &lt;!--[if IE]&gt;
+  &lt;script type="text/javascript" src="/scripts/jquery.bgiframe.js"&gt;
+  &lt;/script&gt;
+  &lt;![endif]--&gt;
+​
+  &lt;!-- include the jQuery DatePicker JavaScript and CSS --&gt;
+  &lt;script type="text/javascript" src="/scripts/jquery.datePicker.js"&gt;
+  &lt;/script&gt;
+  &lt;link rel="stylesheet" type="text/css" href="/style/datePicker.css" /&gt;
+&lt;/head&gt;
+    &lt;!-- The contents of this element will be passed to the summary method
+         in the HomePage snippet. The call to bind in that method will 
+         replace the XML tags below (e.g. account:name) with the account 
+         data and return a NodeSeq to replace the lift:HomePage.summary 
+         element. --&gt;
+    &lt;lift:HomePage.summary&gt;
+      &lt;div class="column span-24 bordered"&gt;
+        &lt;h2&gt;Summary of accounts:&lt;/h2&gt;
+        &lt;account:entry&gt;
+          &lt;acct:name /&gt; : &lt;acct:balance /&gt; &lt;br/&gt;
+        &lt;/account:entry&gt;
+      &lt;/div&gt;   
+      &lt;hr /&gt;
+    &lt;/lift:HomePage.summary&gt;
+​
+    &lt;div class="column span-24"&gt;
+      &lt;!-- The contents of this element will be passed into the add method 
+           in the AddEntry snippet. A form element with method "POST" will
+           be created and the XML tags (e.g. e:account) below will be
+           replaced with form elements via the call to bind in the add 
+           method. This form will replace the lift:AddEntry.addentry element
+           below. --&gt;
+      &lt;lift:AddEntry.addentry form="POST"&gt;
+        &lt;div id="entryform"&gt;
+          &lt;div class="column span-24"&gt;&lt;h3&gt;Entry Form&lt;/h3&gt;
+            &lt;e:account /&gt; &lt;e:dateOf /&gt; &lt;e:desc /&gt; &lt;e:value /&gt;
+            &lt;e:tags/&gt;&lt;button&gt;Add $&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/lift:AddEntry.addentry&gt;
+    &lt;/div&gt;
+​
+    &lt;script type="text/javascript"&gt;
+      Date.format = ’yyyy/mm/dd’;
+      jQuery(function () {
+        jQuery(’#entrydate’).datePicker({startDate:’00010101’, 
+                                        clickInput:true});
+      })
+    &lt;/script&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, there’s no control logic at all in our template, just well-formed XML and some JavaScript to activate the jQuery datePicker functionality.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-2.3">2.3</a> Writing Snippets
+</h2>
+<div class="Unindented">
+Now that we have a template, we need to write the HomePage and AddEntry snippets so that we can actually do something with the site. First, let’s look at the HomePage snippet, shown in Listing <a class="Reference" href="index-2.html#lst:Defining-the-summary-snippet">2.3↓</a>. We’ve skipped the standard Lift imports (Listing <a class="Reference" href="index-3.html#lst:Standard-import-statements">3.3↓</a>) to save space, but we’ve specifically imported <tt>java.util.Date</tt> and all of our Model classes.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining the Summary Snippet<a class="Label" name="lst:Defining-the-summary-snippet"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.snippet
+​
+import ... standard imports ...
+import _root_.com.pocketchangeapp.model._
+import _root_.java.util.Date
+​
+class HomePage {
+  // User.currentUser returns a "Box" object, which is either Full
+  // (i.e. contains a User), Failure (contains error data), or Empty.
+  // The Scala match method is used to select an action to take based
+  // on whether the Box is Full, or not ("case _" catches anything
+  // not caught by "case Full(user)". See Box in the Lift API. We also
+  // briefly discuss Box in Appendix C.
+  def summary (xhtml : NodeSeq) : NodeSeq = User.currentUser match {
+    case Full(user) =&gt; {
+      val entries : NodeSeq = user.allAccounts match {
+        case Nil =&gt; Text("You have no accounts set up") 
+        case accounts =&gt; accounts.flatMap({account =&gt; 
+          bind("acct", chooseTemplate("account", "entry", xhtml),
+               "name" -&gt; &lt;a href={"/account/" + account.name.is}&gt;
+                           {account.name.is}&lt;/a&gt;,
+               "balance" -&gt; Text(account.balance.toString))
+        })
+      }
+      bind("account", xhtml, "entry" -&gt; entries)
+    }
+    case _ =&gt; &lt;lift:embed what="welcome_msg" /&gt;
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Our first step is to use the <tt>User.currentUser</tt> method (this method is provided by the <tt>MetaMegaProtoUser</tt> trait) to determine if someone is logged in. This method returns a “Box,” which is either Full (with a User) or Empty. (A third possibility is a Failure, but we’ll ignore that for now.) If it is full, then a user is logged in and we use the <tt>User.allAccounts</tt> method to retrieve a <tt>List</tt> of all of the user’s accounts. If the user doesn’t have accounts, we return an XML text node saying so that will be bound where our tag was placed in the template. If the user does have accounts, then we map the accounts into XHTML using the bind function. For each account, we bind the name of the account where we’ve defined the <tt>&lt;acct:name&gt;</tt> tag in the template, and the balance where we defined <tt>&lt;acct:balance&gt;</tt>. The resulting List of XML NodeSeq entities is used to replace the <tt>&lt;lift:HomePage.summary&gt;</tt> element in the template. Finally, we match the case where a user isn’t logged in by embedding the contents of a welcome template (which may be further processed). Note that we can nest Lift tags in this manner and they will be recursively parsed.
+</div>
+<div class="Indented">
+Of course, it doesn’t do us any good to display account balances if we can’t add expenses, so let’s define the <tt>AddEntry</tt> snippet. The code is shown in Listing <a class="Reference" href="index-2.html#lst:The-addEntry-snippet">2.3↓</a>. This looks different from the HomePage snippet primarily because we’re using a <tt>StatefulSnippet</tt> (Section <a class="Reference" href="index-5.html#sub:Stateless-versus-Stateful">5.3.3 on page 1↓</a>). The primary difference is that with a <tt>StatefulSnippet</tt> the same “instance” of the snippet is used for each page request in a given session, so we can keep the variables around in case we need the user to fix something in the form. The basic structure of the snippet is the same as for our summary: we do some work (we’ll cover the <tt>doTagsAndSubmit</tt> function in a moment) and then bind values back into the template. In this snippet, however, we use the <tt>SHtml.select</tt> and <tt>SHtml.text</tt> methods to generate form fields. The <tt>text</tt> fields simply take an initial value and a function (closure) to process the value on submission. The <tt>select</tt> field is a little more complex because we give it a list of options, but otherwise it is the same concept.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The AddEntry Snippet<a class="Label" name="lst:The-addEntry-snippet"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.snippet
+​
+import ... standard imports ...
+import com.pocketchangeapp.model._
+import com.pocketchangeapp.util.Util
+​
+import java.util.Date
+​
+/* date | desc | tags | value */ 
+class AddEntry extends StatefulSnippet {
+  // This maps the "addentry" XML element to the "add" method below
+  def dispatch = {
+    case "addentry" =&gt; add _
+  }
+​
+  var account : Long = _
+  var date = ""
+  var desc = ""
+  var value = ""
+  // S.param("tag") returns a "Box" and the "openOr" method returns
+  // either the contents of that box (if it is "Full"), or the empty
+  // String passed to it, if the Box is "Empty". The S.param method
+  // returns parameters passed by the browser. In this instance, the
+  // name of the parameter is "tag".
+  var tags = S.param("tag") openOr ""
+  
+  def add(in: NodeSeq): NodeSeq = User.currentUser match {
+    case Full(user) if user.editable.size &gt; 0 =&gt; {
+      def doTagsAndSubmit(t: String) {
+        tags = t
+        if (tags.trim.length == 0) 
+          S.error("We’re going to need at least one tag.")
+        else {
+          // Get the date correctly, comes in as yyyy/mm/dd
+          val entryDate = Util.slashDate.parse(date)
+          val amount = BigDecimal(value)
+          val currentAccount = Account.find(account).open_!
+​
+          // We need to determine the last serial number and balance
+          // for the date in question. This method returns two values
+          // which are placed in entrySerial and entryBalance
+          // respectively
+          val (entrySerial, entryBalance) = 
+            Expense.getLastExpenseData(currentAccount, entryDate)
+      
+          val e = Expense.create.account(account)
+                    .dateOf(entryDate)
+                    .serialNumber(entrySerial + 1)
+                    .description(desc)
+                    .amount(BigDecimal(value)).tags(tags)
+                    .currentBalance(entryBalance + amount)
+​
+          // The validate method returns Nil if there are no errors,
+          // or an error message if errors are found.
+          e.validate match {
+            case Nil =&gt; {
+              Expense.updateEntries(entrySerial + 1, amount)
+              e.save
+              val acct = Account.find(account).open_!
+              val newBalance = acct.balance.is + e.amount.is
+              acct.balance(newBalance).save
+              S.notice("Entry added!")
+              // remove the statefullness of this snippet
+              unregisterThisSnippet() 
+            }
+            case x =&gt; error(x)
+          }
+        }
+      }
+​
+      val allAccounts =
+        user.allAccounts.map(acct =&gt; (acct.id.toString, acct.name))
+​
+      // Parse through the NodeSeq passed as "in" looking for tags
+      // prefixed with "e". When found, replace the tag with a NodeSeq
+      // according to the map below (name -&gt; NodeSeq)
+      bind("e", in, 
+        "account" -&gt; select(allAccounts, Empty,
+                            id =&gt; account = id.toLong),
+        "dateOf" -&gt; text(Util.slashDate.format(new Date()).toString,
+                         date = _,
+                         "id" -&gt; "entrydate"),
+        "desc" -&gt; text("Item Description", desc = _),
+        "value" -&gt; text("Value", value = _),
+        "tags" -&gt; text(tags, doTagsAndSubmit))
+    }
+    // If no user logged in, return a blank Text node
+    case _ =&gt; Text("")
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The <tt>doTagsAndSubmit</tt> function is a new addition. Its primary purpose is to process all of the submitted data, create and validate an <tt>Expense</tt> entry, and then return to the user. This pattern of defining a local function to handle form submission is quite common as opposed to defining a method on your class. The main reason is that by defining the function locally, it becomes a closure on any variables defined in the scope of your snippet function.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-2.4">2.4</a> A Little AJAX Spice
+</h2>
+<div class="Unindented">
+So far this is all pretty standard fare, so let’s push things a bit and show you some more advanced functionality. Listing <a class="Reference" href="index-2.html#lst:Displaying-an-Expense-table">2.4↓</a> shows a template for displaying a table of Expenses for the user with an optional start and end date. The <tt>Accounts.detail</tt> snippet will be defined later in this section.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Displaying an Expense Table<a class="Label" name="lst:Displaying-an-Expense-table"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:Accounts.detail eager_eval="true"&gt; 
+  &lt;div class="column span-24"&gt;
+  &lt;h2&gt;Summary&lt;/h2&gt;
+    &lt;table&gt;&lt;tr&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Balance&lt;/th&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;&lt;acct:name /&gt;&lt;/td&gt;&lt;td&gt;&lt;acct:balance /&gt;&lt;/td&gt;&lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;div&gt;
+    &lt;h3&gt;Filters:&lt;/h3&gt;
+    &lt;table&gt;&lt;tr&gt;&lt;th&gt;Start Date&lt;/th&gt;&lt;td&gt;&lt;acct:startDate /&gt;&lt;/td&gt;
+               &lt;th&gt;End Date&lt;/th&gt;&lt;td&gt;&lt;acct:endDate /&gt;&lt;/td&gt;&lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/div&gt;
+​
+  &lt;div class="column span-24" &gt;
+    &lt;h2&gt;Transactions&lt;/h2&gt;
+    &lt;lift:embed what="entry_table" /&gt;
+  &lt;/div&gt;
+  &lt;/lift:Accounts.detail&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The &lt;lift:embed&gt; tag (Section <a class="Reference" href="index-4.html#sub:embed-tag">4.5.7 on page 1↓</a>) allows you to include another template at that point. In our case, the entry_table template is shown in Listing <a class="Reference" href="index-2.html#lst:Embedded-Expense-table">2.4↓</a>. This is really just a fragment and is not intended to be used alone, since it’s not a full XHTML document and it doesn’t surround itself with a master template. It does, however, provide binding sites that we can fill in.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Embedded Expense Table<a class="Label" name="lst:Embedded-Expense-table"> </a>
+</div>
+<pre class="listing brush: xml">&lt;table class="" border="0" cellpadding="0" cellspacing="1" 
+    width="100%"&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Date&lt;/th&gt;&lt;th&gt;Description&lt;/th&gt;&lt;th&gt;Tags&lt;/th&gt;&lt;th&gt;Value&lt;/th&gt;
+      &lt;th&gt;Balance&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody id="entry_table"&gt;
+    &lt;acct:table&gt;
+      &lt;acct:tableEntry&gt;
+    &lt;tr&gt;&lt;td&gt;&lt;entry:date /&gt;&lt;/td&gt;&lt;td&gt;&lt;entry:desc /&gt;&lt;/td&gt;
+        &lt;td&gt;&lt;entry:tags /&gt;&lt;/td&gt;&lt;td&gt;&lt;entry:amt /&gt;&lt;/td&gt;
+        &lt;td&gt;&lt;entry:balance /&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+      &lt;/acct:tableEntry&gt;
+    &lt;/acct:table&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Before we get into the AJAX portion of the code, let’s define a helper method in our Accounts snippet class, shown in Listing <a class="Reference" href="index-2.html#lst:The-table-helper-function">2.4↓</a>, to generate the XHTML table entries that we’ll be displaying (assuming normal imports). Essentially, this function pulls the contents of the <tt>&lt;acct:tableEntry&gt;</tt> tag (via the <tt>Helpers.chooseTemplate</tt> method, Section <a class="Reference" href="index-C.html#sec:BindHelpers">C.8 on page 1↓</a>) and binds each <tt>Expense</tt> from the provided list into it. As you can see in the <tt>entry_table</tt> template, that corresponds to one table row for each entry.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Table Helper Function<a class="Label" name="lst:The-table-helper-function"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.snippet
+... imports ...
+​
+class Accounts {
+  ...
+  def buildExpenseTable(entries : List[Expense], template : NodeSeq) = {
+    // Calls bind repeatedly, once for each Entry in entries
+    entries.flatMap({ entry =&gt;
+      bind("entry", chooseTemplate("acct", "tableEntry", template),
+           "date" -&gt; Text(Util.slashDate.format(entry.dateOf.is)),
+           "desc" -&gt; Text(entry.description.is),
+           "tags" -&gt; Text(entry.tags.map(_.tag.is).mkString(", ")),
+           "amt" -&gt; Text(entry.amount.toString),
+           "balance" -&gt; Text(entry.currentBalance.toString))
+   })
+  }
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The final piece is our <tt>Accounts.detail</tt> snippet, shown in Listing <a class="Reference" href="index-2.html#lst:Our-Ajax-snippet">2.4↓</a>. We start off with some boilerplate calls to match to locate the <tt>Account</tt> to be viewed, then we define some vars to hold state. It’s important that they’re vars so that they can be captured by the <tt>entryTable</tt>, <tt>updateStartDate</tt>, and <tt>updateEndDate</tt> closures, as well as the AJAX form fields that we define. The only magic we have to use is the <tt>SHtml.ajaxText</tt> form field generator (Chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11 on page 1↓</a>), which will turn our update closures into AJAX callbacks. The values returned from these callbacks are JavaScript code that will be run on the client side. You can see that in a few lines of code we now have a page that will automatically update our Expense table when you set the start or end dates!
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Our AJAX Snippet<a class="Label" name="lst:Our-Ajax-snippet"> </a>
+</div>
+<pre class="listing brush: scala">package com.pocketchangeapp.snippet
+​
+import ... standard imports ...
+import com.pocketchangeapp.model._
+import com.pocketchangeapp.util.Util
+​
+class Accounts {
+  def detail (xhtml: NodeSeq) : NodeSeq = S.param("name") match {
+    // If the "name" param was passed by the browser...
+    case Full(acctName) =&gt; {
+      // Look for an account by that name for the logged in user
+      Account.findByName(User.currentUser.open_!, acctName) match {
+        // If an account is returned (as a List)
+        case acct :: Nil =&gt; {
+          // Some closure state for the AJAX calls
+          // Here is Lift’s "Box" in action: we are creating
+          // variables to hold Date Boxes and initializing them
+          // to "Empty" (Empty is a subclass of Box)
+          var startDate : Box[Date] = Empty
+          var endDate : Box[Date] = Empty
+​
+          // AJAX utility methods. Defined here to capture the closure
+          // vars defined above
+          def entryTable = buildExpenseTable(
+            Expense.getByAcct(acct, startDate, endDate, Empty),
+            xhtml)
+​
+          def updateStartDate (date : String) = {
+            startDate = Util.parseDate(date, Util.slashDate.parse)
+            JsCmds.SetHtml("entry_table", entryTable)
+          }
+​
+          def updateEndDate (date : String) = {
+            endDate = Util.parseDate(date, Util.slashDate.parse)
+            JsCmds.SetHtml("entry_table", entryTable)
+          }
+​
+          // Bind the data to the passed in XML elements with
+          // prefix "acct" according to the map below.
+          bind("acct", xhtml, 
+            "name" -&gt; acct.name.asHtml,
+            "balance" -&gt; acct.balance.asHtml,
+            "startDate" -&gt; SHtml.ajaxText("", updateStartDate),
+            "endDate" -&gt; SHtml.ajaxText("", updateEndDate),
+            "table" -&gt; entryTable)
+        }
+        // An account name was provided but did not match any of
+        // the logged in user’s accounts
+        case _ =&gt; Text("Could not locate account " + acctName)
+      }
+    }
+    // The S.param "name" was empty
+    case _ =&gt; Text("No account name provided")
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-2.5">2.5</a> Conclusion
+</h2>
+<div class="Unindented">
+We hope that this chapter has demonstrated how powerful Lift can be while remaining concise and easy to use. Don’t worry if there’s something you didn’t understand, we’ll be explaining in more detail as we go along. We’ll continue to expand on this example app throughout the book, so feel free to make this chapter a base reference, or pull your own version of PocketChange from the git repository with the following command (assuming you have git installed):
+</div>
+<pre class="LyX-Code">
+git clone <a class="FlexURL" href="git://github.com/tjweir/pocketchangeapp.git">git://github.com/tjweir/pocketchangeapp.git</a>
+</pre>
+<div class="Unindented">
+Now let’s dive in!
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-1.html#Next">Previous: Chapter 1</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-3.html#prev">Next: Chapter 3</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

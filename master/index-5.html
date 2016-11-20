@@ -1,0 +1,958 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-4.html#Next">Previous: Chapter 4</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-6.html#prev">Next: Chapter 6</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-5">5</a> Snippets<a class="IndexReference" name="entry-Snippets-0" href="index-Index.html#index-Snippets">↓</a><a class="Label" name="cha:Snippets"> </a>
+</h1>
+<div class="Unindented">
+Put simply, a snippet is a Scala method that transforms input XML into output XML<a class="IndexReference" name="entry-XML-1" href="index-Index.html#index-XML">↓</a>. Snippets act as independent (or dependent, if you want) pieces of logic that you insert into your page to perform rendering. As such, snippets form the backbone of Lift’s View-First<a class="IndexReference" name="entry-View-First-0" href="index-Index.html#index-View-First">↓</a> rendering architecture. Although snippets aren’t the only mechanism Lift has for rendering page views (see Views, Section <a class="Reference" href="index-4.html#sec:Views">4.4 on page 1↑</a>, Custom Dispatch, Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8 on page 1↑</a>, or even the REST API, Chapter <a class="Reference" href="index-15.html#cha:Web-Services">15↓</a>), they’re so widely used and so important that we feel they warrant their own chapter.
+</div>
+<div class="Indented">
+In this chapter we will cover the ins and outs of snippets, from the snippet tag that you place in your templates, through how the snippet method is resolved, to the snippet method definition itself. We’ll also cover related topics and some advanced functionality in snippets for those looking to push Lift’s boundaries.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-5.1">5.1</a> The Snippet Tag<a class="IndexReference" name="entry-snippet-0" href="index-Index.html#index-snippet">↓</a><a class="IndexReference" name="entry-Tags-snippet-0" href="index-Index.html#index-Tags-snippet">↓</a><a class="Label" name="sec:The-Snippet-Tag"> </a><a class="Label" name="sub:snippet-tag"> </a>
+</h2>
+<pre class="LyX-Code">
+<tt>Usage: &lt;lift:snippet type="snippetName" ...options... /&gt;</tt>
+       &lt;lift:snippetName ...options... /&gt;
+       &lt;div class=”lift:snippetName?opt1=...;opt2=...;opt3=...” /&gt;
+</pre>
+<div class="Unindented">
+The snippet tag is what you use to tell Lift where and how to invoke a snippet method on given XML content. The most important part of the tag is the snippet name, which is used to resolve which snippet method will process the snippet tag contents. We’ll cover how the snippet name is resolved to a concrete method in section <a class="Reference" href="index-5.html#sub:Snippet-Dispatch">5.2↓</a>. 
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note that there is a shorthand for the <tt>type</tt> attribute simply by appending the snippet name after the <tt>lift:</tt> prefix. If you use this shorthand, make sure to avoid naming your snippets the same as Lift’s built-in tags, such as <tt>surround</tt>, <tt>children</tt>, <tt>embed</tt>, etc.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+In addition to the the <tt>type</tt> attribute, Lift will process several other options:
+</div>
+<div class="Description">
+<span class="Description-entry">form</span> If the <tt>form<a class="IndexReference" name="entry-Forms-snippet-tag-0" href="index-Index.html#index-Forms-snippet-tag">↓</a></tt> attribute is included with a value of either “POST” or “GET”, then an appropriate form tag will be emitted into the XHTML using the specified submission method. If you omit this tag from a snippet that generates a form, the form elements will display but the form won’t submit.
+</div>
+<div class="Description">
+<span class="Description-entry">multipart</span> <a class="IndexReference" name="entry-Forms-multipart-0" href="index-Index.html#index-Forms-multipart">↓</a><a class="IndexReference" name="entry-Forms-file-upload-0" href="index-Index.html#index-Forms-file-upload">↓</a>The <tt>multipart</tt> attribute is a boolean (the default is false, specify “yes”, “true” or “1” to enable) that specifies whether a generated form tag should be set to use multipart form submission. This is most typically used for file uploads (Section <a class="Reference" href="index-6.html#sec:File-Uploads">6.4↓</a>). If you don’t also specify the <tt>form</tt> attribute then this won’t do anything.
+</div>
+<div class="Description">
+<span class="Description-entry">eager_eval</span> <a class="IndexReference" name="entry-Snippets-eager_eval-0" href="index-Index.html#index-Snippets-eager_eval">↓</a>The eager_eval attribute is a boolean (the default is false, specify “yes”, “true” or “1” to enable) that controls the order of processing for the snippet tag contents. Normally, the snippet is processed and then the XML returned from the snippet is further processed for Lift tags. Enabling eager_eval reverses this order so that the contents of the snippet tag are processed first. We cover this in more detail with an example in Section <a class="Reference" href="index-5.html#sub:Eager-Eval">5.3.4↓</a>.
+</div>
+<div class="Unindented">
+With Lift 2.2’s Designer-Friendly Templates (Section <a class="Reference" href="index-4.html#sec:Designer-Friendly-Templates">4.2 on page 1↑</a>), you can also specify a snippet tag as part of the class attribute for a given element. Attributes for snippets invoked in this manner are passed via a query string. Listing <a class="Reference" href="index-5.html#lst:Invoking-Snippets-Via-Class">5.1↓</a> shows an example of how we can use the standard <tt>lift:surround</tt> processing by modiying the <tt>class</tt> of our content element.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Invoking Snippets Via the Class Attribute<a class="Label" name="lst:Invoking-Snippets-Via-Class"> </a>
+</div>
+<pre class="listing brush: scala">&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"&gt;
+ &lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+   &lt;head&gt;
+	&lt;title&gt;Not really&lt;/title&gt;
+   &lt;/head&gt;
+   &lt;body class="lift:content_id=real_content"&gt;
+     &lt;div class="lift:surround?with=default;at=content" id="real_content"&gt;
+       &lt;h1&gt;Welcome to your project!&lt;/h1&gt;
+     &lt;/div&gt;
+   &lt;/body&gt;
+ &lt;/html&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-5.2">5.2</a> Snippet Dispatch<a class="Label" name="sub:Snippet-Dispatch"> </a><a class="IndexReference" name="entry-Snippets-Dispatch-0" href="index-Index.html#index-Snippets-Dispatch">↓</a>
+</h2>
+<div class="Unindented">
+The first step taken by Lift when evaluating a snippet tag is to resolve what snippet method will actually process the content. There are several mechanisms that are used to resolve the method, but they can be broken down into two main approaches: dispatch via reflection and explicit dispatch. In addition, Lift allows per-request remapping of snippet names via <tt>S.mapSnippet</tt><a class="IndexReference" name="entry-mapSnippet-0" href="index-Index.html#index-mapSnippet">↓</a>. We’ll cover each in the following sections.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.2.1">5.2.1</a> Implicit Dispatch Via Reflection<a class="IndexReference" name="entry-Reflection-0" href="index-Index.html#index-Reflection">↓</a><a class="IndexReference" name="entry-Snippets-Implicit-dispatch-0" href="index-Index.html#index-Snippets-Implicit-dispatch">↓</a><a class="Label" name="sub:Implicit-Dispatch-Via"> </a>
+</h3>
+<div class="Unindented">
+The simplest, and default, approach to resolving snippet names is to use implicit dispatch via reflection. When using implicit dispatch, Lift will use the snippet name specified in the snippet tag to first locate a class. Lift will then either instantiate a class, or if it’s a stateful snippet (we’ll cover stateful snippets in Section <a class="Reference" href="index-5.html#sub:Stateless-versus-Stateful">5.3.3↓</a>), retrieve the current instance. One Lift has a class instance, it uses the snippet name to further determine which method in the class to execute. There are three ways to specify this:
+</div>
+<ol>
+<li>
+Via the <tt>type</tt> attribute on the snippet tag. The value should be “<tt>ClassName</tt>:<tt>method</tt>” for the particular snippet method you want to have handle the tag
+</li>
+<li>
+Via a tag suffix of <tt>Class.method</tt>. This is the same as specifying the <tt>type=”Class:method”</tt> attribute
+</li>
+<li>
+Via a tag suffix of just <tt>Class</tt>. This will use the <tt>render</tt> method on the specified class to handle the tag
+</li>
+
+</ol>
+<div class="Unindented">
+Classes are resolved as specified in Section <a class="Reference" href="index-3.html#sub:Class-Resolution">3.2.1↑</a>. 
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+The most important thing to remember when using implicit dispatch is that your snippet classes must be members of a <tt>snippet</tt> subpackage as registered by <tt>LiftRules.addToPackages</tt>. For example, if you have <tt>LiftRules.addToPackages(“com.foo”)</tt> in your <tt>Boot.boot</tt> method, snippets should be members of <tt>com.foo.snippet</tt>.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-5.html#lst:Snippet-tag-equivalence">5.2.1↓</a> shows three equivalent snippet tags. Note: these are only equivalent because the method name is “render.” If we had chosen a different method, e.g., “list,” then the third example below will still call a “render” method. 
+</div>
+<div class="Indented">
+<div class="center">
+<tt><div class="Shadowbox" style="width: 75%;">
+It’s important to note that with pure implicit dispatch, Java’s reflection allows access to <i>any</i> method on the enclosing class, no matter what the protection on the method is set to (e.g. private, protected). Because of this, it’s possible to invoke private and protected methods via implicit dispatch, which could be a security concern.This is one reason that we recommend using either DispatchSnippet or explicit dispatch for production sites. We’ll cover both of these approaches momentarily.<div class="PlainVisible">
+Another important note is that lookup via reflection is relatively expensive<span class="FootOuter"><span class="SupFootMarker"> [U] </span><span class="HoverFoot"><span class="SupFootMarker"> [U] </span>See <a class="FlexURL" href="http://www.jguru.com/faq/view.jsp?EID=246569">http://www.jguru.com/faq/view.jsp?EID=246569</a> for a more thorough explanation</span></span> operation, yet another reason that we recommend explicit dispatch for production sites.
+</div>
+
+</div>
+</tt>
+</div>
+
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Snippet Tag Equivalence<a class="Label" name="lst:Snippet-tag-equivalence"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:snippet type="MyClass:render" /&gt;
+&lt;lift:MyClass.render /&gt;
+&lt;lift:MyClass /&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In addition to “pure” implicit dispatch, you can exert a little more control on which method in a given class handles a snippet by implementing the <tt>net.liftweb.http.DispatchSnippet<a class="IndexReference" name="entry-DispatchSnippet-0" href="index-Index.html#index-DispatchSnippet">↓</a></tt> trait. This trait contains a single method, dispatch, of type <span class="formula"><i>PartialFunction</i>[<i>String</i>, <i>NodeSeq</i> ⇒ <i>NodeSeq</i>]</span> that maps the method name (the “method” part of “Class.method” or “Class:method” as described above) to a particular method. Only method names defined in the dispatch PartialFunction can be executed; any methods that aren’t covered by the partial function will result in a snippet failure. Listing <a class="Reference" href="index-5.html#lst:Using-DispatchSnippet-to-select">5.2.1↓</a> shows how you can control the dispatch by providing a custom <tt>dispatch</tt> def.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using DispatchSnippet to Control Snippet Method Selection<a class="Label" name="lst:Using-DispatchSnippet-to-select"> </a>
+</div>
+<pre class="listing brush: scala">package com.foo.snippet
+​
+import scala.xml.{NodeSeq,Text}
+import net.liftweb.http.DispatchSnippet
+​
+class SomeSnippetClass extends DispatchSnippet {
+  def dispatch : DispatchIt = {
+    // We have to use a partially-applied (trailing "_") version
+    // of the functions that we dispatch to
+    case "foo" =&gt; myFooMethod _ 
+    case "bar" =&gt; someOtherBarMethod _
+    case _ =&gt; catchAllMethod _
+  }
+​
+  def myFooMethod (xhtml : NodeSeq) : NodeSeq = { ... }
+  def someOtherBarMethod (xhtml : NodeSeq) : NodeSeq = { ... }
+  def catchAllMethod(xhtml : NodeSeq) : NodeSeq = Text("You’re being naughty!")
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+To summarize, implicit dispatch is the default method by which Lift resolves snippet tag names to the actual class and method that will process the snippet tag contents. Although implicit dispatch is simple to use and works well, security concerns lead us to recommend the use of the <tt>DispatchSnippet<a class="IndexReference" name="entry-DispatchSnippet-1" href="index-Index.html#index-DispatchSnippet">↓</a></tt> trait. Even with <tt>DispatchSnippet</tt>, however, the implicit class resolution still uses reflection, so if you’re trying to make things performant you should use explicit dispatch instead.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.2.2">5.2.2</a> Explicit Dispatch<a class="IndexReference" name="entry-Snippets-Explicit-Dispatch-0" href="index-Index.html#index-Snippets-Explicit-Dispatch">↓</a><a class="Label" name="sub:Explicit-Dispatch"> </a>
+</h3>
+<div class="Unindented">
+Explicit dispatch allows you to have direct control over which methods will be executed for a given snippet name. There are two ways that you can define snippet name to method mappings: via <tt>LiftRules.snippetDispatch</tt>, which points Lift to <tt>DispatchSnippet</tt> instances, and <tt>LiftRules.snippets</tt>, which points Lift directly at methods.
+</div>
+<div class="Indented">
+Let’s first take a look at <tt>LiftRules.snippetDispatch</tt>, the more generic option. When a snippet tag is encountered with a snippet name of the form <tt>A.B</tt> or <tt>A:B</tt>, Lift will take the first portion (<tt>A</tt>) and use that as the lookup for <tt>snippetDispatch</tt>. The <tt>PartialFunction</tt> needs to return an instance of <tt>DispatchSnippet</tt>, so typically you will implement your explicit dispatch snippets using an <tt>object</tt> instead of a <tt>class</tt>. Listing <a class="Reference" href="index-5.html#lst:Defining-an-Explicit-snippet">5.2.2↓</a> shows how we define our object. Note that the <tt>dispatch</tt> method will be executed with the “<tt>B</tt>” portion of the snippet name (as we defined above) as its argument. Other than the fact that it’s an object, the definition is essentially identical to our implicit dispatch class in Listing <a class="Reference" href="index-5.html#lst:Using-DispatchSnippet-to-select">5.2.1↑</a>. <div class="listing">
+<div class="caption">
+Defining an Explicit Snippet Object<a class="Label" name="lst:Defining-an-Explicit-snippet"> </a>
+</div>
+<pre class="listing brush: scala">// The package *doesn’t* need to be "snippet" because there’s
+// no reflection involved here
+package com.foo.logic
+​
+import scala.xml.{NodeSeq,Text}
+import net.liftweb.http.DispatchSnippet
+​
+object HelloWorld extends DispatchSnippet {
+  // We define dispatch as a val so that it doesn’t get re-created
+  // on each request 
+  val dispatch : DispatchIt = {
+    case name =&gt; render(name) _
+  }
+​
+  def render (name : String)(ignore : NodeSeq) : NodeSeq = 
+    Text("Hello, world! Invoked as " + name)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now that we have our snippet object, we can bind it to a particular snippet name in our <tt>Boot.boot</tt> method, as shown in Listing <a class="Reference" href="index-5.html#lst:Binding-Our-Explicit-snippet">5.2.2↓</a>. It’s interesting to note that this is actually how Lift defines many of its tags, such as <tt>&lt;lift:embed/&gt;</tt>, <tt>&lt;lift:surround/&gt;</tt>, and <tt>&lt;lift:comet/&gt;</tt>. In our case, we’ve bound our snippet object to <tt>&lt;lift:HelloWorld/&gt;</tt>, and because our <tt>DispatchSnippet</tt> uses a simple variable binding for its <tt>dispatch</tt> method case, we can invoke the same snippet with <tt>&lt;lift:HelloWorld.hey /&gt;</tt>, <tt>&lt;lift:HelloWorld.useless/&gt;</tt>, or even <tt>&lt;lift:HelloWorld.this_is_getting_silly/&gt;</tt>, and the snippet will tell us what name it was invoked with (<tt>&lt;lift:HelloWorld/&gt;</tt> will invoke with the name “render”, following Lift’s normal snippet tag conventions). Noe that if you’re setting up a dispatch for a <tt>StatefulSnippet</tt><a class="IndexReference" name="entry-StatefulSnippet-0" href="index-Index.html#index-StatefulSnippet">↓</a><a class="IndexReference" name="entry-Snippets-stateful-0" href="index-Index.html#index-Snippets-stateful">↓</a>, return a new instance of your <tt>StatefulSnippet</tt> class. <tt>StatefulSnippet</tt> instances will properly register themselves ahead of the <tt>snippetDispatch</tt> partial function on each successive request.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Binding Our Explicit Snippet Object<a class="Label" name="lst:Binding-Our-Explicit-snippet"> </a>
+</div>
+<pre class="listing brush: scala">class Boot {
+  def boot {
+    ...
+    LiftRules.snippetDispatch.append {
+      case "HelloWorld" =&gt; com.foo.logic.HelloWorld
+      // For StatefulSnippets, return a *new instance*
+      case "HelloConversation" =&gt; 
+        new com.foo.logic.StatefulHelloWorld
+    }
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now let’s look at <tt>LiftRules.snippets</tt>. This is a more fine-grained approach to explicit dispatch that doesn’t require the <tt>DispatchSnippet</tt> trait. Instead, we bind a list of snippet name components corresponding to the parts of the snippet name separated by either “:” or “.”, and point it directly at a given snippet method. Assuming we’re using the same snippet object in Listing <a class="Reference" href="index-5.html#lst:Defining-an-Explicit-snippet">5.2.2↑</a>, we can bind the <tt>&lt;lift:HelloWorld/&gt;</tt> tag by setting up <tt>LiftRules.snippets</tt> in our Boot.boot method as shown in Listing <a class="Reference" href="index-5.html#lst:Explicitly-Binding-a-snippet">5.2.2↓</a>. Notice that in order to bind the same way that we did with <tt>snippetDispatch</tt>, we need two lines to match the un-suffixed and suffixed versions. If you omit the un-suffixed line you will get a snippet failure. <div class="listing">
+<div class="caption">
+Explicitly Binding a Snippet Method<a class="Label" name="lst:Explicitly-Binding-a-snippet"> </a>
+</div>
+<pre class="listing brush: scala">import com.foo.logic
+class Boot {
+  def boot {
+    ...
+    LiftRules.snippets.append {
+      // Matches a tag without a suffix (&lt;lift:HelloWorld /&gt;)
+      case List("HelloWorld") =&gt; HelloWorld.render("no name") _
+      case List("HelloWorld", name) =&gt; HelloWorld.render(name) _
+    }
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.2.3">5.2.3</a> Per-request Remapping<a class="IndexReference" name="entry-Snippets-Per-request-remapping-0" href="index-Index.html#index-Snippets-Per-request-remapping">↓</a>
+</h3>
+<div class="Unindented">
+The final piece of snippet mapping that we want to discuss is per-request remapping. The S.mapSnippet method allows you to modify which snippet method will service a given snippet tag within your page processing. For example, Listing <a class="Reference" href="index-5.html#lst:Remapping-A-Snippet">5.2.3↓</a> shows how we can conditionally “blank” a snippet based on logic in a second snippet. This functionality isn’t used frequently as the other types of snippet dispatch, but it’s here in case you need it.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Remapping A Snippet<a class="Label" name="lst:Remapping-A-Snippet"> </a>
+</div>
+<pre class="listing brush: scala">import scala.xml.NodeSeq
+import net.liftweb.http.S
+​
+class Display {
+  def header (xhtml : NodeSeq) : NodeSeq = {
+    ...
+    // If simple is set, we don’t display complexStuff
+    S.param("simple").foreach {
+      S.mapSnippet("complexStuff", ignore =&gt; Text(""))
+    }
+  }
+​
+  def complexStuff (xhtml : NodeSeq) : NodeSeq = {
+    ...
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-5.3">5.3</a> Snippet Methods<a class="Label" name="sec:Snippets"> </a>
+</h2>
+<div class="Unindented">
+Now that we’ve examined how Lift determines which snippet to execute, let’s look at what a snippet method actually does. A snippet method is essentially a transform, taking a single <tt>scala.xml.NodeSeq</tt><a class="IndexReference" name="entry-NodeSeq-1" href="index-Index.html#index-NodeSeq">↓</a> argument and returning a <tt>NodeSeq</tt>.
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: Although Scala can often infer return types, it’s important to explicitly specify the return type of your snippet methods as <tt>NodeSeq</tt>. Failure to do so may prevent Lift from locating the snippet method if you’re using implicit dispatch (Section <a class="Reference" href="index-5.html#sub:Implicit-Dispatch-Via">5.2.1↑</a>), in which case the snippet won’t execute!
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+The argument passed to the snippet method is the XML content of the snippet tag. Because Lift processes XML from the root element down to the child elements (outside-in), the contents of the snippet tag aren’t processed until <i>after</i> the snippet method processes them. You may reverse the order of processing by specifying the <tt>eager_eval</tt> attribute on the tag (Section <a class="Reference" href="index-5.html#sub:Eager-Eval">5.3.4↓</a>). As an example, let’s say we wanted a snippet that would output the current balance of our ledger, shown in Listing <a class="Reference" href="index-5.html#lst:Returning-tags-snippet">5.3↓</a>. We simply return an XML Text node with the formatted balance. Note that the XML result from a snippet is itself processed recursively, so the <tt>lift:Util.time</tt> snippet will be processed after our snippet method returns.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Returning Tags from a Snippet<a class="Label" name="lst:Returning-tags-snippet"> </a>
+</div>
+<pre class="listing brush: scala">class Ledger {
+  def balance (content : NodeSeq) : NodeSeq = 
+    &lt;p&gt;{currentLedger.formattedBalance}
+      as of &lt;lift:Util.time /&gt;&lt;/p&gt;
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+It is this hierarchical processing of template tags that makes Lift so flexible. For those of you coming to Lift with some JSP experience, Lift is designed to let you write something similar to tag libraries, but that are much more powerful and much simpler to use.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.3.1">5.3.1</a> Binding Values in Snippets<a class="Label" name="sub:Binding-Values-in-snippets"> </a><a class="IndexReference" name="entry-Binding-0" href="index-Index.html#index-Binding">↓</a><a class="IndexReference" name="entry-Snippets-binding-0" href="index-Index.html#index-Snippets-binding">↓</a>
+</h3>
+<div class="Unindented">
+So far we’ve shown our snippets generating complete output and ignoring the input to the method. Lift actually provides some very nice facilities for using the input <tt>NodeSeq</tt> within your snippet to help keep presentation and code separate. First, remember that the input <tt>NodeSeq</tt> consists of the child elements for the snippet tag in your template.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Snippet Tag Children<a class="Label" name="lst:Snippet-tag-children"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:Ledger.balance&gt;
+  &lt;ledger:balance/&gt; as of &lt;ledger:time /&gt;
+&lt;/lift:Ledger.balance&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+For example, given a template containing the snippet tag shown in Listing <a class="Reference" href="index-5.html#lst:Snippet-tag-children">5.3.1↑</a>, the Ledger.balance method receives
+</div>
+<pre class="LyX-Code">
+&lt;ledger:balance/&gt; as of &lt;ledger:time /&gt;
+</pre>
+<div class="Unindented">
+as its input parameter. This is perfectly correct XML, although it may look a little strange at first unless you’ve used prefixed elements in XML before. The key is that Lift allows you to selectively “bind”, or replace, these elements with data inside your snippet. The <tt>Helpers.bind</tt><span class="FootOuter"><span class="SupFootMarker"> [V] </span><span class="HoverFoot"><span class="SupFootMarker"> [V] </span>net.liftweb.util.Helpers. Technically the bind method is overloaded, and can even fill in values for the lift:bind tag, but this is advanced usage and we’re not going to cover that here.</span></span> method takes three arguments:
+</div>
+<ol>
+<li>
+The prefix for the tags you wish to bind, in this instance, “ledger”
+</li>
+<li>
+The <tt>NodeSeq</tt> that contains the tags you wish to bind
+</li>
+<li>
+One or more <tt>BindParam</tt> elements that map the tag name to a replacement value
+</li>
+
+</ol>
+<div class="Unindented">
+While you can create your own <tt>BindParam</tt> instances by hand, we generally recommend importing <tt>Helpers._</tt>, which among other things contains a convenient implicit conversion to BindParam using the “-&gt;” operator. With this knowledge in hand, we can change our previous definition of the balance method in Listing <a class="Reference" href="index-5.html#lst:Returning-tags-snippet">5.3↑</a> to that in Listing <a class="Reference" href="index-5.html#lst:Binding-the-ledger-balance">5.3.1↓</a> below.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Binding the Ledger Balance<a class="Label" name="lst:Binding-the-ledger-balance"> </a>
+</div>
+<pre class="listing brush: scala">class Ledger {
+  def balance (content : NodeSeq ) : NodeSeq = 
+    bind ("ledger", content,
+          "balance" -&gt; Text(currentLedger.formattedBalance),
+          "time" -&gt; Text((new java.util.Date).toString))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see here, we actually gain a line of code over our previous effort, but the trade-off makes it far simpler for us to change the layout just by editing the template.
+</div>
+<div class="Indented">
+One last aspect of binding that we want to discuss is that any attributes set on the input elements that are being bound will be discarded<a class="IndexReference" name="entry-Attributes-discarded-in-bind-0" href="index-Index.html#index-Attributes-discarded-in-bind">↓</a> if you use the “-&gt;” binding operator. See Section <a class="Reference" href="index-5.html#sec:Handling-XHTML-Attributes">5.4↓</a> for more details on how you manipulate attributes in bindings, including how you can retain attributes on binding elements from your templates by using the “-%&gt;”<a class="IndexReference" name="entry-Attributes--%&gt;-operator-0" href="index-Index.html#index-Attributes--%&gt;-operator">↓</a> binding operator instead.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.3.2">5.3.2</a> CSS Selector Transforms<a class="Label" name="sub:CSS-Selector-Transforms"> </a><a class="IndexReference" name="entry-CSS-selector-transforms-0" href="index-Index.html#index-CSS-selector-transforms">↓</a><a class="IndexReference" name="entry-Binding-with-CSS-1" href="index-Index.html#index-Binding-with-CSS">↓</a><a class="IndexReference" name="entry-Snippets-binding-with-CSS-0" href="index-Index.html#index-Snippets-binding-with-CSS">↓</a><a class="IndexReference" name="entry-CSS-Transforms-0" href="index-Index.html#index-CSS-Transforms">↓</a>
+</h3>
+<div class="Unindented">
+In addition to the binding support detailed in Section <a class="Reference" href="index-5.html#sub:Binding-Values-in-snippets">5.3.1↑</a>, Lift 2.2 introduces binding via CSS transforms as part of its support for designer friendly templates. These allow you to bind values into template XHTML (or HTML5, see Section <a class="Reference" href="index-4.html#sec:HTML5-Support">4.3 on page 1↑</a>) by using the attributes on specific elements. Let’s start by looking at a basic example, corresponding to the examples in Section <a class="Reference" href="index-5.html#sub:Binding-Values-in-snippets">5.3.1↑</a>.
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-5.html#lst:A-Simple-CSS-snippet">5.3.2↓</a> shows a Designer-Friendly version of Listing <a class="Reference" href="index-5.html#lst:Snippet-tag-children">5.3.1↑</a>. You can see that we’re invoking the <tt>Ledger.balance</tt> snippet via the class attribute, and we’ve specified the binding elements as normal <tt>&lt;span/&gt;</tt> elements with <tt>id</tt> attributes.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Simple CSS Snippet<a class="Label" name="lst:A-Simple-CSS-snippet"> </a>
+</div>
+<pre class="listing brush: scala">&lt;div class="lift:Ledger.balance"&gt;
+  &lt;span id="balance"&gt;$0&lt;/span&gt; as of &lt;span id="time"&gt;midnight&lt;/span&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now, we need to perform the CSS transform within our snippet. The binding implicits for CSS transforms are found on the <tt>net.liftweb.util.BindHelpers</tt> object/trait, so you should import it (in particular, the <tt>strToCssBindPromoter</tt> method). Listing <a class="Reference" href="index-5.html#lst:Binding-the-Ledger-with-CSS">5.3.2↓</a> shows how we modify the snippet in Listing <a class="Reference" href="index-5.html#lst:Binding-the-ledger-balance">5.3.1↑</a> to utilize the new CSS transform.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Binding the Ledger Balance with CSS<a class="Label" name="lst:Binding-the-Ledger-with-CSS"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.util.BindHelpers._
+​
+class Ledger {
+  def balance = "#balance" #&gt; currentLedger.formattedBalance &amp;
+    "#time" #&gt; (new java.util.Date).toString
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see in this example, CSS transforms are comprised of three parts: the transform selector, the transform operator (<tt>#&gt;</tt>), and the right hand side value. This value can be a number of different things, which we’ll cover in Section <a class="Reference" href="index-5.html#sub:Replacement-Values">5.3.2.2↓</a>, but in our case we’re using a <tt>MappedField</tt> and a <tt>String</tt>. Additionally, you can chain transforms together with the <tt>&amp;</tt> operator.
+</div>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-5.3.2.1">5.3.2.1</a> CSS Selector Syntax
+</h4>
+<div class="Unindented">
+The selector syntax is based on a subset of CSS, so if you already know that you’re well on your way. The syntax can operate on elements based on id or class, and can also operate on attributes of those elements. Let’s look at the basic syntax:
+</div>
+<ul>
+<li>
+<tt>#foo</tt> - Selects the element with an <tt>id</tt> attribute of “foo”
+</li>
+<li>
+<tt>.foo</tt> - Selects all elements with a CSS <tt>class</tt> of “foo”
+</li>
+<li>
+<tt>@foo</tt> - Selects all elements with a <tt>name</tt> attribute of “foo”
+</li>
+<li>
+<tt>attrName=attrValue</tt> - Selects all elements with an attribute of “attrName” equal to “attrValue”
+</li>
+<li>
+<tt>element</tt> - Selects all “element” elements (e.g. span, h1, etc.)
+</li>
+<li>
+<tt>:type</tt> - Selects all elements with a <tt>type</tt> of “type”. The type must be one of:<ul>
+<li>
+<tt>button</tt>
+</li>
+<li>
+<tt>checkbox</tt>
+</li>
+<li>
+<tt>file</tt>
+</li>
+<li>
+<tt>password</tt>
+</li>
+<li>
+<tt>radio</tt>
+</li>
+<li>
+<tt>reset</tt>
+</li>
+<li>
+<tt>submit</tt>
+</li>
+<li>
+<tt>text</tt>
+</li>
+
+</ul>
+
+</li>
+<li>
+<tt>*</tt> - Selects all elements
+</li>
+
+</ul>
+<div class="Unindented">
+The element matching the selector is replaced by the result of processing the replacement. That means that in the example of Listing <a class="Reference" href="index-5.html#lst:A-Simple-CSS-snippet">5.3.2↑</a> the <tt>span</tt> elements will be replaced with straight Text elements, resulting in the markup shown in Listing <a class="Reference" href="index-5.html#lst:Sample-CSS-Transform-result">5.3.2.1↓</a> (in other words, no remaining markup).
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Sample CSS Transform Result<a class="Label" name="lst:Sample-CSS-Transform-result"> </a>
+</div>
+<pre class="listing brush: xml">$12.42 as of Fri Jan 14 08:29:50 MST 2011
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+You can further refine the replacement with an optional qualifier. We’ve already seen how omitting the qualifer results in wholesale replacement of the matching element, but there are a few additional options:
+</div>
+<ul>
+<li>
+<tt>*</tt> - Replaces the children of the selected element. For example, if we changed our selector in Listing <a class="Reference" href="index-5.html#lst:Binding-the-Ledger-with-CSS">5.3.2↑</a> from <tt>“#balance”</tt> to <tt>“#balance *”</tt>, we would be replacing the text node child (“$0”), with the resulting markup:<pre class="LyX-Code">
+&lt;span id="balance"&gt;$12.42&lt;/span&gt; as of Fri Jan 14 08:29:50 MST 2011
+</pre>
+<div class="Unindented">
+Note that when we perform child replacement, the parent’s attributes<a class="IndexReference" name="entry-CSS-Transforms-attribute-copying-0" href="index-Index.html#index-CSS-Transforms-attribute-copying">↓</a> are carried over to the resulting element. There is an exception to this in the case of iterated replacements, which we’ll cover in Section <a class="Reference" href="index-5.html#sub:Replacement-Values">5.3.2.2↓</a>.
+</div>
+
+</li>
+<li>
+<tt>*+</tt> - Appends to the children of the selected element. For example, given the template<pre class="LyX-Code">
+&lt;span id="love"&gt;I love &lt;/span&gt;
+</pre>
+<div class="Unindented">
+The transform
+</div>
+<pre class="LyX-Code">
+"#love *+" #&gt; "figs"
+</pre>
+<div class="Unindented">
+Would result in the markup
+</div>
+<pre class="LyX-Code">
+&lt;span id="love"&gt;I love figs&lt;/span&gt;
+</pre>
+
+</li>
+<li>
+<tt>-*</tt> - Prepends to the children of the selected element. This operates the same as appending.
+</li>
+<li>
+<tt>[name]</tt> - <a class="IndexReference" name="entry-CSS-Transforms-attribute-replacement-0" href="index-Index.html#index-CSS-Transforms-attribute-replacement">↓</a>Sets the value of the <tt>”name”</tt> attribute on the selected element. If the attribute already exists on the selected element, its value is replaced, otherwise the attribute is added. For example, if we wanted to replace both the link text and <tt>href</tt> of a link via CSS transform for the template<pre class="LyX-Code">
+&lt;a href="#"&gt;ReplaceMe&lt;/a&gt;
+</pre>
+<div class="Unindented">
+We could perform this by chaining two selections together, one for the child element (link text) and one for the <tt>href</tt> attribute:
+</div>
+<pre class="LyX-Code">
+"a *" #&gt; "This is the link text"&amp; 
+  "a [href]" #&gt; "http://foo.com/bar"
+</pre>
+<div class="Unindented">
+Note that the order of the selections is not important.
+</div>
+
+</li>
+<li>
+<tt>[name+]</tt> - Appends a value to the attribute on the selected element. If the attribute doesn’t already exist on the element then this behaves the same as the <tt>[name]</tt> qualifier. One example would be adding to the <tt>class</tt> attribute for a given element:<pre class="LyX-Code">
+"tr [class+]" #&gt; (if (index % 2) "odd" else "even")
+</pre>
+
+</li>
+<li>
+<tt>^^</tt> - Makes the selected element the root of the returned elements. This can be used to select a particular element from a template, similar to <tt>BindHelpers.chooseTemplate</tt>. The right hand side for the selected element is ignored, but you can chain further transforms to modify the returned element. For example, if we decided to only output the balance in Listing <a class="Reference" href="index-5.html#lst:A-Simple-CSS-snippet">5.3.2↑</a>, we could do so by changing our snippet code to:<pre class="LyX-Code">
+def balance = "#balance ^^" #&gt; "ignore" &amp;
+  "#balance" #&gt; currentLedger.formattedBalance
+</pre>
+
+</li>
+
+</ul>
+<h4 class="Subsubsection">
+<a class="toc" name="toc-Subsubsection-5.3.2.2">5.3.2.2</a> Right Hand Side Values<a class="Label" name="sub:Replacement-Values"> </a>
+</h4>
+<div class="Unindented">
+The right hand side of a CSS transform operates on the selected element to either transform or replace it. It can be one of:
+</div>
+<ul>
+<li>
+<tt>String</tt> constant - returns a Text node for the <tt>String</tt>. For example, in Listing <a class="Reference" href="index-5.html#lst:Binding-the-Ledger-with-CSS">5.3.2↑</a>:<pre class="LyX-Code">
+"#time" #&gt; (new java.util.Date).toString
+</pre>
+
+</li>
+<li>
+A <tt>NodeSeq</tt> constant - returns the <tt>NodeSeq</tt> itself. In Listing <a class="Reference" href="index-5.html#lst:Binding-the-Ledger-with-CSS">5.3.2↑</a> we could have done this instead:<pre class="LyX-Code">
+"#time" #&gt; Text((new java.util.Date).toString)
+</pre>
+
+</li>
+<li>
+<span class="formula"><i>NodeSeq</i> ⇒ <i>NodeSeq</i></span> - a function that transforms the selected element. Note that CSS transforms extend <span class="formula"><i>NodeSeq</i> ⇒ <i>NodeSeq</i></span>, so you can nest transforms like<pre class="LyX-Code">
+// Select the element with id "entry" and then bind its 
+// nested "name" element
+"#entry" #&gt; { "#name" #&gt; account.name }
+</pre>
+
+</li>
+<li>
+<tt>net.liftweb.util.Bindable</tt> - Instances that implement the <tt>Bindable</tt> trait will be automatically converted into a <tt>NodeSeq</tt>. Among other things, <tt>MappedField</tt> and <tt>Record.Field</tt> support this, which allows us to use instances directly:<pre class="LyX-Code">
+"#description" #&gt; account.description
+</pre>
+
+</li>
+<li>
+<tt>Boolean</tt>, <tt>Int</tt>, <tt>Long</tt> or <tt>Symbol</tt> - These are automatically promoted to a <tt>String</tt> via the <tt>net.liftweb.util.StringPromotable</tt> trait and implicits on its companion object<pre class="LyX-Code">
+"#viewperm" #&gt; account.isViewableBy(someUser)
+</pre>
+
+</li>
+<li>
+A <tt>Box</tt>, <tt>Option</tt> or <tt>Seq</tt> of <tt>String</tt>, <tt>NodeSeq</tt>, <tt>Bindable</tt> or values convertable by <tt>StringPromotable</tt> - These will be converted into a <tt>net.liftweb.util.IterableConst</tt>, which is used to compute a <tt>Seq[NodeSeq]</tt>. If your selector replaces the children of the selected element (*), the <tt>IterableConst</tt> is applied to the selected element once for each item in the <tt>Seq</tt>. In other words, you get a copy of the selected element for each original input. For example, given the template:<pre class="LyX-Code">
+&lt;h2&gt;Account names:&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li id="item"&gt;Account&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<div class="Unindented">
+We can iterate over a list of accounts with the CSS transform:
+</div>
+<pre class="LyX-Code">
+"#item *" #&gt; accounts.map(_.name.toString)
+</pre>
+<div class="Unindented">
+Which, assuming a set of accounts named “A”, “B”, and “C”, results in:
+</div>
+<pre class="LyX-Code">
+&lt;h2&gt;Account names:&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li id="item"&gt;A&lt;/li&gt;
+  &lt;li&gt;B&lt;/li&gt;
+  &lt;li&gt;C&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<div class="Unindented">
+<div class="center">
+<div class="Shadowbox" style="width: 80%;">
+Note that the <tt>id</tt> attribute is only placed on the first transformed element. Subsequent replacements strip the <tt>id</tt> attribute so that it remains unique on the page. This special handling applies only to the <tt>id</tt> attribute; other attributes, such as <tt>class</tt>, are not similarly stripped.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Passing in a <tt>None</tt>/<tt>Empty</tt> will remove the selected element. For example, you can delete an attribute<a class="IndexReference" name="entry-CSS-Transforms-deleting-attribute-0" href="index-Index.html#index-CSS-Transforms-deleting-attribute">↓</a><a class="IndexReference" name="entry-Attributes-delete-with-CSS-transform-0" href="index-Index.html#index-Attributes-delete-with-CSS-transform">↓</a> with the following code:
+</div>
+<pre class="LyX-Code">
+val blank: Option[String] = None
+"#thing [class]" #&gt; blank
+</pre>
+
+</li>
+<li>
+A <tt>Box</tt>, <tt>Option</tt> or <tt>Seq</tt> of <span class="formula"><i>NodeSeq</i> ⇒ <i>NodeSeq</i></span> - These will be converted into a <tt>net.liftweb.util.IterableFunc</tt>, and follow the same rules for replacement as <tt>IterableConst</tt> (e.g. child replacement repetition).
+</li>
+
+</ul>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.3.3">5.3.3</a> Stateless versus Stateful Snippets<a class="Label" name="sub:Stateless-versus-Stateful"> </a><a class="IndexReference" name="entry-StatefulSnippet-1" href="index-Index.html#index-StatefulSnippet">↓</a><a class="IndexReference" name="entry-Snippets-stateful-vs-stateless-0" href="index-Index.html#index-Snippets-stateful-vs-stateless">↓</a>
+</h3>
+<div class="Unindented">
+The lifecycle of a snippet is stateless by default. That means that for each request, Lift creates a new instance of the snippet class to execute (or uses the same staic method if using explicit dispatch, Section <a class="Reference" href="index-5.html#sub:Explicit-Dispatch">5.2.2↑</a>). Any changes you make to instance variables will be discarded after the request is processed. If you want to keep some state around, you have a couple of options:
+</div>
+<ul>
+<li>
+Store the state in a cookie<a class="IndexReference" name="entry-cookie-0" href="index-Index.html#index-cookie">↓</a> (Section <a class="Reference" href="index-3.html#sec:Cookies">3.10↑</a>). This can be useful if you have data that you want to persist across sessions. The down side is that you have to manage the cookie as well as deal with any security implications for the data in the cookie as it’s stored on the user’s machine.
+</li>
+<li>
+Store the state in a <tt>SessionVar</tt><a class="IndexReference" name="entry-SessionVar-0" href="index-Index.html#index-SessionVar">↓</a> (Section <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11↑</a>). This is a little easier to manage than cookies, but you still have to handle adding and removing the session data if you don’t want it around for the duration of the session. As with a cookie, it is global, which means that it will be the same for all snippet instances for a given session.
+</li>
+<li>
+Pass the state around in a <tt>RequestVar</tt><a class="IndexReference" name="entry-RequestVar-0" href="index-Index.html#index-RequestVar">↓</a> by setting “injector” functions in your page transition functions (e.g. <tt>SHtml.link</tt>, <tt>S.redirectTo</tt>, etc). We cover this technique in Section <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11↑</a>.
+</li>
+<li>
+Use a <tt>StatefulSnippet</tt><a class="IndexReference" name="entry-StatefulSnippet-2" href="index-Index.html#index-StatefulSnippet">↓</a> subclass. This is ideal for small, conversational state, such as a form that spans multiple pages or for a page where you have multiple variables that you want to be able to tweak individually.
+</li>
+
+</ul>
+<div class="Unindented">
+Using a <tt>StatefulSnippet</tt> is very similar to using a normal snippet but with the addition of a few mechanisms. First, the <tt>State</tt>fulSnippet trait extends <tt>DispatchSnippet</tt> (see Section <a class="Reference" href="index-5.html#sub:Implicit-Dispatch-Via">5.2.1↑</a>), allowing you to define which methods handle which snippets based on the <tt>dispatch</tt> method. Because Scala allows <tt>def</tt>s to be implemented by <tt>var</tt>s in subclasses, we can redefine the dispatch behavior as a result of snippet processing. 
+</div>
+<div class="Indented">
+Another thing to remember when using <tt>StatefulSnippet</tt>s is that when you render a form, a hidden field is added to the form that permits the same instance of the <tt>StatefulSnippet</tt> that created the form to be the target of the form submission. If you need to link to a different page, but would like the same snippet instance to handle snippets on that page, use the <tt>StatefulSnippet.link</tt> method (instead of <tt>SHtml.link</tt>); similarly, if you need to redirect to a different page, the <tt>StatefulSnippet</tt> trait defines a <tt>redirectTo</tt> method. In either of these instances, a function map is added to the link or redirect, respectively, that causes the instance to be reattached.
+</div>
+<div class="Indented">
+When might you use a stateful snippet? Consider a multi-part form where you’d like to have a user enter data over several pages. You’ll want the application to maintain the previously entered data while you validate the current entry, but you don’t want to have to deal with a lot of hidden form variables. Using a <tt>StatefulSnippet</tt> instance greatly simplifies writing the snippet because you can keep all of your pertinent information around as instance variables instead of having to insert and extract them from every request, link, etc.
+</div>
+<div class="Indented">
+Listing <a class="Reference" href="index-5.html#lst:Using-a-StatefulSnippet">5.3.3↓</a> shows an example of a stateful snippet that handles the above example. Note that for this example, the URL (and therefore, the template) don’t change between pages. The template we use is shown in Listing <a class="Reference" href="index-5.html#lst:The-StatefulSnippet-Example">5.3.3↓</a>. Remember to call <tt>unregisterThisSnippet()</tt> when you’re finished with your workflow in order to stop the current instance from being used.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using a StatefulSnippet<a class="Label" name="lst:Using-a-StatefulSnippet"> </a>
+</div>
+<pre class="listing brush: scala">... standard Lift imports ...
+import scala.xml.Text
+​
+class BridgeKeeper extends StatefulSnippet {
+  // Define the dispatch for snippets. Note that we are defining
+  // it as a var so that the snippet for each portion of the 
+  // multi-part form can update it after validation.
+  var dispatch : DispatchIt = {
+    // We default to dispatching the "challenge" snippet to our
+    // namePage snippet method. We’ll update this below
+    case "challenge" =&gt; firstPage _
+  }
+​
+  // Define our state variables:
+  var (name,quest,color) = ("","","")
+​
+  // Our first form page
+  def firstPage (xhtml : NodeSeq) : NodeSeq = {
+    def processName (nm : String) {
+      name = nm
+      if (name != "") {
+        dispatch = { case "challenge" =&gt; questPage _ }
+      } else {
+        S.error("You must provide a name!")
+      }
+    }
+    bind("form", xhtml,
+         "question" -&gt; Text("What is your name?"),
+         "answer" -&gt; SHtml.text(name, processName))
+  }
+​
+  def questPage (xhtml : NodeSeq) : NodeSeq = {
+    def processQuest (qst : String) {
+      quest = qst
+      if (quest != "") {
+        dispatch = { 
+          case "challenge" if name == "Arthur" =&gt; swallowPage _
+          case "challenge" =&gt; colorPage _ 
+        }
+      } else {
+        S.error("You must provide a quest!")
+      }
+    }
+    bind("form", xhtml,
+         "question" -&gt; Text("What is your quest?"),
+         "answer" -&gt; SHtml.text(quest, processQuest))
+  }
+​
+  def colorPage (xhtml : NodeSeq) : NodeSeq = {
+    def processColor (clr : String) {
+      color = clr
+      if (color.toLowercase.contains "No,") {
+        // This is a cleanup that removes the mapping for this
+        // StatefulSnippet from the session. This will happen 
+        // over time with GC, but it’s best practice to manually 
+        // do this when you’re finished with the snippet
+        this.unregisterThisSnippet()
+        S.redirectTo("/pitOfEternalPeril")
+      } else if (color != "") {
+        this.unregisterThisSnippet()
+        S.redirectTo("/scene24")
+      } else {
+        S.error("You must provide a color!")
+      }
+    }
+    bind("form", xhtml,
+         "question" -&gt; Text("What is your favorite color?"),
+         "answer" -&gt; SHtml.text(color, processColor))
+  }
+  // and so on for the swallowPage snippet
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The StatefulSnippet Example Template<a class="Label" name="lst:The-StatefulSnippet-Example"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:BridgeKeeper.challenge form="POST"&gt;
+    &lt;form:question /&gt; : &lt;form:answer /&gt; &lt;br /&gt;
+    &lt;input type="submit" value="Answer" /&gt;
+  &lt;/lift:BridgeKeeper.challenge&gt;
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+If you’re using implicit dispatch (Section <a class="Reference" href="index-5.html#sub:Implicit-Dispatch-Via">5.2.1↑</a>), then you’re done. If you want to use explicit dispatch<a class="IndexReference" name="entry-Snippets-explicit-dispatch-with-StatefulSnippet-0" href="index-Index.html#index-Snippets-explicit-dispatch-with-StatefulSnippet">↓</a><a class="IndexReference" name="entry-StatefulSnippet-explicit-dispatch-0" href="index-Index.html#index-StatefulSnippet-explicit-dispatch">↓</a>, however, you need to do a little more work than usual in the <tt>LiftRules.snippetDispatch</tt> setup. Listing <a class="Reference" href="index-5.html#lst:Explicit-Dispatch-with-stateful">5.3.3↓</a> shows how we can bind our own StatefulSnippet classes without using reflection. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Explicit Dispatch with Stateful Snippets<a class="Label" name="lst:Explicit-Dispatch-with-stateful"> </a>
+</div>
+<pre class="listing brush: scala">// In your boot method:
+LiftRules.snippetDispatch.append {
+  // S.snippetForClass checks to see if an instance has already
+  // registered. This is the case after form submission or when
+  // we use the StatefulSnippet.link or .redirectTo methods
+  case "BridgeKeeper" =&gt; S.snippetForClass("TestHello") openOr {
+    // If we haven’t already registered an instance, create one
+    val inst = new com.test.TestHello
+    // The name is what Lift uses to locate an instance (S.snippetForClass)
+    // We need to add it so that the Stateful callback functions can
+    // self-register
+    inst.addName("TestHello")
+    // Register this instance for the duration of the request
+    S.overrideSnippetForClass("TestHello", inst)
+    inst
+  }
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.3.4">5.3.4</a> Eager Evaluation<a class="Label" name="sub:Eager-Eval"> </a>
+</h3>
+<div class="Unindented">
+As we mentioned in Section <a class="Reference" href="index-5.html#sec:Snippets">5.3↑</a>, Lift processes the contents of a snippet tag after it processes the tag itself. If you want the contents of a snippet tag to be processed <i>before</i> the snippet, then you need to specify the <tt>eager_eval</tt><a class="IndexReference" name="entry-eager-eval-0" href="index-Index.html#index-eager-eval">↓</a> attribute on the tag:
+</div>
+<pre class="LyX-Code">
+&lt;lift:Hello.world eager_eval=”true”&gt;...&lt;/lift:Hello.world&gt;
+</pre>
+<div class="Unindented">
+This is especially useful if you’re using an embedded<a class="IndexReference" name="entry-embed-1" href="index-Index.html#index-embed">↓</a><a class="IndexReference" name="entry-Templates-embedded-0" href="index-Index.html#index-Templates-embedded">↓</a><a class="IndexReference" name="entry-Tags-embed-1" href="index-Index.html#index-Tags-embed">↓</a> template (Section <a class="Reference" href="index-4.html#sub:embed-tag">4.5.7↑</a>). Consider Listing <a class="Reference" href="index-5.html#lst:Embedding-and-eager">5.3.4↓</a>: in this case, the <tt>eager_eval</tt> parameter makes Lift process the <tt>&lt;lift:embed /&gt;</tt> tag before it executes the <tt>Hello.world</tt> snippet method. If the “formTemplate” template looks like Listing <a class="Reference" href="index-5.html#lst:The-formTemplate-template">5.3.4↓</a>, then the <tt>Hello.world</tt> snippet sees the <tt>&lt;hello:name /&gt;</tt> and <tt>&lt;hello:time /&gt;</tt> XML tags as its <tt>NodeSeq</tt> input. If the <tt>eager_eval</tt> attribute is removed, however, the Hello.world snippet sees only a <tt>&lt;lift:embed /&gt;</tt> tag that will be processed after it returns.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Embedding and eager evaluation<a class="Label" name="lst:Embedding-and-eager"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:Hello.world eager_eval="true"&gt;
+  &lt;lift:embed what="formTemplate" /&gt;
+&lt;/lift:Hello.world&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The formTemplate template<a class="Label" name="lst:The-formTemplate-template"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:children&gt;
+&lt;hello:name /&gt;
+&lt;hello:time /&gt;
+&lt;/lift:children&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-5.4">5.4</a> <a class="Label" name="sec:Handling-XHTML-Attributes"> </a>Handling XHTML Attributes in Snippets<a class="IndexReference" name="entry-Attributes-0" href="index-Index.html#index-Attributes">↓</a><a class="IndexReference" name="entry-XML-attribute-handling-0" href="index-Index.html#index-XML-attribute-handling">↓</a>
+</h2>
+<div class="Unindented">
+It’s a common requirement that elements contain XHTML attributes to control things like style, provide an id, register javascript event handlers, and other functionality. Lift provides two main approaches to applying attributes to elements either in your snippet code or directly in the XHTML template.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.4.1">5.4.1</a> <a class="Label" name="sub:Direct-attr-manip"> </a>Direct Manipulation in Code
+</h3>
+<div class="Unindented">
+You can apply attributes directly to XHTML elements using the “%” operator<a class="IndexReference" name="entry-Attributes-%-operator-0" href="index-Index.html#index-Attributes-%-operator">↓</a> to apply a<br/>
+<tt>scala.xml.UnprefixedAttribute</tt> instance<span class="FootOuter"><span class="SupFootMarker"> [W] </span><span class="HoverFoot"><span class="SupFootMarker"> [W] </span>there’s a corresponding <tt>PrefixedAttribute</tt> as well</span></span> to an element. Lift’s <tt>net.liftweb.util.Helpers</tt> trait contains an implicit conversion from a <tt>Pair[String,_]</tt> to an <tt>UnprefixedAttribute</tt> called <tt>pairToUnprefixed</tt> that allows you to use a simpler syntax. You may chain invocations of “%” to apply multiple attributes. For example, Listing <a class="Reference" href="index-5.html#lst:Applying-Attributes-percent">5.4.1↓</a> shows how you can apply an “id” and “class” attribute to a text box and to a normal paragraph.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Applying-Attributes-percent"> </a>Applying Attributes with <tt>%</tt>
+</div>
+<pre class="listing brush: scala">val myInput = SHtml.text("", processText(_)) % ("id" -&gt; "inputField") % 
+  ("class" -&gt; "highlighted")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note that the % metadata mechanism is actually part of the Scala XML library. Specifically, <tt>scala.xml.Elem</tt> has a <tt>%</tt> method that allows the user to update the attributes on a given XML element by passing in a <tt>scala.xml.UnprefixedAttribute</tt>. We suggest reading more about this in the Scala API documents, or in the Scala XML docbook at <a class="URL" href="http://burak.emir.googlepages.com/scalaxbook.docbk.html">http://burak.emir.googlepages.com/scalaxbook.docbk.html</a>. 
+</div>
+
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-5.4.2">5.4.2</a> <a class="Label" name="sub:XHTML-Attribute-Pass-through"> </a>XHTML Attribute Pass-through<a class="IndexReference" name="entry-Attributes-binding-0" href="index-Index.html#index-Attributes-binding">↓</a><a class="IndexReference" name="entry-XML-preserving-attributes-0" href="index-Index.html#index-XML-preserving-attributes">↓</a>
+</h3>
+<div class="Unindented">
+The second main approach to modifying XHTML attributes is to specify them directly in your templates. This has the benefit of allowing your template designers to directly manipulate things like style-related attributes and keeping the markup and the logic separate. Listing <a class="Reference" href="index-5.html#lst:Snippet-mixin-attributes">5.4.2↓</a> shows how you can utilize the “-%&gt;”<a class="IndexReference" name="entry-Attributes--%&gt;-operator-1" href="index-Index.html#index-Attributes--%&gt;-operator">↓</a> binding operator instead of “-&gt;” to preserve attributes.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Snippet mixin attributes <a class="Label" name="lst:Snippet-mixin-attributes"> </a>
+</div>
+<pre class="listing brush: scala">// the markup
+&lt;lift:Ledger.balance&gt;
+  &lt;ledger:time id="myId"/&gt;
+&lt;/lift:Ledger.balance&gt;
+​
+// The snippet class
+​
+class Ledger {
+  def balance (content : NodeSeq ) : NodeSeq = {
+    bind ("ledger", content,
+          "time" -%&gt; &lt;span&gt;{(new java.util.Date).toString}&lt;/span&gt;)
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The resulting node will be something like
+</div>
+<pre class="LyX-Code">
+<tt>&lt;span id=”myId”&gt;Sat Mar 28 16:43:48 EET 2009&lt;/span&gt;</tt>
+</pre>
+<div class="Unindented">
+In addition to the “-%&gt;” binding operator, there is also the “_id_&gt;” <a class="IndexReference" name="entry-_id_&gt;-operator-0" href="index-Index.html#index-_id_&gt;-operator">↓</a>operator, which uses the element’s name as its “id” attribute. Listing shows a snippet method using the “_id_&gt;” attribute and Listing shows the resulting markup.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Binding-with-the_id_"> </a>Binding with the _id_&gt; operator
+</div>
+<pre class="listing brush: scala">def idByName (xhtml : NodeSeq) : NodeSeq = 
+  bind("example", xhtml, "name" _id_&gt; &lt;span&gt;Fred&lt;/span&gt;)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Markup-bound-using_id_"> </a>Markup bound using _id_&gt;
+</div>
+<pre class="listing brush: xml">&lt;!-- Input: --&gt;
+&lt;lift:HelloWorld.idByName&gt;
+  Hi, &lt;example:name /&gt; 
+&lt;/lift:HelloWorld.idByName&gt;
+​
+&lt;!-- Output: --&gt;
+Hi, &lt;span id="name"&gt;Fred&lt;/span&gt; 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-4.html#Next">Previous: Chapter 4</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-6.html#prev">Next: Chapter 6</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,983 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-9.html#Next">Previous: Chapter 9</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-11.html#prev">Next: Chapter 11</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-10">10</a> Lift and JavaScript<a class="Label" name="cha:Lift-and-Javascript"> </a>
+</h1>
+<div class="Unindented">
+In this chapter we’ll be discussing some of the techniques that Lift provides for simplifying and abstracting access to JavaScript on the client side. Using these facilities follows Lift’s model of separating code from presentation by allowing you to essentially write JavaScript code in Scala. Lift also provides a layer that allows you to use advanced JavaScript functionality via either the JQuery<span class="FootOuter"><span class="SupFootMarker"> [T] </span><span class="HoverFoot"><span class="SupFootMarker"> [T] </span><a class="URL" href="http://jquery.com/">http://jquery.com/</a></span></span> or YUI<span class="FootOuter"><span class="SupFootMarker"> [U] </span><span class="HoverFoot"><span class="SupFootMarker"> [U] </span><a class="URL" href="http://developer.yahoo.com/yui/">http://developer.yahoo.com/yui/</a></span></span> user interface libraries.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.1">10.1</a> JavaScript high level abstractions
+</h2>
+<div class="Unindented">
+You may have noticed that Lift already comes with rich client side functionality in the form of AJAX and COMET support (chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>). Whenever you use this support, Lift automatically generates the proper <tt>&lt;script&gt;</tt> elements in the returned page so that the libraries are included. Lift goes one step further, however, by providing a class hierarchy representing JavaScript expressions. For example, with an AJAX form element in Lift the callback method must return JavaScript code to update the client side. Instead of just returning a raw JavaScript string to be interpreted by the client, you return an instance of the <tt>JsCmd</tt><span class="FootOuter"><span class="SupFootMarker"> [V] </span><span class="HoverFoot"><span class="SupFootMarker"> [V] </span>net.liftweb.http.js.JsCmd</span></span> trait (either directly or via implicit conversion) that is transformed into the proper JavaScript for the client.
+</div>
+<div class="Indented">
+<tt>JsCmd</tt> represents a JavaScript command that can be executed on the client. There is an additional “base” trait called <tt>JsExp</tt> that represents a JavaScript expression.The differences between them are not usually important to the developer, since a <tt>JsExp</tt> instance is implicitly converted to a <tt>JsCmd</tt>. Also note that while Lift’s JavaScript classes attempt to keep things type-safe there are some limitations; in particular, Lift can’t check semantic things like whether the variable you’re trying to access from a given <tt>JsCmd</tt> actually exists. Besides the obvious use in techniques like AJAX and COMET, Lift also makes it simple to attach JavaScript to regular Scala XML objects, such as form fields.
+</div>
+<div class="Indented">
+As a simple example, let’s look at how we might add a simple alert to a form if it doesn’t validate. In this example, we’ll assume we have a <tt>name</tt> form field that shouldn’t be blank. Listing <a class="Reference" href="index-10.html#lst:Simple-Form-Validation">10.1↓</a> shows a possible binding from our form snippet. Let’s break this down a bit: the first thing is that in order to reference form elements (or any elements for that matter) from JavaScript, they need to have an <tt>id</tt> attribute. We add the id attribute<a class="IndexReference" name="entry-XML-attributes-0" href="index-Index.html#index-XML-attributes">↓</a> to our text field by passing a <tt>Pair[String,String]</tt>. Next, we need to define our actual validation. We do this by adding some javascript to the <tt>onclick</tt> attribute of our submit button. The onclick attribute evaluates whatever javascript is assigned when the button is clicked; if the javascript evaluates to true then submission continues. If it evaluates to false then submission is aborted. In our case, we use the JsIf case class to check to see if the value of our myName field is equal to an empty string. In this case the JE object holds an implicit conversion from a Scala string to a Str (JavaScript string) instance. The second argument to JsIf is the body to be executed if the condition is true. In our case we want to pop up an alert to the user and stop form submission. The JsCmd trait (which Alert mixes in) provides a “&amp;” operator which allows you to chain multiple commands together. Here we follow the Alert with a JsReturn, which returns the specified value; again, there’s an implicit conversion from Boolean to JsExp, so we can simply provide the “false” value.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Simple Form Validation<a class="Label" name="lst:Simple-Form-Validation"> </a>
+</div>
+<pre class="listing brush: scala">import JsCmds._
+import JE._
+​
+var myName = ""
+bind(...
+  "name" -&gt; text(myName, myName = _, "id" -&gt; "myName"),
+  "submit" -&gt; submit("Save", ..., "onclick" -&gt; 
+    JsIf(JsEq(ValById("myName"), ""), 
+      Alert("You must provide a name") &amp; JsReturn(false))
+    )
+)
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-10.1.1">10.1.1</a> JsCmd and JsExp overview
+</h3>
+<div class="Unindented">
+If you peruse the Lift API docs you’ll find a large number of traits and classes under the JsCmds and JE objects; these provide the vast majority of the functionality you would need to write simple JavaScript code directly in Lift. Having said that, however, it’s important to realize that the Lift classes are intended to be used for small code fragments. If you need to write large portions of JavaScript code for your pages, we recommend writing that code in <i>pure</i> JavaScript in an external file and then including that file in your pages. In particular, if you write your code as JavaScript functions, you can use the <tt>JE.Call</tt> class to execute those functions from your Lift code. Table <a class="Reference" href="index-10.html#tab:Top-Level-JsCmds">10.1↓</a> gives a brief overview of the available JsCmds, while table <a class="Reference" href="index-10.html#tab:Top-Level-JE-abstractions">10.2↓</a> shows the JE expression abstractions.
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="tab:Top-Level-JsCmds"> </a><div class="table">
+<div class="center">
+<table>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">After</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Executes the given JsCmd fragment after a given amount of time</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">Alert</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Corresponds directly to the JavaScript alert function</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">CmdPair</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Executes two JsCmd fragments in order</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">FocusOnLoad</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Forces focus on the given XML element when the document loads</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">Function</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines a JavaScript function with name, parameter list, and JsCmd body</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsBreak, JsContinue, JsReturn</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Corresponds directly to the JavaScript “break”, “continue”, and “return” keywords</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsFor, JsForIn, JsDoWhile, JsWhile</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">These define loop constructs in JavaScript with conditions and execution bodies</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsHideId, JsShowId</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Hides or shows the HTML element with the given Id. This is actually handled via the LiftArtifacts’ hide and show methods</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsIf</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Corresponds to the JavaScript “if” statement, with a condition, body to execute if the condition is true, and optional “else” body statement</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsTry</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines a try/catch block tha can optionally alert if an exception is caught</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">JsWith</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines a with statement to reduce object references</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">OnLoad</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines a JavaScript statement that is executed on page load</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">Noop</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines an empty JavaScript statement</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">RedirectTo</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Uses window.location to redirect to a new page</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">ReplaceOptions</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Replaces options on a form Select with a new list of options.</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">Run</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Executes the given string as raw javascript</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">Script</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines a &lt;script&gt; element with proper CDATA escaping, etc to conform to XHTML JavaScript support</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">SetElemById</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Assigns a statement to a given element by id. Optional parameters allow you to specify properties on the element</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">SetExp</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines an assignment to an arbitrary JavaScript expression from another JavaScript expression</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">SetHtml</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Sets the contents of a given HTML node by Id to a given NodeSeq. This is especially useful in Ajax calls that update parts of the page</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.25in;">
+<span class="small">SetValById</span>
+</td>
+<td align="left" valign="bottom" style="width: 4.5in;">
+<span class="small">Defines an assignment to a given element’s “value” property</span>
+</td>
+
+</tr>
+
+</table>
+
+</div>
+<div class="caption">
+Table 10.1 Basic JsCmds
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="tab:Top-Level-JE-abstractions"> </a><div class="table">
+<div class="center">
+<table>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">AnonFunc</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Defines an anonymous JavaScript function</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">Call</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Calls a JavaScript function by name, with parameters</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">ElemById</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Obtains a DOM element by its Id, with optional property access</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">FormToJson</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Converts a given form (by Id) into a JSON representation</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">Id, Style, Value</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents the “id”, “style” and “value” element attributes</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsArray</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Constructs a JavaScript array from a given set of JavaScript expressions</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsEq, JsNotEq, JsGt, JsGtEq, JsLt, JsLtEq</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Comparison tests between two JavaScript expressions. JsExp instances also have a “===” operator which is equivalent to JsEq</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsTrue, JsFalse, JsNull</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents the “true”, “false”, and “null” values</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsFunc</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Similar to Call; executes a JavaScript function</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsObj</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents a JavaScript object with a Map for properties</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsRaw</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents a raw JavaScript fragment. You can use this if Lift doesn’t provide functionality via abstractions</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsVal</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents an abritrary JavaScript value</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">JsVar</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents a JavaScript variable, with optional property access</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">Num</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents a JavaScript number. JE contains implicit conversions from Scala numeric types to Num</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">Str</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents a Javascript String. JE contains implicit conversions from a Scala String to Str</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">Stringify</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Calls JSON.stringify to convert a JavaScript object into a JSON string representation</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top" style="width: 1.5in;">
+<span class="small">ValById</span>
+</td>
+<td align="left" valign="top" style="width: 4in;">
+<span class="small">Represents the “value” property of a given element by Id</span>
+</td>
+
+</tr>
+
+</table>
+
+</div>
+<div class="caption">
+Table 10.2 Basic JE abstractions
+</div>
+
+</div>
+
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-10.1.2">10.1.2</a> JavaScript Abstraction Examples
+</h3>
+<div class="Unindented">
+As you can see, Lift provides a large coverage of JavaScript functionality through its abstraction layer. Even if you’ve done a lot of JavaScript, however, the abstractions don’t always map one-to-one and it can take some effort to wrap your head around it. We’re going to provide a few examples to help you understand how it works. We’ll start off with a simple example of an Ajax callback (Ajax is covered in chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>). Listing <a class="Reference" href="index-10.html#lst:Using-SetHtml">10.1.2↓</a> shows how we can update an HTML element with new content via the Ajax call. In this case, we’re changing a chart image based on some passed parameters. Our HTML needs to contain an element with an id of “tx_graph”; this element will have its children <i>replaced</i> with whatever NodeSeq we pass as the second argument.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using SetHtml<a class="Label" name="lst:Using-SetHtml"> </a>
+</div>
+def updateGraph() = {<pre class="listing brush: scala">  val dateClause : String = ...
+  val url = "/graph/" + acctName + "/" + graphType + dateClause
+  JsCmds.SetHtml("tx_graph", &lt;img src={url} /&gt;)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As a more complex example, we could add some JavaScript behavior combining Ajax with some client-side state, as shown in listing <a class="Reference" href="index-10.html#lst:Client-side-comparisons">10.1.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Client-side comparisons<a class="Label" name="lst:Client-side-comparisons"> </a>
+</div>
+<pre class="listing brush: scala">import js.JE._ // for implicit conversions
+def moreComplexCallback (value : String) = {
+  JsIf(ValById("username") === value.toLowerCase, {
+    JsFunc("logAccess", "Self-share attempted").cmd &amp; Alert("You can’t share with yourself!")
+  })
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.2">10.2</a> JQuery and other JavaScript frameworks
+</h2>
+<div class="Unindented">
+We’ve mentioned earlier that Lift uses the JQuery JavaScript framework by default. Lift wouldn’t be Lift, however, if it didn’t provide a mechanism for using other frameworks. The way that lift determines which JavaScript framework to use is via the <tt>JSArtifacts</tt><span class="FootOuter"><span class="SupFootMarker"> [W] </span><span class="HoverFoot"><span class="SupFootMarker"> [W] </span>net.liftweb.http.js.JSArtifacts</span></span> trait along with the LiftRules.jsArtifacts var. Lift comes with two default implementations of JSArtifacts: <tt>JQueryArtifacts<span class="FootOuter"><span class="SupFootMarker"> [X] </span><span class="HoverFoot"><span class="SupFootMarker"> [X] </span>net.liftweb.http.js.jquery.JQueryArtifacts</span></span></tt> and <tt>YUIArtifacts</tt><span class="FootOuter"><span class="SupFootMarker"> [Y] </span><span class="HoverFoot"><span class="SupFootMarker"> [Y] </span>net.liftweb.http.js.yui.YUIArtifacts</span></span>. If you want to use a different framework, you must provide a concrete implementation of the JSArtifacts trait specific to that framework. The JQuery support in Lift extends beyond just the JSArtifacts, support; there are also a number of JSExp and JsCmd traits and classes in the <tt>net.liftweb.http.js.jquery</tt> package that provide JQuery specific implementations for standard expressions and commands.
+</div>
+<div class="Indented">
+Changing one implementation or another can be done from LiftRules.jsArtifacts variable, which by default points to JQueryArtifacts. Typically this is done in Boot, as shown in listing <a class="Reference" href="index-10.html#lst:Configuring-Lift-YUI">10.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Configuring Lift YUI<a class="Label" name="lst:Configuring-Lift-YUI"> </a>
+</div>
+<pre class="listing brush: scala"> import net.liftweb.http.js.yui.YUIArtifacts      
+       
+ class Boot {      
+   def boot = {      
+     ...      
+     LiftRules.jsArtifacts = YUIArtifacts      
+     ...     
+ }  
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In addition to changing LiftRules, you also need to take into account that other frameworks have their own scripts and dependencies that you’ll need to include in your pages. For YUI you would need to include the following scripts (at minimum):
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Lift YUI scripts<a class="Label" name="lst:Lift-YUI-scripts"> </a>
+</div>
+<pre class="listing brush: scala"> &lt;script src="/classpath/yui/yahoo.js" type="text/javascript"/&gt;
+ &lt;script src="/classpath/yui/event.js" type="text/javascript"/&gt;   
+ &lt;script src="/classpath/yui/dom.js" type="text/javascript"/&gt;   
+ &lt;script src="/classpath/yui/connection.js" type="text/javascript"/&gt;   
+ &lt;script src="/classpath/yui/json.js" type="text/javascript"/&gt;   
+ &lt;script src="/classpath/liftYUI.js" type="text/javascript"/&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Of course, to keep things simple you could either place all of these items in a template that you could embed, or you could combine the files into a single JavaScript source file.
+</div>
+<div class="Indented">
+We have some simple recommendations on using different JavaScript frameworks from within Lift:
+</div>
+<ol>
+<li>
+If you don’t necessarily need YUI widgets or if you can find similar functionality in JQuery plugins, we recommend using the JQuery framework. Lift provides much better support out-of-the-box for JQuery
+</li>
+<li>
+Do not mix JQuery and YUI unless you really know what you are doing. Getting both of them together leads to a number of collisions.
+</li>
+
+</ol>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.3">10.3</a> XML and JavaScript
+</h2>
+<div class="Unindented">
+What we’ve covered so far is pretty much standard JavaScript behind some Lift facades. There are situations, however, when you want to do things that are complicated or outside the scope of typical JavaScript functionality. One example of this is when you need to build dynamic DOM elements from JavaScript code, say to build an HTML list. Lift has a very nice way of dealing with such situation; with a few lines of code you can achieve quite a lot. The main functionality for this is provided via the Jx* classes<span class="FootOuter"><span class="SupFootMarker"> [Z] </span><span class="HoverFoot"><span class="SupFootMarker"> [Z] </span>net.liftweb.http.js.Jx, etc</span></span>, which you can use to transform a scala.xml.NodeSeq into javascript code that generates the corresponding nodes on the client side. Listing <a class="Reference" href="index-10.html#lst:Jx-trivial-example">10.3↓</a> shows a simple example of emitting a div on a page via JavaScript.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Jx trivial example<a class="Label" name="lst:Jx-trivial-example"> </a>
+</div>
+<pre class="listing brush: scala"> import net.liftweb.http.js._ 
+ import JE._
+​
+ val div = Jx(&lt;div&gt;Hi there&lt;/div&gt;)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This code generates the following JavaScript code:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Jx Emitted Code<a class="Label" name="lst:Jx-Emitted-Code"> </a>
+</div>
+<pre class="listing brush: scala">function(it) {
+  var df = document.createDocumentFragment();
+  var vINIJ1YTZG5 = document.createElement(’div’);
+  df.appendChild(vINIJ1YTZG5);
+  vINIJ1YTZG5.appendChild(document.createTextNode(’Hi there’));
+  return df;
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, Lift took our XML code and transformed it into a JavaScript function that dynamically creates a document fragment containing the given NodeSeq. The <tt>it</tt> parameter can be any JavaScript object; we’ll cover how you use it in a moment. The name of the <i>var</i> is automatically and randomly generated to ensure uniqueness.
+</div>
+<div class="Indented">
+Of course, if that was all Lift was doing that’s not much help. At this point we’ve only generated a function that generates XML. Let’s take a look on a more complex example that shows the real power of the Jx classes. Assume we have a JSON structure that contains an array of objects containing firstName and lastName properties. This JSON structure could look something like:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Sample JSON Structure<a class="Label" name="lst:Sample-JSON-Structure"> </a>
+</div>
+<pre class="listing brush: scala">var list = {
+    persons: [
+        {name: "Thor", race: "Asgard"}, 
+        {name: "Todd", race: "Wraith"}, 
+        {name: "Rodney", race: "Human"}
+    ]
+}
+// Guess what I’ve been watching lately ?
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now we can use a combination of Jx classes to render this content as an HTML dynamic list:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Rendering a JSON List Via Jx<a class="Label" name="lst:Rendering-a-JSON-list"> </a>
+</div>
+<pre class="listing brush: scala">def renderPerson = 
+  Jx(&lt;li class="item_header"&gt; {JsVar("it", "name")} 
+       is {JsVar("it", "race")}&lt;/li&gt;)
+Jx(&lt;ul&gt;{JxMap(JsVar("it.persons"), renderPerson)}&lt;/ul&gt;)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Well what this code does is this:
+</div>
+<ol>
+<li>
+Construct an &lt;ul&gt; list that contains a bunch of elements
+</li>
+<li>
+JxMap takes a JavaScript object, in this case <tt>it.persons</tt> (remember <tt>it</tt> is the parameter of the generated function), and iterate for each element of the array and apply the renderPerson function. Of course each element of the array will be a JSON object containing name and race properties.
+</li>
+<li>
+The <tt>renderPerson</tt> function generates a JavaScript function as we’ve already shown, and renders the JavaScript code that generates the &lt;li&gt; elements containing the name value followed by “is” followed by the race value.
+</li>
+<li>
+If we send this generated JavaScript function to client and calling it by pass the <i>list</i> variable above It will create the following document fragment:
+</li>
+
+</ol>
+<div class="Unindented">
+<div class="listing">
+<pre class="listing brush: scala">&lt;ul&gt;
+ &lt;li class="item_header"&gt;Thor is Asgard&lt;/li&gt;
+ &lt;li class="item_header"&gt;Todd is Wraith&lt;/li&gt;
+ &lt;li class="item_header"&gt;Rodney is Human&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+With a couple of lines of code we’ve managed to generate the JavaScript code that creates document fragments dynamically. Here is the list of JX classes that you may find interesting:
+</div>
+<div class="Indented">
+<div class="center">
+<table>
+<tr>
+<td align="left" valign="top">
+Class
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Description
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxBase
+</td>
+<td align="left" valign="top" style="width: 4in;">
+The parent trait for all other Jx classes
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxMap
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Iterates over a JavaScript array and applies a function on each element
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxMatch
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Match a JsExp against a sequence of JsCase
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxCase
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Contains a JsExp for matching purposes and the NodeSeq to be applied in case the matching succeeds
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxIf
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Contains a JsExp and a NodeSeq to be applied only if JsExp is evaluated to true
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+JxIfElse
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Similar with JxIf but it contains the else branch
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+Jx
+</td>
+<td align="left" valign="top" style="width: 4in;">
+The basic application of the transformation from a NodeSeq to the JavaScript code
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.4">10.4</a> JSON
+</h2>
+<div class="Unindented">
+JSON<span class="FootOuter"><span class="SupFootMarker"> [A] </span><span class="HoverFoot"><span class="SupFootMarker"> [A] </span>Java Script Object Notation - <a class="URL" href="http://www.json.org">http://www.json.org</a></span></span> is a way of structuring information in JavaScript code. One of its most common uses is to represent structured information on the wire. One example would be a JavaScript AJAX API where the server response is in fact a JSON construct. Let’s look at an example first in listing <a class="Reference" href="index-10.html#lst:Ajax-JSON-response">10.4↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Ajax JSON response<a class="Label" name="lst:Ajax-JSON-response"> </a>
+</div>
+<pre class="listing brush: scala"> class SimpleSnippet {
+  def ajaxFunc() : JsCmd = {
+    JsCrVar("myObject", JsObj(("persons", JsArray(
+        JsObj(("name", "Thor"), ("race", "Asgard")),
+        JsObj(("name", "Todd"), ("race", "Wraith")),
+        JsObj(("name", "Rodney"), ("race", "Human"))
+    )))) &amp; JsRaw("alert(myObject.persons[0].name)")
+  }
+​
+  def renderAjaxButton(xhtml: Group): NodeSeq = {
+    bind("ex", xhtml,         
+            "button" -&gt; SHtml.ajaxButton(Text("Press me"), ajaxFunc _))
+  }
+ }
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Your template would look like listing <a class="Reference" href="index-10.html#lst:AJAX-Template">10.4↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+AJAX Template<a class="Label" name="lst:AJAX-Template"> </a>
+</div>
+<pre class="listing brush: scala">    ...
+    &lt;lift:SimpleSnippet.renderAjaxButton&gt;
+        &lt;ex:button/&gt;
+    &lt;/lift:SimpleSnippet.renderAjaxButton&gt;
+    ...
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+First off, we have a simple snippet function called <tt>renderAjaxButton</tt>. Here we’re binding the ex:button tag and render a XHTML button tag that when pressed will send an Ajax request to server. When this request is received, the <tt>ajaxFunc</tt> is executed and the JsCmd response is turned into a JavaScript content type response. In <tt>ajaxFunc</tt> we construct a JSON object (the same one we used previously for the persons object). We assign the JSON structure to the JavaScript variable <tt>myObject</tt> and them call alert on the first element on the persons object. The rendered JavaScript code that will be send down the wire will be:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Generated JavaScript<a class="Label" name="lst:Generated-JavaScript"> </a>
+</div>
+<pre class="listing brush: scala">var myObject = {’persons’: [{’name’: ’Thor’, ’race’: ’Asgard’}, 
+                            {’name’: ’Todd’, ’race’: ’Wraith’} , 
+                            {’name’: ’Rodney’, ’race’: ’Human’}]}; 
+alert(myObject.persons[0].name);
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+So in your page when you press the button you’ll get an alert dialog saying “Thor”. Here we used the JsRaw class which basically renders the exact thing you passed to it: raw JavaScript code.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-10.4.1">10.4.1</a> JSON forms<a class="Label" name="sub:JSON-forms"> </a>
+</h3>
+<div class="Unindented">
+Now that we’ve covered sending JSON from the server to the client, let’s look at going in the opposite direction. Lift provides a mechanism for sending form data to the server encapsulated in a JSON object. In and of itself sending the data in JSON format is relatively simple; where Lift really adds value is via the JsonHandler<span class="FootOuter"><span class="SupFootMarker"> [B] </span><span class="HoverFoot"><span class="SupFootMarker"> [B] </span>net.liftweb.http.JsonHandler</span></span> class. This class provides a framework for simplifying processing of submitted JSON data. To start, let’s look at some example template code for a JSON form:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Simple JSON form<a class="Label" name="lst:A-Simple-JSON-form"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:surround with="default" at="content"&gt;      
+    &lt;lift:JSONForm.head /&gt;      
+    &lt;lift:JSONForm.show&gt;
+      &lt;input type="text" name="name" /&gt;
+      &lt;br /&gt;
+      &lt;input type="text" name="value" /&gt; 
+      &lt;br /&gt;  
+      &lt;input type="radio" name="vehicle" value="Bike" /&gt; 
+      &lt;input type="radio" name="vehicle" value="Car" /&gt; 
+      &lt;input type="radio" name="vehicle" value="Airplane" /&gt; 
+      &lt;br /&gt; 
+      &lt;select name="cars"&gt;
+        &lt;option value="volvo"&gt;Volvo&lt;/option&gt; 
+        &lt;option value="saab"&gt;Saab&lt;/option&gt; 
+        &lt;option value="opel"&gt;Opel&lt;/option&gt;  
+        &lt;option value="audi"&gt;Audi&lt;/option&gt;  
+      &lt;/select&gt;
+      &lt;button type="submit"&gt;Submit&lt;/button&gt;
+    &lt;/lift:JSONForm.show&gt;
+    &lt;div id="json_result"&gt;&lt;/div&gt; 
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+A you can see, the XHTML template is relatively straightforward. The Snippet code is where things really get interesting:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+JSON Form Snippet Code
+</div>
+<pre class="listing brush: scala">class JSONForm {      
+    def head = 
+    &lt;head&gt;
+    &lt;script type="text/javascript" 
+            src={"/" + LiftRules.resourceServerPath + "/jlift.js"} /&gt;
+    {Script(json.jsCmd)}
+    &lt;/head&gt; 
+   
+    def show(html: Group): NodeSeq = {
+        SHtml.jsonForm(json, html) 
+    } 
+​
+    import JsCmds._ 
+    object json extends JsonHandler {
+        def apply(in: Any): JsCmd = SetHtml("json_result", in match { 
+            case JsonCmd("processForm", _, p: Map[String, _], _) =&gt; {
+                // process the form or whatever 
+                println("Cars = " + urlDecode(p("cars"))) 
+                println("Name = " + urlDecode(p("name"))) 
+                &lt;b&gt;{p}&lt;/b&gt; 
+            }
+            case x =&gt; &lt;b&gt;Problem... didn’t handle JSON message {x}&lt;/b&gt;
+        })
+    }
+}  
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The first thing we define is the <tt>head</tt> function. Its purpose is simply to generate the JavaScript functions that set up the form handling on the client side. That means that when the submit button is clicked, the contents of the form are turned into JSON and submitted via an Ajax call to the server. The <tt>show</tt> function defines the connection between the concrete JsonHandler instance that will process the form and the template HTML that contains the form. We perform this binding with the <tt>SHtml.jsonForm</tt> method. This wraps the HTML with a <tt>&lt;form&gt;</tt> tag and sets the <tt>onsubmit</tt> event to do JSON bundling.
+</div>
+<div class="Indented">
+The key part of the equation is our JsonHandler object. The apply method is what will be called when the JSON object is submitted to the server. If the JSON is properly parsed then you’ll get a JsonCmd instance which you can use Scala’s matching to pick apart. The apply function needs to return a JsCmd (JavaScript code), which in this case sets the HTML content of the <tt>json_result</tt> div element. When the form is stringified into its JSON representation Lift uses a command property indicating the action that needs to be done on server and the actual JSON data. In the case of JSON forms the command is always “processForm” as this is important for pattern matching as seen above. The actual form content is a Map object that can be easily use to obtain the values for each form field.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.5">10.5</a> JqSHtml object
+</h2>
+<div class="Unindented">
+SHtml generated code is independent on the JavaScript framework used. However <tt>net.liftweb.http.jquery.JsSHtml</tt> object contains artifacts that are bound with JQuery framework. For instance it contains the autocomplete function that renders an input type text element but when start typing it will suggest words starting with what you typed already. Please see <a class="URL" href="http://www.pengoworks.com/workshop/jquery/autocomplete.htm">http://www.pengoworks.com/workshop/jquery/autocomplete.htm</a> for examples.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-10.6">10.6</a> A recap
+</h2>
+<div class="Unindented">
+We’ve seen so far how we can abstract JavaScript code at Scala level using Lift’s JS abstraction. You can model endless cases by using these abstractions. But let’s take a look on another example a bit more complex. It is about a fast search where you have a text box and when you hit enter it will return the list of items that contain that sequence. The list of items will be rendered in a DIV real estate.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Example template
+</div>
+<pre class="listing brush: scala">​
+&lt;lift:surround with="default" at="content"&gt;
+  &lt;lift:Hello.ajaxian&gt;            
+    &lt;text:show/&gt;    
+  &lt;/lift:Hello.ajaxian&gt;      
+  &lt;div id="items_list" style="width: 300px; height: 100px; overflow: auto; border: 1px solid black;"&gt;   
+  &lt;/div&gt;    
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+So we just have a really simple snippet and the div placeholder.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Example snippet
+</div>
+<pre class="listing brush: scala">​
+import JE._   
+import net.liftweb.http.js.jquery.JqJE._      
+import net.liftweb.http.SHtml._ 
+import net.liftweb.util.Helpers._
+import JsCmds._ 
+​
+val names = "marius" :: "tyler" :: "derek" :: "dave" :: "jorge" :: "viktor" :: Nil  
+​
+def ajaxian(html: Group) : NodeSeq = {
+    bind("text", html,
+            "show"  -&gt; ajaxText("Type something", {value =&gt; {
+               val matches = names.filter(e =&gt; e.indexOf(value) &gt; -1)
+               SetHtml("items_list", NodeSeq.Empty) &amp; 
+               JsCrVar("items", JsArray(matches.map(Str(_)):_*)) &amp;
+               JsCrVar("func", Jx(&lt;ul&gt;{
+                                    JxMap(JsVar("it"), Jx(&lt;li&gt;&lt;a href=""&gt;{JsVar("it")}&lt;/a&gt;&lt;/li&gt;))                                   }                                    &lt;/ul&gt;).toJs) &amp;
+               (ElemById("items_list") ~&gt; JsFunc("appendChild", Call("func", JsVar("items"))))
+             }})
+    )
+} 
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The part with the snippet is probably already familiar to you. We are calling the ajaxText function which renders an input text element. When you hit enter an Ajax request will be sent and the anonymous function that we bound here will be executed. Here is what happens:
+</div>
+<ol>
+<li>
+First filter out the names that contain the provided value in the input text. So all element that contain that sequence.
+</li>
+<li>
+Then return a JsExp that we are building:<ol>
+<li>
+SetHtml is clearing out the div element that we’re using as a real estate for our search results list
+</li>
+<li>
+Then we re declaring a JavaScript variable which is an array containing the resulting items that matched the search criteria.
+</li>
+<li>
+Then we are declaring thr <tt>func</tt> variable which obviously is a function. We’ve seen above how to use the Jx artifacts. Now we are building a html list (<tt>&lt;ul&gt;</tt>) that for each element from the <tt>it</tt> variable will build the <tt>&lt;li&gt;</tt> sequences. The it variable is actually the paramter that this function takes which is the items array that we declared above.
+</li>
+<li>
+After that we are obtaining the HTML node denominated by “items_list” id and call appendChild function of the Node object. The ~&gt; function is use to call functions of objects. Of course to the appendChild function we need to provide a parameter. This parameter is the document fragment returned by <tt>func</tt> function. When we are caling the <tt>func</tt> function we are passing items variable decalred above.
+</li>
+
+</ol>
+
+</li>
+
+</ol>
+<div class="Unindented">
+As you noticed already we composed a small JavaScript code by chainin multiple JS expressions/commands using the &amp; function.
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-9.html#Next">Previous: Chapter 9</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-11.html#prev">Next: Chapter 11</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

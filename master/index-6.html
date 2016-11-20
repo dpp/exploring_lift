@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-5.html#Next">Previous: Chapter 5</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-7.html#prev">Next: Chapter 7</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-6">6</a> Forms in Lift<a class="Label" name="cha:Forms-in-Lift"> </a>
+</h1>
+<div class="Unindented">
+In this chapter we’re going to discuss the specifics of how you generate and process forms with Lift. Besides standard GET/POST form processing, Lift provides AJAX forms (Chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>) as well as JSON form processing (Section <a class="Reference" href="index-10.html#sub:JSON-forms">10.4.1↓</a>), but we’re going to focus on the standard stuff here. We’re going to assume that you have a general knowledge of basic HTML form tags as well as how CGI<a class="IndexReference" name="entry-CGI-0" href="index-Index.html#index-CGI">↓</a> form processing works.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-6.1">6.1</a> Form Fundamentals<a class="Label" name="sec:Form-Fundamentals"> </a>
+</h2>
+<div class="Unindented">
+Let’s start with the basics of Lift form processing. A form in Lift is usually produced via a snippet that contains the additional <tt>form</tt> attribute. As we mentioned in Section <a class="Reference" href="index-5.html#sub:snippet-tag">5.1↑</a>, this attribute takes the value GET or POST, and when present makes the snippet code embed the proper form tags around the snippet HTML. Listing <a class="Reference" href="index-6.html#lst:An-example-form-template">6.1↓</a> shows an example of a form that we will be discussing throughout this section.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+An Example Form Template<a class="Label" name="lst:An-example-form-template"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:Ledger.add form="POST"&gt;
+  &lt;entry:description /&gt; &lt;entry:amount /&gt;&lt;br /&gt;
+  &lt;entry:submit /&gt;
+&lt;/lift:Ledger.add&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The first thing to understand about Lift’s form support is that you generally don’t use the HTML tags for form elements directly, but rather you use generator functions on<br/>
+ <tt>net.liftweb.http.SHtml</tt>. The main reason for this is that it allows Lift to set up all of the internal plumbing so that you keep your code simple. Additionally, we use Lift’s binding mechanism (Section <a class="Reference" href="index-5.html#sub:Binding-Values-in-snippets">5.3.1↑</a>) to “attach” the form elements in the proper location. In our example in Listing <a class="Reference" href="index-6.html#lst:An-example-form-template">6.1↑</a>, we have bindings for a description field, an amount, and a submit button.
+</div>
+<div class="Indented">
+Our next step is to define the form snippet itself. Corresponding to our example template is Listing <a class="Reference" href="index-6.html#lst:An-example-form-snippet">6.1↓</a>. This shows our add method with a few vars to hold the form data and a binding to the proper form elements. We’ll cover the <tt>processEntryAdd</tt> method in a moment; for now let’s look at what we have inside the add method.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+An Example Form Snippet<a class="Label" name="lst:An-example-form-snippet"> </a>
+</div>
+<pre class="listing brush: scala">def add (xhtml : NodeSeq) : NodeSeq = {
+  var desc = ""
+  var amount = "0"
+​
+  def processEntryAdd () { ... }
+​
+  bind("entry", xhtml,
+       "description" -&gt; SHtml.text(desc, desc = _),
+       "amount" -&gt; SHtml.text(amount, amount = _),
+       "submit" -&gt; SHtml.submit("Add", processEntryAdd))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+First, you may be wondering why we use vars defined inside the method. Normally, these vars would be locally scoped (stack-based) and would be discarded as soon as the method returns. The beauty of Scala and Lift is that the right hand argument of each of the SHtml functions is actually a function itself. Because these functions, also known as anonymous closures<a class="IndexReference" name="entry-closure-0" href="index-Index.html#index-closure">↓</a>, reference variables in local scope, Scala magically transforms them to heap variables behind the scenes. Lift, in turn, adds the function callbacks for each form element into its session state so that when the form is submitted, the appropriate closure is called and the state is updated. This is also why we define the <tt>processEntryAdd</tt> function inside of the <tt>add</tt> method: by doing so, the <tt>processEntryAdd</tt> function <i>also</i> has access to the closure variables. In our example, we’re using Scala’s placeholder “_” shorthand<span class="FootOuter"><span class="SupFootMarker"> [X] </span><span class="HoverFoot"><span class="SupFootMarker"> [X] </span>For more details on placeholders, see the <i>Scala Language Specification</i>, section 6.23</span></span> to define our functions. Your description processing function could also be defined as:
+</div>
+<pre class="LyX-Code">
+newDesc =&gt; description = newDesc
+</pre>
+<div class="Unindented">
+One important thing to remember, however, is that each new invocation of the add method (for each page view) will get its own unique instance of the variables that we’ve defined. That means that if you want to retain values between submission and re-rendering of the form, you’ll want to use <tt>RequestVar</tt>s (Section <a class="Reference" href="index-3.html#sec:Session-and-Request">3.11↑</a>) or a <tt>StatefulSnippet</tt> (Section <a class="Reference" href="index-5.html#sub:Stateless-versus-Stateful">5.3.3↑</a>) instead . Generally you will only use vars defined within the snippet method when your form doesn’t require validation and you don’t need any of the submitted data between snippet executions. An example of using <tt>RequestVar</tt>s for your form data would be if you want to do form validation and retain submitted values if validation fails, as shown in Listing <a class="Reference" href="index-6.html#lst:Using-RequestVars-with-forms">6.1↓</a>. In this instance, we set an error message (more in Chapter <a class="Reference" href="index-B.html#cha:Message-Handling">B↓</a>). Since we don’t explicitly redirect, the same page is loaded (the default “action” for a page in Lift is the page itself) and the current RequestVar value of description is used as the default value of the text box.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using RequestVars with Forms<a class="Label" name="lst:Using-RequestVars-with-forms"> </a>
+</div>
+<pre class="listing brush: scala">object description extends RequestVar("")
+object amount extends RequestVar("0")
+​
+def add (xhtml : NodeSeq) : NodeSeq = {
+  def processEntryAdd () =
+    if (amount.toDouble &lt;= 0) {
+      S.error("Invalid amount")
+    } else {
+      // ... process Add ...
+      redirectTo(...)
+    }
+​
+  bind("entry", xhtml,
+       "description" -&gt; SHtml.text(description.is, description(_)),
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The next thing to look at is how the form elements are generated. We use the SHtml helper object to generate a form element of the appropriate type for each variable. In our case, we just want text fields for the description and amount, but SHtml provides a number of other form element types that we’ll be covering later in this section. Generally, an element generator takes an argument for the initial value as well as a function to process the submitted value. Usually both of these arguments will use a variable, but there’s nothing stopping you from doing something such as
+</div>
+<pre class="LyX-Code">
+“description” -&gt; SHtml.text(“”, println(“Description = “ + _))
+</pre>
+<div class="Unindented">
+Finally, our submit function executes the partially applied <tt>processEntryAdd</tt> function, which, having access to the variables we’ve defined, can do whatever it needs to do when the submit button is pressed. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-6.2">6.2</a> <a class="Label" name="sec:Attributes-for-Form-Elems"> </a>Attributes for Form Elements<a class="IndexReference" name="entry-Attributes-in-form-elements-0" href="index-Index.html#index-Attributes-in-form-elements">↓</a>
+</h2>
+<div class="Unindented">
+In addition to the approaches shown in Section <a class="Reference" href="index-5.html#sec:Handling-XHTML-Attributes">5.4↑</a>, the SHtml generator functions allow you to apply attributes by passing the attribute name/value pairs as final arguments. This is usually simpler, and in some cases is much simpler than using the “%” operator directly. For example, checkbox and radio form elements are acutally returned as ChoiceHolder instances, which do not directly support the “%” operator. Listing <a class="Reference" href="index-6.html#lst:Applying-Attributes-vararg">6.2↓</a> shows how to apply the same attributes as Listing <a class="Reference" href="index-5.html#lst:Applying-Attributes-percent">5.4.1↑</a> using the varargs approach.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Applying-Attributes-vararg"> </a>Applying Attributes as Varargs
+</div>
+<pre class="listing brush: scala">val myInput = SHtml.text("", processText(_), "id" -&gt; "inputField",
+  "class" -&gt; "highlighted")
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-6.3">6.3</a> An Overview of Form Elements
+</h2>
+<div class="Unindented">
+Now that we’ve covered the basics of forms, we’re going to go into a little more detail for each form element generator method on SHtml. The <tt>a</tt> method (all 3 variants) as well as the <tt>ajax</tt>* methods are specific to AJAX forms, which are covered in detail in Chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>. The <tt>json*</tt> methods are covered in Section <a class="Reference" href="index-10.html#sub:JSON-forms">10.4.1↓</a>. We’ll be covering the fileUpload method in detail in Section <a class="Reference" href="index-6.html#sec:File-Uploads">6.4↓</a>. One final note before we dive in is that most generator methods have an overload with a trailing asterisk (i.e. <tt>hidden_*</tt>); these are generally equivalent to the overloads without an asterisk but are intended for Lift’s internal use.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.1">6.3.1</a> checkbox
+</h3>
+<div class="Unindented">
+The <tt>checkbox</tt> method generates a checkbox form element, taking an initial Boolean value as well as a function <span class="formula">(<i>Boolean</i>) ⇒ <i>Any</i></span> that is called when the checkbox is submitted. If you’ve done a lot of HTML form processing you might wonder how this actually occurs, since <i>an unchecked checkbox is not actually submitted as part of a form</i>. Lift works around this by adding a hidden form element for each checkbox with the same element name, but with a false value, to ensure that the callback function is always called. Because more than one XML node is returned by the generator, you can’t use the % metadata mechanism to set attributes on the check box element. Instead, use attribute pairs as arguments to the generator function as outlined in Section <a class="Reference" href="index-5.html#sub:Direct-attr-manip">5.4.1↑</a>.
+</div>
+<div class="Indented">
+For example, Listing <a class="Reference" href="index-6.html#lst:A-checkbox-example">6.3.1↓</a> shows a checkbox with an id of “snazzy” and a class attribute set to “woohoo.”
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Checkbox Example<a class="Label" name="lst:A-checkbox-example"> </a>
+</div>
+<pre class="listing brush: scala">SHtml.checkbox_id(false, if (_) frobnicate(), 
+                  Full("snazzy"), "class" -&gt; "woohoo")
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.2">6.3.2</a> hidden
+</h3>
+<div class="Unindented">
+The <tt>hidden</tt> method generates a hidden form field. Unlike the HTML hidden field, the hidden tag is not intended to hold a plain value; rather, in Lift it takes a function <span class="formula">() ⇒ <i>Any</i></span> argument that is called when the form is submitted. As with most of the other generators, it also takes a final varargs sequence of <tt>Pair[String,String]</tt> attributes to be added to the XML node. Listing <a class="Reference" href="index-6.html#lst:A-hidden-example">6.3.2↓</a> shows an example of using a hidden field to “log” information. (When the form is submitted, “Form was submitted” will be printed to stdout. This can be a useful trick for debugging if you’re not using a full-blown IDE.)
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Hidden Example<a class="Label" name="lst:A-hidden-example"> </a>
+</div>
+<pre class="listing brush: scala">SHtml.hidden(() =&gt; println("Form was submitted"))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.3">6.3.3</a> link
+</h3>
+<div class="Unindented">
+The link method generates a standard HTML link to a page (an <tt>&lt;a&gt;</tt> tag, or anchor<a class="IndexReference" name="entry-anchor-0" href="index-Index.html#index-anchor">↓</a>), but also ensures that a given function is executed when the link is clicked. The first argument is the web context relative link path, the second argument is the <span class="formula">() ⇒ <i>Any</i></span> function that will be executed when the link is clicked, and the third argument is a NodeSeq that will make up the body of the link. You may optionally pass one or more <tt>Pair[String,String]</tt> attributes to be added to the link element. Listing <a class="Reference" href="index-6.html#lst:A-link-example">6.3.3↓</a> shows using a link to load an <tt>Expense</tt> entry for editing from within a table. In this case we’re using a <tt>RequestVar</tt> to hold the entry to edit, so the link function is a closure that loads the current <tt>Expense</tt> entry. This combination of link and <tt>RequestVar</tt>s is a common pattern for passing objects between different pages.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Link Example<a class="Label" name="lst:A-link-example"> </a>
+</div>
+<pre class="listing brush: scala">object currentExpense extends RequestVar[Box[Expense]](Empty)
+​
+def list (xhtml : NodeSeq) : NodeSeq = {
+  ...
+  val entriesXml = 
+    entries.map(entry =&gt; 
+      bind("entry", chooseTemplate("expense", "entries", xhtml),
+        ...
+        "edit" -&gt; SHtml.link("/editExpense", 
+          () =&gt; currentExpense(Full(entry)),
+          Text("Edit")))
+  )
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.4">6.3.4</a> text and password
+</h3>
+<div class="Unindented">
+The text and password methods generate standard <tt>text</tt> and <tt>password</tt> <tt>input</tt> fields, respectively. While both take string default values and <span class="formula">(<i>String</i>) ⇒ <i>Any</i></span> functions to process the return, the password text field masks typed characters and doesn’t allow copying the value from the box on the client side. Listing <a class="Reference" href="index-6.html#lst:A-text-field">6.3.4↓</a> shows an example of using both text and password for a login page.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Text Field Example<a class="Label" name="lst:A-text-field"> </a>
+</div>
+<pre class="listing brush: scala">def login(xhtml : NodeSeq) : NodeSeq = {
+  var user = ""; var pass = "";
+  def auth () = { ... }
+  bind("login", xhtml,
+       "user" -&gt; SHtml.text(user, user = _, "maxlength" -&gt; "40")
+       "pass" -&gt; SHtml.password(pass, pass = _)
+       "submit" -&gt; SHtml.submit("Login", auth))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Alternatively, you might want the user (but not the password) to be stored in a <tt>RequestVar</tt> so that if the authentication fails the user doesn’t have to retype it. Listing <a class="Reference" href="index-6.html#lst:A-RV-text-field">6.3.4↓</a> shows how the snippet would look in this case.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A RequestVar Text Field Example<a class="Label" name="lst:A-RV-text-field"> </a>
+</div>
+<pre class="listing brush: scala">object user extends RequestVar[String]("")
+def login(xhtml : NodeSeq) : NodeSeq = {
+  var pass = "";
+  def auth () = { ... }
+  bind("login", xhtml,
+       "user" -&gt; SHtml.text(user.is, user(_), "maxlength" -&gt; "40"),
+       "pass" -&gt; SHtml.password(pass, pass = _),
+       "submit" -&gt; SHtml.submit("Login", auth))
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.5">6.3.5</a> textarea
+</h3>
+<div class="Unindented">
+The textarea method generates a <tt>textarea</tt> HTML form element. Generally the functionality mirrors that of <tt>text</tt>, although because it’s a <tt>textarea</tt>, you can control width and height by adding <tt>cols</tt> and <tt>rows</tt> attributes as shown in Listing <a class="Reference" href="index-6.html#lst:A-textarea-example">6.3.5↓</a>. (You can, of course, add any other HTML attributes in the same manner.)
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Textarea Example<a class="Label" name="lst:A-textarea-example"> </a>
+</div>
+<pre class="listing brush: scala">var noteText = ""
+val notes = 
+  SHtml.textarea(noteText, noteText = _, 
+                 "cols" -&gt; "80", "rows" -&gt; "8")
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.6">6.3.6</a> submit
+</h3>
+<div class="Unindented">
+Submit generates the submit form element (typically a button). It requires two parameters: a String value to use as the button label, and a function <span class="formula">() ⇒ <i>Any</i></span> that can be used to process your form results. One important thing to note about submit is that form elements are processed in the order that they appear in the HTML document. This means that you should put your submit element last in your forms: any items after the submit element won’t have been “set” by the time the submit function is called. Listings <a class="Reference" href="index-6.html#lst:A-text-field">6.3.4↑</a> and <a class="Reference" href="index-6.html#lst:A-RV-text-field">6.3.4↑</a> use the <tt>SHtml.submit</tt> method for the authentication handler invocation.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.7">6.3.7</a> multiselect
+</h3>
+<div class="Unindented">
+Up to this point we’ve covered some fairly simple form elements. Multiselect is a bit more complex in that it doesn’t just process single values. Instead, it allows you to select multiple elements out of an initial Seq and then process each selected element individually. Listing <a class="Reference" href="index-6.html#lst:Using-multiselect">6.3.7↓</a> shows using a multiselect to allow the user to select multiple categories for a ledger entry. We assume that a Category entity has an id synthetic key as well as a String name value. The first thing we do is map the collection of all categories into pairs of (<tt>value</tt>, <tt>display</tt>) strings. The value is what will be returned to our processing function, while the display string is what will be shown in the select box for the user. Next, we turn the current entry’s categories into a Seq of just value strings, and we create a Set variable to hold the returned values. Finally, we do our form binding. In this example we use a helper function, <tt>loadCategory</tt> (not defined here), that takes a String representing a Category’s primary key and returns the category. We then use this helper method to update the Set that we created earlier. Note that the callback function will be executed <i>for each selected item</i> in the multiselect, which is why the callback takes a String argument instead of a <tt>Set[String]</tt>. This is also why we have to use our own set to manage the values. Depending on your use case, you may or may not need to store the returned values in a collection.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using multiselect<a class="Label" name="lst:Using-multiselect"> </a>
+</div>
+<pre class="listing brush: scala">def mySnippet ... {
+  val possible = allCategories.map(c =&gt; (c.id.toString, c.name))
+  val current = currentEntry.categories.map(c =&gt; c.id.toString)
+  var updated = Set.empty[Category]
+  bind (..., 
+    "categories" -&gt; 
+      SHtml.multiselect(possible, current, updated += loadCategory(_)))
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.8">6.3.8</a> radio
+</h3>
+<div class="Unindented">
+The radio method generates a set of radio buttons that take String values and return a single String (the selected button) on form submission. The values are used as labels for the Radio buttons, so you may need to set up a <tt>Map</tt> to translate back into useful values. The radio method also takes a Box[String] that can be used to pre-select one of the buttons. The value of the Box must match one of the option values, or if you pass Empty no buttons will be selected. Listing <a class="Reference" href="index-6.html#lst:Using-radio-for">6.3.8↓</a> shows an example of using radio to select a color. In this example, we use a <tt>Map</tt> from color names to the actual color values for the translation. To minimize errors, we use the <tt>keys</tt> property of the Map to generate the list of options. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using radio for Colors<a class="Label" name="lst:Using-radio-for"> </a>
+</div>
+<pre class="listing brush: scala">import java.awt.Color
+var myColor : Color = _
+val colorMap = Map("Red" -&gt; Color.red,
+                   "White" -&gt; Color.white,
+                   "Blue" -&gt; Color.blue)
+val colors = SHtml.radio(colorMap.keys.toList, Empty, myColor = colorMap(_))
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.9">6.3.9</a> select
+</h3>
+<div class="Unindented">
+The select method is very similar to the multiselect method except that only one item may be selected from the list of options. That also means that the default option is a <tt>Box[String]</tt> instead of a <tt>Seq[String]</tt>. As with <tt>multiselect</tt>, you pass a sequence of (value, display) pairs as the options for the select, and process the return with a <span class="formula">(<i>String</i>) ⇒ <i>Any</i></span> function. Listing <a class="Reference" href="index-6.html#lst:A-select-example">6.3.9↓</a> shows an example of using a select to choose an account to view. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A select Example<a class="Label" name="lst:A-select-example"> </a>
+</div>
+<pre class="listing brush: scala">var selectedAccount : Account = _
+val accounts = User.accounts.map(acc =&gt; (acc.id.toString, acc.name))
+val chooseAccount = 
+  SHtml.select(accounts, Empty, 
+               selectedAccount = loadAccount(_), "class" -&gt; "myselect")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+An important thing to note is that Lift will verify that the value submitted in the form matches one of the options that was passed in. If you need to do dynamic updating of the list, then you’ll need to use <tt>untrustedSelect</tt> (Section <a class="Reference" href="index-6.html#sub:untrustedSelect">6.3.11↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.10">6.3.10</a> selectObj
+</h3>
+<div class="Unindented">
+One of the drawbacks with the select and multiselect generators is that they deal only in Strings; if you want to select objects you need to provide your own code for mapping from the strings. The <tt>selectObj</tt> generator method handles all of this for you. Instead of passing a sequence of (value string, display string) pairs, you pass in a sequence of (object, display string) pairs. Similarly, the default value is a <tt>Box[T]</tt> and the callback function is <span class="formula">(<i>T</i>) ⇒ <i>Any</i></span> , where T is the type of the object (<tt>selectObj</tt> is a generic function). Listing <a class="Reference" href="index-6.html#lst:Using-selectObj-for">6.3.10↓</a> shows a reworking of our radio example (Listing <a class="Reference" href="index-6.html#lst:Using-radio-for">6.3.8↑</a>) to select Colors directly. Note that we set the select to default to <tt>Color.red</tt> by passing in a <tt>Full</tt> Box.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Using selectObj for Colors<a class="Label" name="lst:Using-selectObj-for"> </a>
+</div>
+<pre class="listing brush: scala">... standard Lift imports ...
+import _root_.java.awt.Color
+​
+class SelectSnippet {
+  def chooseColor (xhtml : NodeSeq) : NodeSeq = {
+    var myColor = Color.red
+    val options = List(Color.red, Color.white, Color.blue)
+    val colors = SHtml.selectObj(options, Full(myColor), myColor = _)
+    bind(...)
+  }
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-6.3.11">6.3.11</a> untrustedSelect<a class="Label" name="sub:untrustedSelect"> </a>
+</h3>
+<div class="Unindented">
+The <tt>untrustedSelect</tt> generator is essentially the same as the select generator, except that the value returned in the form isn’t validated against the original option sequence. This can be useful if you want to update the selection on the client side using JavaScript.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-6.4">6.4</a> File Uploads<a class="Label" name="sec:File-Uploads"> </a><a class="IndexReference" name="entry-File-uploads-0" href="index-Index.html#index-File-uploads">↓</a><a class="IndexReference" name="entry-Forms-File-uploads-0" href="index-Index.html#index-Forms-File-uploads">↓</a>
+</h2>
+<div class="Unindented">
+File uploads are a special case of form submission that allow the client to send a local file to the server. This is accomplished by using multipart forms. You can enable this by setting the <tt>multipart</tt> attribute on your snippet tag to <tt>true</tt>. Listing <a class="Reference" href="index-6.html#lst:File-upload-template">6.4↓</a> shows how we can add a file upload to our existing expense entry form so that users can attach scanned receipts to their expenses. We modify our template to add a new form, shown below. Note the <tt>multipart=”true” </tt>attribute.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+File Upload Template<a class="Label" name="lst:File-upload-template"> </a>
+</div>
+<pre class="listing brush: scala">&lt;lift:AddEntry.addEntry form="POST" multipart="true"&gt;
+  ... existing headers ...
+  &lt;td&gt;Receipt (JPEG or PNG)&lt;/td&gt;
+  ... existing form fields ...
+  &lt;td&gt;&lt;e:receipt /&gt;&lt;/td&gt;
+  ...
+&lt;/lift:AddEntry.addEntry&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+On the server side, Listing <a class="Reference" href="index-6.html#lst:File-upload-snippet">6.4↓</a> shows how we modify the existing <tt>addEntry</tt> snippet to handle the (optional) file attachment. We’ve added some logic to the existing form submission callback to check to make sure that the image is of the proper type, then we use the <tt>SHtml</tt> file upload generator with a callback that sets our <tt>fileHolder</tt> variable. The callback for the <tt>fileUpload</tt> generator takes a <tt>FileParamHolder</tt>, a special case class that contains information about the uploaded file. The FileParamHolder case class has four parameters:
+</div>
+<div class="List">
+<span class="List-entry"><tt>name</tt></span><span class="List-contents">The name of the form field that this file is associated with, as sent by the client</span>
+</div>
+<div class="List">
+<span class="List-entry"><tt>mimeType</tt></span><span class="List-contents">The mime type as sent by the client</span>
+</div>
+<div class="List">
+<span class="List-entry"><tt>filename</tt></span><span class="List-contents">The filename as sent by the client</span>
+</div>
+<div class="List">
+<span class="List-entry"><tt>file</tt></span><span class="List-contents">An <tt>Array[Byte]</tt> containing the uploaded file contents</span>
+</div>
+<div class="Unindented">
+In our example, we want to save the file data into a <tt>MappedBinary</tt> field on our expense entry. You could just as easily process the data in place using a <tt>scala.io.Source</tt> or<br/>
+ <tt>java.io.ByteArrayInputStream</tt>, or output it using a <tt>java.io.FileOutputStream</tt>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+File Upload Snippet<a class="Label" name="lst:File-upload-snippet"> </a>
+</div>
+<pre class="listing brush: scala">class AddEntry {
+  ...
+  // Add a variable to hold the FileParamHolder on submission
+  var fileHolder : Box[FileParamHolder] = Empty
+  ...
+  def doTagsAndSubmit (t : String) {
+    ...
+    val e : Expense = ...
+    // Add the optional receipt if it’s the correct type
+    val receiptOk = fileHolder match {
+      // An empty upload gets reported with a null mime type,
+      // so we need to handle this special case
+      case Full(FileParamHolder(_, null, _, _)) =&gt; true
+      case Full(FileParamHolder(_, mime, _, data))
+        if mime.startsWith("image/") =&gt; {
+          e.receipt(data).receiptMime(mime)
+          true
+        }
+      case Full(_) =&gt; {
+        S.error("Invalid receipt attachment")
+        false
+      }
+      case _ =&gt; true 
+    }
+​
+    (e.validate, receiptOk) match {
+    ...
+    }
+    ...
+  }
+​
+  bind("e", in,
+       ...
+       "receipt" -&gt; SHtml.fileUpload(fileHolder = _),
+       "tags" -&gt; SHtml.text(tags, doTagsAndSubmit))
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+By default<a class="IndexReference" name="entry-Forms-saving-file-uploads-to-disk-0" href="index-Index.html#index-Forms-saving-file-uploads-to-disk">↓</a>, Lift will utilize the <tt>InMemoryFileParamHolder</tt> <a class="IndexReference" name="entry-InMemoryFileParamHolder-0" href="index-Index.html#index-InMemoryFileParamHolder">↓</a>to represent uploaded file data. This implementation reads the uploaded data directly into memory (you retrieve the byte array with the <tt>file</tt> val). If you would prefer to have Lift write uploaded data to disk and then give you a server-local filename to work with, you can use the <tt>LiftRules.handleMimeFile</tt> configuration hook to instead use the <tt>OnDiskFileParamHolder</tt><a class="IndexReference" name="entry-OnDiskFileParamHolder-0" href="index-Index.html#index-OnDiskFileParamHolder">↓</a>, as shown in Listing <a class="Reference" href="index-6.html#lst:Using-OnDiskFileParamHolder">6.4↓</a>. The OnDiskFileParamHolder class has an additional property, <tt>localFile</tt>, that is a <tt>java.io.File</tt> object for the temporary upload file.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:Using-OnDiskFileParamHolder"> </a>Using OnDiskFileParamHolder
+</div>
+<pre class="listing brush: scala">// in Boot.boot:
+LiftRules.handleMimeFile = OnDiskFileParamHolder.apply
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-5.html#Next">Previous: Chapter 5</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-7.html#prev">Next: Chapter 7</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-10.html#Next">Previous: Chapter 10</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-12.html#prev">Next: Chapter 12</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-11">11</a> AJAX and Comet in Lift<a class="Label" name="cha:AJAX-and-COMET"> </a>
+</h1>
+<div class="Unindented">
+In this chapter we’re going to discuss AJAX and Comet, two approaches to improving the user experience through dynamic web pages. While a full treatment of the techniques and technologies behind these approaches is beyond the scope of this book<span class="FootOuter"><span class="SupFootMarker"> [C] </span><span class="HoverFoot"><span class="SupFootMarker"> [C] </span>There are a number of good resources on the web that you can find by searching for “AJAX”.</span></span>, we’re going to cover the basics of how AJAX and Comet work. In particular, we’re going to look at how Lift handles them behind the scenes to simplify your work.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.1">11.1</a> What are AJAX and Comet, really?
+</h2>
+<div class="Unindented">
+AJAX and Comet are variations on the traditional model of the web application request/response lifecycle. In the traditional model, the user starts by making a request for a page. The server receives this request, performs processing, then sends a response back to the user. The response is then rendered by the user’s browser. At this point there are no further interactions between the user and the server until the user clicks on a link or performs some other action that starts a completely new request/response lifecycle. AJAX and Comet extend this model to allow for asynchronous updates from either the user to the server (AJAX), or from the server back to the user (Comet).
+</div>
+<div class="Indented">
+If we take the example of adding a comment to a blog post, the traditional model has the user fill in a form, hit the submit button, and send the request to the server. The server processes and adds the comment and then sends the updated blog post back to the user with the newly added comment. At the same time, if other people are viewing the blog post, they won’t see the new comment until they reload the page.
+</div>
+<div class="Indented">
+The AJAX model of this session changes such that the display of the new comment is not tied to the response from the server. When the user hits submit, the request to add the comment is sent to the server <i>in the background</i>. While it’s being processed by the server, a JavaScript fragment (the “J” in AJAX) updates the user’s page via DOM<span class="FootOuter"><span class="SupFootMarker"> [D] </span><span class="HoverFoot"><span class="SupFootMarker"> [D] </span>Document Object Model. More information can be found at <a class="URL" href="http://www.w3.org/DOM/">http://www.w3.org/DOM/</a></span></span> and adds the comment without the need for a full page reload. 
+</div>
+<div class="Indented">
+Comet changes the traditional model by using a long-polling HTTP request in the background that allows the server to push data to the browser without requiring additional requests. Essentially this is like AJAX, except in the opposite direction.
+</div>
+<div class="Indented">
+While the AJAX model increases the richness of the User Experience for a single client at a time, Comet can do the same for multiple users. Going back to our example of a blog post, Comet would enable the server to notify anyone viewing the current blog post to automatically have their pages updated when the new comment is added.
+</div>
+<div class="Indented">
+Figures <a class="Reference" href="index-11.html#subfig:Traditional-Application-Model">a↓</a>, <a class="Reference" href="index-11.html#subfig:AJAX-Application-Model">b↓</a>, and <a class="Reference" href="index-11.html#subfig:COMET-Application-Model">c↓</a> show graphical representations of how the models differ in terms of timeline and server interaction.
+</div>
+<div class="Indented">
+<div class="float">
+<a class="Label" name="fig:model-comparisons"> </a><div class="multifigure">
+<div class="center">
+<span class="float">
+<a class="Label" name="subfig:Traditional-Application-Model"> </a><div class="figure">
+<div class="caption">
+(a) Traditional Application Model
+</div>
+<img class="embedded" src="images/Traditional_Model.png" alt="figure images/Traditional_Model.png" style="width: 3in; max-width: 288px; height: auto; max-height: 216px;"/>
+
+</div>
+
+</span>
+<span class="float">
+<a class="Label" name="subfig:AJAX-Application-Model"> </a><div class="figure">
+<div class="caption">
+(b) AJAX Application Model
+</div>
+<img class="embedded" src="images/Ajax_Model.png" alt="figure images/Ajax_Model.png" style="width: 3in; max-width: 288px; height: auto; max-height: 216px;"/>
+
+</div>
+
+</span>
+
+</div>
+<span class="float">
+<a class="Label" name="subfig:COMET-Application-Model"> </a><div class="figure">
+<div class="caption">
+(c) Comet Application Model
+</div>
+<img class="embedded" src="images/COMET_Model.png" alt="figure images/COMET_Model.png" style="width: 3in; max-width: 288px; height: auto; max-height: 216px;"/>
+
+</div>
+
+</span>
+<div class="caption">
+Figure 11.1 Application Model Comparisons
+</div>
+
+</div>
+
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.2">11.2</a> Using AJAX in Lift
+</h2>
+<div class="Unindented">
+In previous chapters we’ve shown how to synchronously process forms (chapter <a class="Reference" href="index-6.html#cha:Forms-in-Lift">6↑</a>) and use JavaScript to perform client-side behavior (chapter<a class="Reference" href="index-10.html#cha:Lift-and-Javascript">10↑</a>). AJAX blends these Lift techniques to give you powerful support for asynchronous client-server interaction. As with standard form and link elements, Lift uses methods on the <tt>SHtml</tt> object to generate AJAX components in a concise manner. We’ll cover each of the AJAX-specific <tt>SHtml</tt> methods in a later section, but for now we want to cover the high-level aspects of using AJAX in Lift.
+</div>
+<div class="Indented">
+The first thing we want to point out is that AJAX generators take callback methods just like regular element generators. The major difference is that while standard <tt>SHtml</tt> generator callbacks return <tt>scala.Any</tt>, AJAX callbacks must return a <tt>net.liftweb.http.js.JsCmd</tt>. The reason is that the return from the callback is itself a client-side callback that can be used to update the client content. An example is shown in Listing <a class="Reference" href="index-11.html#lst:A-simple-AJAX-example">11.2↓</a>. In this example we generate a button, that when clicked, will log a message and then set the contents of the div named <tt>my-div</tt> to a <tt>Text</tt> element. As you can see, adding client-side content changes is trivial.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A simple AJAX example<a class="Label" name="lst:A-simple-AJAX-example"> </a>
+</div>
+<pre class="listing brush: scala">import _root_.net.liftweb.http.SHtml._
+// The next two imports are used to get some implicit conversions
+// in scope.
+import _root_.net.liftweb.http.JE._
+import _root_.net.liftweb.http.JsCmds._
+// Use logging facilities
+import _root_.net.liftweb.util.Log
+​
+// define a snippet method
+def myFunc(html: NodeSeq) : NodeSeq = {
+  bind("hello", html, "button" -&gt; ajaxButton(Text("Press me"), {() =&gt; 
+    Log.info("Got an AJAX call")
+    SetHtml("my-div", Text("That’s it")) 
+  })
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The second important aspect of Lift’s AJAX support is that behind the scenes Lift provides a robust mechanism for AJAX submission. For example, Lift provides its own JavaScript that handles retrying when the submission times out. You can control the timeout duration and retry count through <tt>LiftRule</tt>’s <tt>ajaxPostTimeout</tt> (in milliseconds) and <tt>ajaxRetryCount</tt> variables, respectively.
+</div>
+<div class="Indented">
+The third aspect of Lift’s AJAX support is that it’s so easy to enable. Lift automatically takes care of adding the proper JavaScript libraries to your templates when they’re rendered, and sets up the proper callback dispatch for you. By default, dispatch is done relative to the <tt>/ajax_request</tt> path in your web context, but Lift allows you change this via the <tt>LiftRules.ajaxPath</tt> variable. 
+</div>
+<div class="Indented">
+The final aspect is the flexibility the library provides. Besides standard form elements and links that can be AJAXified, Lift also provides the <tt>SHtml.ajaxCall</tt> method which constructs a <tt>JsExp</tt> that you can use directly on <i>any</i> element. In addition, it allows you to construct a <tt>String</tt> argument to your callback function via JavaScript so that you have full access to client-side data.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.3">11.3</a> A more complex AJAX example<a class="Label" name="sub:A-more-complex-ajax-example"> </a>
+</h2>
+<div class="Unindented">
+Let’s take a look on a comparison example. We’ve seen how to use <tt>SHtml.ajaxButton</tt>, so let’s see in Listing <a class="Reference" href="index-11.html#lst:Ajax-comparison-example">11.3↓</a> how can we achieve the same effect using <tt>SHtml.ajaxCall</tt> and <tt>SHtml.ajaxInvoke</tt>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+AJAX comparison example<a class="Label" name="lst:Ajax-comparison-example"> </a>
+</div>
+<pre class="listing brush: scala">​
+class SimpleSnippet {
+  import _root_.net.liftweb.http.js.{JE,JsCmd,JsCmds}
+  import JsCmds._ // For implicits
+  import JE.{JsRaw,Str}
+​
+  def ajaxFunc1() : JsCmd = JsRaw("alert(’Button1 clicked’)")
+​
+  def ajaxFunc2(str: String) : JsCmd = {
+    println("Received " + str)
+    JsRaw("alert(’Button2 clicked’)")
+  }
+​
+  def ajaxFunc3() : JsCmd = JsRaw("alert(’Button3 clicked’)")
+​
+  def renderAJAXButtons(xhtml: Group): NodeSeq = {
+    bind("ex", xhtml,         
+            "button1" -&gt; SHtml.ajaxButton("Press me", ajaxFunc1 _),
+            "button2" -&gt; 
+              // ajaxCall and ajaxInvoke actually returns a pair (String, JsExp). 
+              // The String is used for garbage collection, so we only need
+              // to use the JsExp element (_2).
+              &lt;button onclick={SHtml.ajaxCall(Str("Button-2"), ajaxFunc2 _)._2}&gt;
+                Press me 2&lt;/button&gt;,
+            "button3" -&gt; 
+              &lt;button onclick={SHtml.ajaxInvoke(ajaxFunc3 _)._2}&gt;
+                Press me 3&lt;/button&gt;)
+ }
+}
+​
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Basically, in Listing <a class="Reference" href="index-11.html#lst:Ajax-comparison-example">11.3↑</a>, we created three AJAX buttons using three different SHtml functions. The difference between <tt>ajaxCall</tt> and <tt>ajaxInvoke</tt> is that for <tt>ajaxCall</tt> you can specify a <tt>JsExp</tt> parameter that will be executed on the client side. The result of this <tt>JsExp</tt> will be sent to the server. In our case this parameter is simply a static String, <tt>Str(“Button-2”)</tt>, but you can provide any <tt>JsExp</tt> code here to calculate a client-side value to be passed to your callback. For an overview of the rest of the <tt>SHtml</tt> generator functions please see Chapter <a class="Reference" href="index-6.html#cha:Forms-in-Lift">6↑</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.4">11.4</a> AJAX Generators in Detail<a class="Label" name="sub:AJAX-Generators-in-detail"> </a>
+</h2>
+<div class="Unindented">
+The following table provides a brief synopsis of the AJAX generator methods on the<br/>
+ <tt>net.liftweb.http.SHtml</tt> object:
+</div>
+<div class="Indented">
+<table>
+<tr>
+<td align="left" valign="top">
+Function name
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Description
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxButton
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders a button that will submit an AJAX request to server
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+a
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders an anchor tag that when clicked will submit an AJAX request
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+makeAJAXCall
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders the JavaScript code that will submit an AJAX request
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+span
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders a span element that when clicked will execute a <tt>JsCmd</tt>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxCall
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders the JavaScript code that will submit an AJAX request but it will also send the value returned by the <tt>JsExp</tt> provided. 
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxInvole
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Similar to <tt>ajaxCall</tt> but there is no value to be computed and sent to the server
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+toggleKids
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Provides the toggle effect on an element. When clicked it will also send an AJAX call
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxText
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders an input text element that will send an AJAX request on blur.
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+jsonText
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders an input type text element the will send a JSON request on blur.
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxCheckbox
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders a checkbox element that when clicked will send an AJAX call
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxSelect
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders a select element then sends an AJAX call when the value changes
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+ajaxForm
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Wraps a <tt>NodeSeq</tt> that represents the form’s content and makes an AJAX call when the form is submitted.
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+jsonForm
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Similar to <tt>ajaxForm</tt>, but on the client side, the form is JSONified and the JSON content sent to the server and processed by <tt>JsonHandler</tt>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+swappable
+</td>
+<td align="left" valign="top" style="width: 4in;">
+Renders a span that contains one visible element and the other hidden. When the visible element is clicked it will be hidden and the other one will be shown
+</td>
+
+</tr>
+
+</table>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.5">11.5</a> Comet and Lift<a class="Label" name="sec:COMET"> </a>
+</h2>
+<div class="Unindented">
+Figure <a class="Reference" href="index-11.html#subfig:COMET-Application-Model">c↑</a> diagrams the interaction between client and server in the Comet. model. There are several resources on the web that explain the history and specific techniques related to Comet<span class="FootOuter"><span class="SupFootMarker"> [E] </span><span class="HoverFoot"><span class="SupFootMarker"> [E] </span><a class="URL" href="http://en.wikipedia.org/wiki/Comet_(programming)">http://en.wikipedia.org/wiki/Comet_(programming)</a> is a good start.</span></span>, so we won’t get too detailed here. In essence Comet is not a technology but a technique which allows a web application to push messages from server to client. There are a couple of approaches used to make this work, but the approach that Lift uses is long polling, so that’s what we’ll be covering here. As an example, consider a web chat application where you can chat real-time with friends. Let’s take a quick look at how receiving a message using Comet works in Lift:
+</div>
+<ol>
+<li>
+The client sends an AJAX request to the server asking for any new messages.
+</li>
+<li>
+The server does not respond immediately but waits until there is a message that needs to be sent for that client. 
+</li>
+<li>
+When a message is available, the server responds to the initial request from the client with the new message(s).
+</li>
+<li>
+The client receives the response, processes it, and issues another AJAX request, and the process continues.
+</li>
+
+</ol>
+<div class="Unindented">
+Of course, things are more complicated then that. For instance, it may take a while until the response is actually returned to the client. During this delay, the connection could be dropped for any number of reasons. The client should be smart enough to re-establish the connection automatically. But there is another problem - scalability. If we have these long-running connections, the server would typically put the processing threads into a waiting state until messages are available to send back to the client. Having many waiting threads is a scalability killer because numerous threads from the web container’s thread pool will lie in the wait state doing nothing until, before you know it, your entire thread pool is empty. The immediate consequence is that your server can not do any other request processing. Because of this, a thread-per-connection approach combined with long-running connections is totally unacceptable.
+</div>
+<div class="Indented">
+The key to scalability is NON-BLOCKING IO. Most operating systems support non-blocking I/O, which actually means that when you utilize an I/O resource for reading or writing (say the streams from a socket) there is no blocking operation. So if you read from a stream your read function would immediately return regardless of whether there is data available or not. In Java, non-blocking I/O is provided by the Java New I/O (NIO) library using Selectors and perhaps the Reactor pattern<span class="FootOuter"><span class="SupFootMarker"> [F] </span><span class="HoverFoot"><span class="SupFootMarker"> [F] </span>A nice overview of NIO is at <a class="URL" href="http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf">http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf</a></span></span>. This has a major impact on scalability because the threads are only held as long as there is work to do. Once they’re finished with the available data, they are returned to the thread pool so that they may be reused for processing other requests. In this model the threads are allocated to connections only when data is available for processing, which inherently leads to better resource utilization.
+</div>
+<div class="Indented">
+<div class="defskip"> </div>
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: This is somewhat off-topic, but if you’re looking to do a lot of work with NIO and networking, we recommend looking at the Apache MINA project at <a class="URL" href="http://mina.apache.org/">http://mina.apache.org/</a>. MINA provides some nice abstractions for NIO that allows you use a stateful approach to developing NIO applications without having to deal with a lot of the underlying details of using NIO.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+<div class="defskip"> </div>
+</div>
+<div class="Indented">
+Having nonblocking I/O enabled by the web container also has a major impact on application scalability with regard to long-lived connections from client to server. In addition, the Lift framework has support for Jetty Continuations, which work like this: 
+</div>
+<ol>
+<li>
+You application receives a request and wants to wait to respond, as there is no message yet.
+</li>
+<li>
+You call suspend on the Jetty Continuation object. Here, Jetty will throw a special exception that will be caught in the container. The current thread is immediately returned to the thread pool, so it can process other requests.
+</li>
+<li>
+Assume that, after a while, you have a message for that particular client. You call resume on the same Continuation object. This time, Jetty will actually replay the initial HTTP request, and your servlet behaves like that request was just received from the client and, of course, returns the appropriate response.
+</li>
+
+</ol>
+<div class="Unindented">
+More details on Jetty’s Continuations are available on the Jetty web site at <a class="FlexURL" href="http://docs.codehaus.org/display/JETTY/Continuations">http://docs.codehaus.org/display/JETTY/Continuations</a>. 
+</div>
+<div class="Indented">
+If you run your Lift application in a Jetty container, Lift will automatically detect that and utilize the Continuation mechanism. Currently, on other containers, Comet in Lift will still work but won’t scale as well because Continuations aren’t supported. However, the Servlet 3.0 spec contains a more generic facility, called Suspended Requests, that will make this feature usable across a variety of containers.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-11.5.1">11.5.1</a> Actors in Scala
+</h3>
+<div class="Unindented">
+It is important to understand that Comet support in Lift is primarily driven via Scala Actors. We won’t go into too much detail regarding Scala Actors, as you can find very detailed information in the paper by Philipp Haller, <i>Actors that Unify Threads And Events</i><span class="FootOuter"><span class="SupFootMarker"> [G] </span><span class="HoverFoot"><span class="SupFootMarker"> [G] </span><a class="FlexURL" href="http://lamp.epfl.ch/~phaller/doc/haller07coord.pdf">http://lamp.epfl.ch/~phaller/doc/haller07coord.pdf</a></span></span>. 
+</div>
+<div class="Indented">
+Scala Actors are based on the concepts of the Erlang<span class="FootOuter"><span class="SupFootMarker"> [H] </span><span class="HoverFoot"><span class="SupFootMarker"> [H] </span><a class="URL" href="http://erlang.org/">http://erlang.org/</a></span></span> Actors model where an Actor is an asynchronous component that receives messages and sends or replies to messages. In Erlang, processes communicate via a very simple and effective messaging system built into the VM.
+</div>
+<div class="Indented">
+In Scala, however, Actors are supported at the library level and not at the language level. While less integrated, this does provide greater flexibility as the Actors library evolution does not impact the language itself. Since Scala typically sits on top of the JVM, Scala Actors are not bound to processes but rather to JVM threads. The key to understanding the scalability of Scala Actors is that there is no one-to-one relationship between Actors and Threads. For instance, when an Actor is waiting for a message we don’t end up having a thread waiting for a lock. Instead, the Actor body is impersonated by a closure that captures the rest of the computation. This closure is ’cached’ internally until a message is designated for this Actor to consume. In particular, Scala’s Actor library leverages the <tt>match</tt> construct to allow very fine-grained selection of messages for processing. Another interesting note is that the Actor body (<tt>react</tt> function) never returns normally; in fact, the return type of the react function is <tt>Nothing</tt>.
+</div>
+<div class="Indented">
+Let’s take a look on a simple Actor-based example in Listing <a class="Reference" href="index-11.html#lst:PingPong-example">11.5.1↓</a>:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+PingPong example<a class="Label" name="lst:PingPong-example"> </a>
+</div>
+<pre class="listing brush: scala">import scala.actors._ 
+import scala.actors.Actor._
+​
+object PingPong extends Application {
+  var count = 0;
+  val pong = actor {
+    loop {
+      react {
+        case Ping =&gt; println("Actor Pong Received Ping")
+          sender ! Pong
+        case Stop =&gt; println("Stopping Pong")         
+          exit()
+       }
+    }
+  }
+  val ping = actor {
+    pong ! Ping
+    loop {
+      react {
+        case Pong =&gt; println("Actor Ping Received Pong")
+           count = count + 1;
+        if (count &lt; 3) {
+          sender ! Ping
+        } else {
+          sender ! Stop
+          println("Stopping Ping")
+          exit()
+        }
+      }
+    }
+  }
+}
+case object Ping 
+case object Pong 
+case object Stop
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+This is a trivial example in which we have two Actors exchanging <tt>Ping</tt>, <tt>Pong</tt> and <tt>Stop</tt> messages (note that the messages are case objects for pattern matching purposes). Also note that we did not explicitly used threads anywhere. We also did not use any thread blocking technique such as synchronized blocks. The reason is that we don’t have to. Actors’ message-passing mechanism is generally thread-safe (although deadlock is still possible due to dependent Actors<span class="FootOuter"><span class="SupFootMarker"> [I] </span><span class="HoverFoot"><span class="SupFootMarker"> [I] </span><a class="URL" href="http://ruben.savanne.be/articles/concurrency-in-erlang-scala">http://ruben.savanne.be/articles/concurrency-in-erlang-scala</a></span></span>). Note that threads are used internally and in this specific example the execution may even occur on the same thread. The reason is that internally the Actors library uses a thread pool, and when an Actor receives a message the execution occurs in a thread from the thread pool. This is also a key to Actors’ scalability, because they allow threads to be used very efficiently and returned to the pool as soon as the Actor consumes the message.
+</div>
+<div class="Indented">
+Getting deeper into the details of actions is beyond the scope of this book, but we recommend that you read other materials in order to fully understand Scala actors. In particular, Philipp Haller has a nice page summarizing papers and tutorials on actors at <a class="FlexURL" href="http://lamp.epfl.ch/~phaller/actors.html">http://lamp.epfl.ch/~phaller/actors.html</a>.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-11.5.2">11.5.2</a> Building a Comet Application in Lift
+</h3>
+<div class="Unindented">
+As we have seen, Comet support in Lift is provided by Scala Actors. Lift greatly simplifies the use of Actors by providing a <tt>CometActor</tt> trait that does almost all the work. You simply extend <tt>CometActor</tt> with your own class and fill in some implementation methods. 
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note that your CometActor classes needs to exist in a <tt>comet</tt> subpackage as configured by <tt>LiftRules.addToPackages</tt>. For example, if you call <tt>LiftRules.addToPackages(“com.myapp”)</tt> in your boot method, your comet actors must exist in the <tt>com.myapp.comet</tt> package.
+</div>
+
+</div>
+
+</div>
+<div class="Indented">
+Let’s take a look at a simple example. Let’s say that we want to build a Clock snippet where the server will update the client page with the current server time every 10 seconds. First, we need a template, as shown in Listing <a class="Reference" href="index-11.html#lst:Comet-Clock-markup">11.5.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Comet Clock markup example<a class="Label" name="lst:Comet-Clock-markup"> </a>
+</div>
+<pre class="listing brush: xml">&lt;lift:surround with="default" at="content"&gt;
+    &lt;lift:comet type="Clock" name="Other"&gt;
+        Current Time: &lt;clk:time&gt;Missing Clock&lt;/clk:time&gt;
+    &lt;/lift:comet&gt;  
+&lt;/lift:surround&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In our template, we use the <tt>&lt;lift:comet&gt;</tt> tag to bind the <tt>CometActor</tt> to the portion of the template where it will render content, and the body of the <tt>&lt;lift:comet&gt;</tt> tag is quite similar to the body of a snippet. The <tt>&lt;clk:time&gt;</tt> tag will be bound by the <tt>Clock</tt> actor. The <tt>type</tt> attribute tells Lift which <tt>CometActor</tt> to call, and the <tt>name</tt> attribute is the name of this <tt>CometActor</tt>. The <tt>name</tt> attribute is a discriminator that allows you to have more then one <tt>CometActor</tt> of the same type on a given page. Next, we need to define our actor as shown in Listing <a class="Reference" href="index-11.html#lst:Clock-Comet-Actor">11.5.2↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Clock Comet Actor example<a class="Label" name="lst:Clock-Comet-Actor"> </a>
+</div>
+<pre class="listing brush: scala">package com.myapp.comet
+​
+class Clock extends CometActor {
+  override def defaultPrefix = Full("clk")   
+​
+  def render = bind("time" -&gt; timeSpan)
+  
+  def timeSpan = (&lt;span id="time"&gt;{timeNow}&lt;/span&gt;)
+​
+  // schedule a ping every 10 seconds so we redraw
+  ActorPing.schedule(this, Tick, 10000L) 
+​
+  override def lowPriority : PartialFunction[Any, Unit] = {
+    case Tick =&gt; {
+      println("Got tick " + new Date());
+      partialUpdate(SetHtml("time", Text(timeNow.toString))) 
+      // schedule an update in 10 seconds
+      ActorPing.schedule(this, Tick, 10000L) 
+    }
+  }
+}
+case object Tick
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+First, our actor defines the default prefix, which should be used for all nodes that will be bound inside <tt>&lt;lift:comet&gt;</tt> tag. In our case, we’re using the <tt>clk</tt> prefix.
+</div>
+<div class="Indented">
+Next, we have the <tt>render</tt> function where we do the binding between the <tt>&lt;clk:time&gt;</tt> node and the result of the <tt>timespan</tt> function. Basically, the <tt>&lt;clk:time&gt;</tt> node will be replaced by the <tt>span</tt> element returned by the <tt>timespan</tt> function. It is important to note that Comet content rendered by the <tt>&lt;lift:comet&gt;</tt> tag is a <tt>&lt;span&gt;</tt> tag by default. This default can be changed by overriding the <tt>parentTag</tt> function in your comet actor.
+</div>
+<div class="Indented">
+<tt>timeNow</tt> is a function from the <tt>net.liftweb.util.TimeHelpers</tt> trait that returns the current system time. We use the <tt>net.liftweb.util.ActorPing.schedule</tt> method to send a <tt>Tick</tt> message back to our actor after 10 seconds. This method is part of the the <tt>Clock</tt> class default constructor, and therefore will be called when the <tt>Clock</tt> class is instantiated. 
+</div>
+<div class="Indented">
+Finally, we have the <tt>lowPriority</tt> function that returns a <tt>PartialFunction</tt>. To process messages in your CometActor, you can override the following functions: <tt>highPriority</tt>,<br/>
+<tt>mediumPriority</tt>, and <tt>lowPriority</tt>. This multiplicity of functions is just a way of prioritizing application messages. The only thing that we do here is to pattern match the messages. In this simple example, we have only the <tt>Tick</tt> object. When a <tt>Tick</tt> is sent by the <tt>ActorPing</tt>, our code gets executed and the following actions occur:
+</div>
+<ol>
+<li>
+We print the current time to the console (just for fun)
+</li>
+<li>
+We call <tt>partialUpdate</tt> function. With a partial update we can update specific fragments on the client side and not actually re-render the entire content that the CometActor may produce. This optimization allows us to send something very specific to be updated on the client side. If we call <tt>reRender(true)</tt> instead, the entire real estate on the client side will be re-rendered. Getting back to our <tt>partialUpdate</tt> call, we are basically sending a <tt>JsCmd</tt> that we use to set the XHTML content for the element that has the id “time”. This is the <tt>span</tt> element returned by the <tt>timeSpan</tt> function. Since <tt>partialUpdate</tt> takes a <tt>JsCmd</tt>, you can use it to do just about anything on the client side accessible from JavaScript.
+</li>
+<li>
+We tell <tt>ActorPing</tt> to send another Tick message after 10 seconds. 
+</li>
+
+</ol>
+<div class="Unindented">
+As you have seen, with just a few lines of code, we were able to create a Clock application in which the server updates the client every 10 seconds. Of course, this is just a trivial example, but now, you should have a clear picture of how CometActor works, so you can build more complex cases for your Lift application.
+</div>
+<div class="Indented">
+<div class="defskip"> </div>
+</div>
+<div class="Indented">
+<div class="center">
+<div class="Shadowbox" style="width: 75%;">
+Note: As described earlier It is also possible to use notices (notice/warning/error) from your comet actor. The CometActor trait already has notice, warning and error methods on it that will properly handle sending these messages to the client. Do not use the notice/warning/error methods on S, since they assume a stateful response and will not work from within a Comet callback.
+</div>
+
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.6">11.6</a> Coordinating Between Multiple Comet Clients
+</h2>
+<div class="Unindented">
+So far, our example has only shown a self-contained <tt>CometActor</tt> for the clock. But what if we want to have interaction between different clients? Scala’s actors are still the answer, but with a twist—we can use a singleton actor object that coordinates with the CometActor objects so that it can send messages to all of them. First, we define our singleton actor, as shown in Listing <a class="Reference" href="index-11.html#lst:Singleton-Actor">11.6↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Singleton Actor<a class="Label" name="lst:Singleton-Actor"> </a>
+</div>
+<pre class="listing brush: scala">case class SubscribeClock(clock : Clock)
+case class UnsubClock(clock : Clock)
+​
+object ClockMaster extends Actor {
+  private var clocks : List[Clock] = Nil
+  def act = loop {
+    react {
+       case SubscribeClock(clk) =&gt;
+        clocks ::= clk
+      case UnsubClock(clk) =&gt;
+        clocks -= clk
+      case Tick =&gt;
+        clocks.foreach(_ ! Tick)
+    }
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We’ve defined two case classes representing messages for subscribing and unsubscribing to the <tt>ClockMaster</tt> actor. The <tt>ClockMaster</tt> itself is a simple Actor (not a <tt>CometActor</tt>) that defines a simple message loop. It can either subscribe a new clock, unsubscribe to an existing clock, or distribute a Tick to all subscribed clocks. The other half of this equation slightly modifies our Clock class (as shown in Listing <a class="Reference" href="index-11.html#lst:Modified-Clock-Class">11.6↓</a>) so that it subscribes and unsubscribes to the ClockMaster at initialization and shutdown, respectively. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Modified Clock Class<a class="Label" name="lst:Modified-Clock-Class"> </a>
+</div>
+<pre class="listing brush: scala">...
+override def localSetup {
+  ClockMaster ! SubscribeClock(this)
+  super.localSetup()
+}
+override def localShutdown {
+  ClockMaster ! UnsubClock(this)
+  super.localShutdown()
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Now, we can add an AJAX button (to an administration page, of course) that would allow the administrator to update everyone’s clocks at once. Listing <a class="Reference" href="index-11.html#lst:The-Admin-Tick">11.6↓</a> shows how we would bind in the button. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+The Admin Tick<a class="Label" name="lst:The-Admin-Tick"> </a>
+</div>
+<pre class="listing brush: scala">bind("admin", xhtml, "tick" -&gt;
+     SHtml.ajaxButton("Tock!", {
+        () =&gt; ClockMaster ! Tick
+     }))
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Here’s what’s happening behind the scenes in our modified Clock application. Lift first identifies a Comet request by matching against the path given by the <tt>LiftRules.cometPath</tt> variable. Essentially the flow is as follows:
+</div>
+<ol>
+<li>
+Lift gets a Comet request.
+</li>
+<li>
+Lift checks the <tt>CometActor</tt>s to see if there are any messages. If there are no messages to be sent to this client, and the application is running in a Jetty container, the Jetty continuation is suspended, but no response is actually sent to client.
+</li>
+<li>
+Later, when your Comet actor is asked to render or partially update, the response is calculated, and the Jetty continuation is resumed. 
+</li>
+<li>
+When Lift gets the resumed request from the container it returns the response calculated by the <tt>CometActor</tt> to the client.
+</li>
+
+</ol>
+<div class="Unindented">
+Note that <tt>CometActor</tt>s work even if you are not using Jetty container; the only issue is that you won’t benefit from the improved scalability of the suspend/resume mechanism offered by the Jetty container.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-11.7">11.7</a> Summary
+</h2>
+<div class="Unindented">
+In this chapter, we explored how easily you can create AJAX and Comet interfaces in Lift. We discussed the underlying techniques used for AJAX and Comet, as well as how Lift provides support functions and classes to simplify writing apps that utilize these techniques. We showed examples of how to use the <tt>SHtml</tt> object to create AJAX-enabled form elements and how to customize things like the AJAX request path in Lift. We reviewed Scala actors and how the <tt>CometActor</tt> trait is used to make a Comet event handler. We also discussed how Lift works to alleviate scalability issues with Comet on supported containers. Finally, we wrote a simple Clock application and showed how you can mix AJAX and Comet in the same application. 
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-10.html#Next">Previous: Chapter 10</a></span>
+<span class="up"><a class="up" href="index-Part-II.html">Up: Part II</a></span>
+<span class="next"><a class="next" name="Next" href="index-12.html#prev">Next: Chapter 12</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

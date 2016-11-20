@@ -1,0 +1,638 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-2.html#Next">Previous: Chapter 2</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-4.html#prev">Next: Chapter 4</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Chapter-3">3</a> Lift Fundamentals<a class="Label" name="cha:Lift-Architecture"> </a>
+</h1>
+<div class="Unindented">
+In this chapter we will cover some of the fundamental aspects of writing a lift application, including the architecture of the Lift library and how it processes requests.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.1">3.1</a> Entry into Lift<a class="Label" name="sec:Entry-into-Lift"> </a>
+</h2>
+<div class="Unindented">
+The first step in Lift’s request processing is intercepting the HTTP request. Originally, Lift used a <tt>java.servlet.Servlet</tt> instance to process incoming requests. This was changed to use a <tt>java.servlet.Filter</tt> instance<span class="FootOuter"><span class="SupFootMarker"> [N] </span><span class="HoverFoot"><span class="SupFootMarker"> [N] </span>You can see the discussion on the Lift mailing list that led to this change here: <a class="FlexURL" href="http://tinyurl.com/dy9u9d">http://tinyurl.com/dy9u9d</a></span></span> because this allows the container to handle any requests that Lift does not (in particular, static content). The filter acts as a thin wrapper on top of the existing <tt>LiftServlet</tt> (which still does all of the work), so don’t be confused when you look at the Lift API and see both classes (<tt>LiftFilter</tt> and <tt>LiftServlet</tt>). The main thing to remember is that your <tt>web.xml</tt><a class="IndexReference" name="entry-web.xml-0" href="index-Index.html#index-web.xml">↓</a> should specify the filter and not the servlet, as shown in Listing <a class="Reference" href="index-3.html#lst:LiftFilter-setup-in-web.xml">3.1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+<a class="Label" name="lst:LiftFilter-setup-in-web.xml"> </a>LiftFilter Setup in web.xml
+</div>
+<pre class="listing brush: xml">&lt;?xml version="1.0" encoding="ISO-8859-1"?&gt;
+&lt;!DOCTYPE web-app
+  PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+  "http://java.sun.com/j2ee/dtds/web-app_2_3.dtd"&gt;
+&lt;web-app&gt;
+  &lt;filter&gt;
+    &lt;filter-name&gt;LiftFilter&lt;/filter-name&gt;
+    &lt;display-name&gt;Lift Filter&lt;/display-name&gt;
+    &lt;description&gt;The Filter that intercepts lift calls&lt;/description&gt;
+    &lt;filter-class&gt;net.liftweb.http.LiftFilter&lt;/filter-class&gt;
+  &lt;/filter&gt;      
+  &lt;filter-mapping&gt;
+    &lt;filter-name&gt;LiftFilter&lt;/filter-name&gt;
+    &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+  &lt;/filter-mapping&gt;
+&lt;/web-app&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+A full <tt>web.xml</tt> example is shown in Section <a class="Reference" href="index-G.html#lst:JPA-web.xml">G.1.5 on page 1↓</a>. In particular, the filter-mapping (lines 13-16) specifies that the Filter is responsible for everything. When the filter receives the request, it checks a set of rules to see if it can handle it. If the request is one that Lift handles, it passes it on to an internal <tt>LiftServlet</tt> instance for processing; otherwise, it chains the request and allows the container to handle it.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.2">3.2</a> Bootstrap<a class="Label" name="sec:Bootstrap"> </a><a class="IndexReference" name="entry-Bootstrap-0" href="index-Index.html#index-Bootstrap">↓</a>
+</h2>
+<div class="Unindented">
+When Lift starts up an application there are a number of things that you’ll want to set up before any requests are processed. These things include setting up a site Menu (called SiteMap, Chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↓</a>), URL rewriting (Section <a class="Reference" href="index-3.html#sec:URL-Rewriting">3.7↓</a>), custom dispatch (Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↓</a>), and classpath search (Section <a class="Reference" href="index-3.html#sub:Class-Resolution">3.2.1↓</a>). The Lift servlet looks for the <tt>bootstrap.liftweb.Boot</tt><a class="IndexReference" name="entry-Boot-1" href="index-Index.html#index-Boot">↓</a> class and executes the <tt>boot</tt> method in the class. You can also specify your own Boot instance by using the <tt>bootloader<a class="IndexReference" name="entry-bootloader-0" href="index-Index.html#index-bootloader">↓</a></tt> init param for the <tt>LiftFilter</tt> as shown in Listing <a class="Reference" href="index-3.html#lst:Overriding-bootloader">3.2↓</a>
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Overriding the Boot Loader Class<a class="Label" name="lst:Overriding-bootloader"> </a>
+</div>
+<pre class="listing brush: xml">&lt;filter&gt;
+  ... filter setup here ...
+  &lt;init-param&gt;     
+    &lt;param-name&gt;bootloader&lt;/param-name&gt;
+    &lt;param-value&gt;foo.bar.baz.MyBoot&lt;/param-value&gt;
+  &lt;/init-param&gt; 
+&lt;/filter&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Your custom boot class class must subclass <tt>Bootable</tt><span class="FootOuter"><span class="SupFootMarker"> [O] </span><span class="HoverFoot"><span class="SupFootMarker"> [O] </span><tt>net.liftweb.http.Bootable</tt></span></span> and implement the <tt>boot</tt> method. The <tt>boot</tt> method will only be run once, so you can place any initialization calls for other libraries here as well.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-3.2.1">3.2.1</a> Class Resolution<a class="Label" name="sub:Class-Resolution"> </a>
+</h3>
+<div class="Unindented">
+As part of our discussion of the Boot class, it’s also important to explain how Lift determines where to find classes for Views and Snippet rendering when using implicit dispatch (we’ll cover this in Section <a class="Reference" href="index-5.html#sub:Implicit-Dispatch-Via">5.2.1 on page 1↓</a>). The <tt>LiftRules.addToPackages</tt> method tells lift which Scala packages to look in for a given class. Lift has implicit extensions to the paths you enter: in particular, if you tell Lift to use the <tt>com.pocketchangeapp</tt> package, Lift will look for View classes (Section ???)under <tt>com.pocketchangeapp.view</tt> , Comet classes (Section <a class="Reference" href="index-11.html#sec:COMET">11.5↓</a>) under <tt>com.pocketchange.comet</tt>, and Snippet classes (Chapter <a class="Reference" href="index-5.html#cha:Snippets">5↓</a>) under <tt>com.pocketchangeapp.snippet</tt>. The <tt>addToPackages</tt> method should almost always be executed in your Boot class. A minimal Boot class would look like:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Minimal Boot Class<a class="Label" name="lst:Minimal-Boot-class"> </a>
+</div>
+<pre class="listing brush: scala">class Boot {
+  def boot = {
+    LiftRules.addToPackages("com.pocketchangeapp")
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.3">3.3</a> A Note on Standard Imports
+</h2>
+<div class="Unindented">
+For the sake of saving space, the following import statements are assumed for all example code throughout the rest of the book:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Standard Import Statements<a class="Label" name="lst:Standard-import-statements"> </a>
+</div>
+<pre class="listing brush: scala">import net.liftweb.common._
+​
+import net.liftweb.http._
+import S._
+​
+import net.liftweb.util._
+import Helpers._
+​
+import scala.xml._
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.4">3.4</a> Lift’s Main Objects
+</h2>
+<div class="Unindented">
+Before we dive into Lift’s fundamentals, we want to briefly discuss three objects you will use heavily in your Lift code. We’ll be covering these in more detail later in this chapter and in further chapters, so feel free to skip ahead if you want more details.
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-3.4.1">3.4.1</a> S<a class="IndexReference" name="entry-S-0" href="index-Index.html#index-S">↓</a> object<a class="Label" name="sub:S-object"> </a>
+</h3>
+<div class="Unindented">
+The <tt>net.liftweb.http.S</tt> object represents the state of the current request (according to David Pollak, “S” is for Stateful). As such, it is used to retrieve information about the request and modify information that is sent in the response. Among other things, it can be used for notices (Section <a class="Reference" href="index-B.html#cha:Message-Handling">B↓</a>) , cookie management (Section <a class="Reference" href="index-3.html#sec:Cookies">3.10↓</a>), localization/internationalization (Chapter <a class="Reference" href="index-D.html#cha:Internationalization">D↓</a>) and redirection (Section <a class="Reference" href="index-3.html#sec:HTTP-redirects">3.9↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-3.4.2">3.4.2</a> SHtml<a class="IndexReference" name="entry-SHtml-0" href="index-Index.html#index-SHtml">↓</a><a class="Label" name="sub:SHtml"> </a>
+</h3>
+<div class="Unindented">
+The <tt>net.liftweb.http.SHtml</tt> object’s main purpose is to define HTML generation functions, particularly those having to do with form elements. We cover forms in detail in Chapter <a class="Reference" href="index-6.html#cha:Forms-in-Lift">6↓</a>). In addition to normal form elements, SHtml defines functions for AJAX and JSON form elements (Chapters <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a> and <a class="Reference" href="index-10.html#cha:Lift-and-Javascript">10↓</a>, respectively).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-3.4.3">3.4.3</a> LiftRules<a class="IndexReference" name="entry-LiftRules-0" href="index-Index.html#index-LiftRules">↓</a>
+</h3>
+<div class="Unindented">
+The <tt>net.liftweb.http.LiftRules</tt> object is where the vast majority of Lift’s global configuration is handled. Almost everything that is configurable about Lift is set up based on variables in <tt>LiftRules</tt>. Because LiftRules spans such a diverse range of functionality, we won’t be covering <tt>LiftRules</tt> directly, but as we discuss each Lift mechanism we’ll touch on the <tt>LiftRules</tt> variables and methods related to the configuration of that mechanism.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.5">3.5</a> The Rendering Process<a class="Label" name="sec:The-Rendering-Process"> </a>
+</h2>
+<div class="Unindented">
+The rest of this chapter, as well as the next few chapters, are dedicated to the stages of rendering in Lift. We’ll start here by giving a brief overview of the processes by which Lift transforms a request into a response<a class="IndexReference" name="entry-rendering-pipeline-0" href="index-Index.html#index-rendering-pipeline">↓</a>. We’re only going to touch on the major points here, although the steps we do discuss will be in the order that Lift performs them. A much more detailed tour of the pipeline is given in Section <a class="Reference" href="index-9.html#sec:Request/Response-Lifecycle">9.2↓</a>. Starting from the initial invocation on a request, Lift will:
+</div>
+<ol>
+<li>
+Perform any configured URL rewriting. This is covered in Section <a class="Reference" href="index-3.html#sec:URL-Rewriting">3.7↓</a>.
+</li>
+<li>
+Execute any matching custom dispatch functions. This is split into both stateless and stateful dispatch, and will be covered in more detail in Section <a class="Reference" href="index-3.html#sec:Custom-dispatch-func">3.8↓</a>.
+</li>
+<li>
+Perform automatic processing of Comet and AJAX requests (Chapter <a class="Reference" href="index-11.html#cha:AJAX-and-COMET">11↓</a>).
+</li>
+<li>
+Perform SiteMap setup and matching. SiteMap, covered in Chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↓</a>, not only provides a nice site-wide menu system, but can also perform security control, URL rewrite, and other custom functionality.
+</li>
+<li>
+Locate the template XHTML to use for the request. This is handled via three mechanisms:<ol>
+<li>
+Checking the <tt>LiftRules.viewDispatch<a class="IndexReference" name="entry-viewDispatch-0" href="index-Index.html#index-viewDispatch">↓</a><a class="IndexReference" name="entry-Views-Explicit-dispatch-0" href="index-Index.html#index-Views-Explicit-dispatch">↓</a></tt> <tt>RulesSeq</tt> to see if any custom dispatch rules have been defined. We cover custom view dispatch in Section <a class="Reference" href="index-9.html#sec:Request/Response-Lifecycle">9.2 on page 1↓</a>.
+</li>
+<li>
+If there is no matching <tt>viewDispatch</tt>, locate a template<a class="IndexReference" name="entry-template-1" href="index-Index.html#index-template">↓</a> file that matches and use it. We’ll cover templates, and how they’re located, in Section <a class="Reference" href="index-4.html#sec:Templates">4.1↓</a>.
+</li>
+<li>
+If no templates files can be located, attempting to locate a view<a class="IndexReference" name="entry-Views-0" href="index-Index.html#index-Views">↓</a> based on implicit dispatch. We’ll cover views in Section <a class="Reference" href="index-4.html#sec:Views">4.4↓</a>.
+</li>
+
+</ol>
+
+</li>
+<li>
+Process the template, including embedding of other templates (Section <a class="Reference" href="index-4.html#sub:embed-tag">4.5.7↓</a>), merging <tt>&lt;head/&gt;</tt> elements from composited templates (Section <a class="Reference" href="#sec:Head-Merge">↓</a>), and executing snippet functions (Chapter <a class="Reference" href="index-5.html#cha:Snippets">5↓</a>).
+</li>
+
+</ol>
+<div class="Unindented">
+The rest of this chapter will be devoted in part to the early stages of the rendering pipeline, as well as some notes on some general functionality in Lift like redirects<a class="IndexReference" name="entry-redirect-0" href="index-Index.html#index-redirect">↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.6">3.6</a> Notices, Warnings, and Error Messages<a class="Label" name="sub:Notices/Warnings/Errors-messages"> </a>
+</h2>
+<div class="Unindented">
+Feedback to the user is important. The application must be able to notify the user of errors, warn the user of potential problems, and notify the user when system status changes. Lift provides a unified model for such messages that can be used for static pages as well as for AJAX and Comet calls. We cover messaging support in Appendix <a class="Reference" href="index-B.html#cha:Message-Handling">B↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.7">3.7</a> URL Rewriting <a class="Label" name="sec:URL-Rewriting"> </a>
+</h2>
+<div class="Unindented">
+Now that we’ve gone over Templates, Views, Snippets, and how requests are dispatched to a Class.method, we can discuss how to intercept requests and handle them the way we want to. URL rewriting<a class="IndexReference" name="entry-rewriting-0" href="index-Index.html#index-rewriting">↓</a><a class="IndexReference" name="entry-URL-rewriting-0" href="index-Index.html#index-URL-rewriting">↓</a> is the mechanism that allows you to modify the incoming request so that it dispatches to a different URL. It can be used, among other things, to allow you to:
+</div>
+<ul>
+<li>
+Use user-friendly, bookmarkable URLs like <tt>http://www.example.com/budget/2008</tt>
+</li>
+<li>
+Use short URLs instead of long, hard to remember ones, similar to <a class="URL" href="http://tinyurl.com">http://tinyurl.com</a>
+</li>
+<li>
+Use portions of the URL to determine how a particular snippet or view responds. For example, you could make it so that a user’s profile is displayed via a URL such as<br/>
+<tt>http://someplace.com/user/derek</tt> instead of having the username sent as part of a query string.
+</li>
+
+</ul>
+<div class="Unindented">
+The mechanism is fairly simple to set up. We need to write a partial function from a RewriteRequest to a RewriteResponse to determine if and how we want to rewrite particular requests. Once we have the partial function, we modify the <tt>LiftRules.rewrite</tt> configuration to hook into Lift’s processing chain. The simplest way to write a partial function is with Scala’s match statement, which will allow us to selectively match on some or all of the request information. (Recall that for a partial function, the matches do not have to be exhaustive. In the instance that no RewriteRequest matches, no RewriteResponse will be generated.) It is also important to understand that when the rewrite functions run, the Lift session has not yet been created. This means that you generally can’t set or access properties in the S object. RewriteRequest is a <tt>case</tt> object that contains three items: the parsed path, the request type and the original HttpServletRequest<a class="IndexReference" name="entry-HttpServletRequest-0" href="index-Index.html#index-HttpServletRequest">↓</a> object. (If you are not familiar with case classes, you may wish to review the Scala documentation for them. Adding the <tt>case</tt> modifier to a class results in some nice syntactic conveniences.)
+</div>
+<div class="Indented">
+The parsed path of the request is in a ParsePath<a class="IndexReference" name="entry-ParsePath-0" href="index-Index.html#index-ParsePath">↓</a> <tt>case</tt> class instance. The ParsePath class contains
+</div>
+<ol>
+<li>
+The parsed path as a List[String]
+</li>
+<li>
+The suffix of the request (i.e. “html”, “xml”, etc)
+</li>
+<li>
+Whether this path is root-relative path. If true, then it will start with /&lt;context-path&gt;, followed by the rest of the path. For example, if your application is deployed on the app context path (“/app”) and we want to reference the file &lt;webapp-folder&gt;/pages/index.html, then the root-relative path will be /app/pages/index.html. 
+</li>
+<li>
+Whether the path ends in a slash (“/”)
+</li>
+
+</ol>
+<div class="Unindented">
+The latter three properties are useful only in specific circumstances, but the parsed path is what lets us work magic. The path of the request is defined as the parts of the URI between the context path and the query string. The following table shows examples of parsed paths for a Lift application under the “myapp” context path:
+</div>
+<div class="Indented">
+<div class="center">
+<table>
+<tr>
+<td align="left" valign="top">
+<b><span class="footnotesize">Requested URL</span></b>
+</td>
+<td align="left" valign="top">
+<b><span class="footnotesize">Parsed Path</span></b>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+<span class="footnotesize">http://foo.com/myapp/home?test_this=true</span>
+</td>
+<td align="left" valign="top">
+<span class="footnotesize">List[String](“home”)</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+<span class="footnotesize">http://foo.com/myapp/user/derek</span>
+</td>
+<td align="left" valign="top">
+<span class="footnotesize">List[String](“user”, “derek”)</span>
+</td>
+
+</tr>
+<tr>
+<td align="left" valign="top">
+<span class="footnotesize">http://foo.com/myapp/view/item/14592</span>
+</td>
+<td align="left" valign="top">
+<span class="footnotesize">List[String](“view”,”item”,”14592”)</span>
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+<div class="Indented">
+The RequestType maps to one of the five HTTP methods: GET, POST, HEAD, PUT and DELETE. These are represented by the corresponding GetRequest, PostRequest, etc. case classes, with an UnknownRequest case class to cover anything strange.
+</div>
+<div class="Indented">
+The flexibility of Scala’s matching system is what really makes this powerful. In particular, when matching on Lists, we can match parts of the path and capture others. For example, suppose we’d like to rewrite the <tt>/account/&lt;account name&gt;</tt> path so that it’s handled by the <tt>/viewAcct</tt> template as shown in Listing <a class="Reference" href="index-3.html#lst:Simple-rewrite-example">3.7↓</a>. In this case we provide two rewrites. The first matches /account/&lt;account name&gt; and redirects it to the /viewAcct template, passing the acctName as a “name” parameter. The second matches /account/&lt;account name&gt;/&lt;tag&gt;, redirecting it to /viewAcct as before, but passing both the “name” and a “tag” parameter with the acctName and tag matches from the ParsePath, respectively. Remember that the underscore (_) in these matching statements means that we don’t care what that parameter is, i.e., match anything in that spot.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Simple Rewrite Example<a class="Label" name="lst:Simple-rewrite-example"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.rewrite.append {
+  case RewriteRequest(
+         ParsePath(List("account",acctName),_,_,_),_,_) =&gt; 
+         RewriteResponse("viewAcct" :: Nil, Map("name" -&gt; acctName))
+  case RewriteRequest(
+         ParsePath(List("account",acctName, tag),_,_,_),_,_) =&gt; 
+         RewriteResponse("viewAcct" :: Nil, Map("name" -&gt; acctName,
+                                                "tag" -&gt; tag)))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The RewriteResponse<a class="IndexReference" name="entry-RewriteResponse-0" href="index-Index.html#index-RewriteResponse">↓</a> simply contains the new path to follow. It can also take a Map<a class="IndexReference" name="entry-Map-0" href="index-Index.html#index-Map">↓</a> that contains parameters that will be accessible via S.param<a class="IndexReference" name="entry-S.param-0" href="index-Index.html#index-S.param">↓</a><a class="IndexReference" name="entry-S-1" href="index-Index.html#index-S">↓</a> in the snippet or view. As we stated before, the LiftSession (and therefore most of S) isn’t available at this time, so the Map is the only way to pass information on to the rewritten location. 
+</div>
+<div class="Indented">
+We can combine the ParsePath matching with the RequestType and HttpServletRequest to be very specific with our matches. For example, if we wanted to support the DELETE HTTP verb for a RESTful<span class="FootOuter"><span class="SupFootMarker"> [P] </span><span class="HoverFoot"><span class="SupFootMarker"> [P] </span></span></span><a class="IndexReference" name="entry-RESTful-0" href="index-Index.html#index-RESTful">↓</a> interface through an existing template, we could redirect as shown in Listing <a class="Reference" href="index-3.html#lst:Complex-rewrite-example">3.7↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Complex Rewrite Example<a class="Label" name="lst:Complex-rewrite-example"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.rewrite.append {
+  case RewriteRequest(ParsePath("username" :: Nil, _, _, _),
+                      DeleteRequest,
+                      httpreq) 
+                      if isMgmtSubnet(httpreq.getRemoteHost()) =&gt; 
+       RewriteResponse("deleteUser" :: Nil, Map("username" -&gt; username))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+We’ll go into more detail about how you can use this in the following sections. In particular, SiteMap<a class="IndexReference" name="entry-SiteMap-1" href="index-Index.html#index-SiteMap">↓</a> (Chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↓</a>) provides a mechanism for doing rewrites combined with menu entries.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.8">3.8</a> Custom Dispatch Functions <a class="Label" name="sec:Custom-dispatch-func"> </a>
+</h2>
+<div class="Unindented">
+Once the rewriting phase is complete (whether we pass through or are redirected), the next phase is to determine whether there should be a custom dispatch for the request. A custom dispatch allows you to handle a matching request directly by a method instead of going through the template lookup system. Because it bypasses templating, you’re responsible for the full content of the response. A typical use case would be a web service<a class="IndexReference" name="entry-web-service-0" href="index-Index.html#index-web-service">↓</a> returning XML or a service to return, say, a generated image or PDF. In that sense, the custom dispatch mechanism allows you to write your own “sub-servlets” without all the mess of implementing the interface and configuring them in web.xml<a class="IndexReference" name="entry-web.xml-1" href="index-Index.html#index-web.xml">↓</a>.
+</div>
+<div class="Indented">
+As with rewriting, custom dispatch is realized via a partial function. In this case, it’s a function of type <tt>PartialFunction[Req,<span class="formula">() ⇒ <i>Box</i>[<i>LiftResponse</i>]</span>]</tt> that does the work. The <tt>Req</tt> is similar to the <tt>RewriteRequest</tt> case class: it provides the path as a <tt>List[String]</tt>, the suffix of the request, and the <tt>RequestType</tt>. There are three ways that you can set up a custom dispatch function:
+</div>
+<ol>
+<li>
+Globally, via <tt>LiftRules.dispatch</tt><a class="IndexReference" name="entry-LiftRules-dispatch-0" href="index-Index.html#index-LiftRules-dispatch">↓</a><a class="IndexReference" name="entry-Custom-dispatch-stateful-0" href="index-Index.html#index-Custom-dispatch-stateful">↓</a>
+</li>
+<li>
+Globally, via <tt>LiftRules.statelessDispatchTable</tt><a class="IndexReference" name="entry-LiftRules-statelessDispatchTable-0" href="index-Index.html#index-LiftRules-statelessDispatchTable">↓</a><a class="IndexReference" name="entry-Custom-dispatch-stateless-0" href="index-Index.html#index-Custom-dispatch-stateless">↓</a>
+</li>
+<li>
+Per-Session, via <tt>S.addHighLevelSessionDispatcher</tt><a class="IndexReference" name="entry-S-addHighLevelSessionDispatcher-0" href="index-Index.html#index-S-addHighLevelSessionDispatcher">↓</a><a class="IndexReference" name="entry-Custom-dispatch-per-session-0" href="index-Index.html#index-Custom-dispatch-per-session">↓</a>
+</li>
+
+</ol>
+<div class="Unindented">
+If you attach the dispatch function via <tt>LiftRules.dispatch</tt> or <tt>S.addHighLevelSessionDispatcher</tt>, then you’ll have full access to the <tt>S</tt> object, <tt>SessionVar</tt>s and <tt>LiftSession</tt>; if you use <tt>LiftRules.statelessDispatchTable</tt> instead, then these aren’t available. The result of the dispatch should be a function that returns a <tt>Box[LiftResponse]</tt>. If the function returns <tt>Empty</tt>, then Lift returns a “404 Not Found” response.
+</div>
+<div class="Indented">
+As a concrete example, let’s look at returning a generated chart image from our application. There are several libraries for charting, but we’ll take a look at JFreeChart in particular. First, let’s write a method that will chart our account balances by month for the last year:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+A Charting Method<a class="Label" name="lst:Charting-method"> </a>
+</div>
+<pre class="listing brush: scala">def chart (endDate : String) : Box[LiftResponse] = {
+  // Query, set up chart, etc...
+  val buffered = balanceChart.createBufferedImage(width,height)
+  val chartImage = ChartUtilities.encodeAsPNG(buffered)
+  // InMemoryResponse is a subclass of LiftResponse
+  // it takes an Array of Bytes, a List[(String,String)] of
+  // headers, a List[Cookie] of Cookies, and an integer
+  // return code (here 200 for HTTP 200: OK)
+  Full(InMemoryResponse(chartImage, 
+                        ("Content-Type" -&gt; "image/png") :: Nil,
+                        Nil,
+                        200))
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Once we’ve set up the chart, we use the ChartUtilities helper class from JFreeChart to encode the chart into a PNG byte array. We can then use Lift’s InMemoryResponse<a class="IndexReference" name="entry-InMemoryResponse-0" href="index-Index.html#index-InMemoryResponse">↓</a> to pass the encoded data back to the client with the appropriate Content-Type<a class="IndexReference" name="entry-Type-0" href="index-Index.html#index-Type">↓</a> header. Now we just need to hook the request into the dispatch table from the Boot class as shown in Listing <a class="Reference" href="index-3.html#lst:Hooking-dispatch-into-Boot">3.8↓</a>. In this instance, we want state so that we can get the current user’s chart. For this reason, we use <tt>LiftRules.dispatch</tt> as opposed to <tt>LiftRules.statelessDispatch</tt>. Because we’re using a partial function to perform a Scala match operation, the case that we define here uses the <tt>Req</tt> object’s <tt>unapply</tt> method, which is why we only need to provide the <tt>List[String]</tt> argument. <div class="listing">
+<div class="caption">
+Hooking Dispatch into Boot<a class="Label" name="lst:Hooking-dispatch-into-Boot"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.dispatch.append {
+  case Req("chart" :: "balances" :: endDate :: Nil, _, _) =&gt;
+    Charting.chart(endDate) _
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As you can see, we capture the endDate parameter from the path and pass it into our chart method. This means that we can use a URL like <tt>http://foo.com/chart/balances/20080401</tt> to obtain the image. Since the dispatch function has an associated Lift session, we can also use the S.param method to get query string parameters, if, for example, we wanted to allow someone to send an optional width and height:
+</div>
+<pre class="LyX-Code">
+val width = S.param(“width”).map(_.toInt) openOr 400
+val height = S.param(“height”).map(_.toInt) openOr 300
+</pre>
+<div class="Unindented">
+Or you can use a slightly different approach by using the <tt>Box.dmap</tt> method:
+</div>
+<pre class="LyX-Code">
+val width = S.param(“width”).dmap(400)(_.toInt)
+val height = S.param(“height”).dmap(300)(_.toInt)
+</pre>
+<div class="Unindented">
+Where dmap is identical with map function except that the first argument is the default value to use if the <tt>Box</tt> is <tt>Empty</tt>. There are a number of other ListResponse subclasses to cover your needs, including responses for XHTML, XML, Atom, Javascript, CSS, and JSON. We cover these in more detail in Section <a class="Reference" href="index-9.html#sec:LiftResponse-in-Detail">9.4↓</a>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.9">3.9</a> HTTP Redirects <a class="Label" name="sec:HTTP-redirects"> </a>
+</h2>
+<div class="Unindented">
+HTTP redirects are an important part of many web applications. In Lift there are two main ways of sending a redirect to the client:
+</div>
+<ol>
+<li>
+Call S.redirectTo. When you do this, Lift throws an exception and catches it later on. This means that any code following the redirect is skipped. If you’re using a StatefulSnippet (Section <a class="Reference" href="index-5.html#sub:Stateless-versus-Stateful">5.3.3↓</a>), use <tt>this.redirectTo</tt> so that your snippet instance is used when the redirect is processed.<div class="Unindented">
+<div class="Shadowbox" style="width: 80%;">
+<b>Important:</b> if you use S.redirectTo within a try/catch block, you’ll need to make sure that you aren’t catching the redirect exception (Scala uses unchecked exceptions), or test for the redirect’s exception and rethrow it. Ifyou mistakenly catch the redirect exception, then no redirect will occur. 
+</div>
+
+</div>
+
+</li>
+<li>
+When you need to return a LiftResponse, you can simply return a RedirectResponse or a RedirectWithState response.
+</li>
+
+</ol>
+<div class="Unindented">
+The RedirectWithState response allows you to specify a function to be executed when the redirected request is processed. You can also send Lift messages (notices, warnings, and errors) that will be rendered in the redirected page, as well as cookies to be set on redirect. Similarly, there is an overloaded version of S.redirectTo that allows you to specify a function to be executed when the redirect is processed.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.10">3.10</a> Cookies<a class="Label" name="sec:Cookies"> </a>
+</h2>
+<div class="Unindented">
+Cookies<span class="FootOuter"><span class="SupFootMarker"> [Q] </span><span class="HoverFoot"><span class="SupFootMarker"> [Q] </span><a class="URL" href="http://java.sun.com/products/servlet/2.2/javadoc/javax/servlet/http/Cookie.html">http://java.sun.com/products/servlet/2.2/javadoc/javax/servlet/http/Cookie.html</a></span></span> are a useful tool when you want data persisted across user sessions. Cookies are essentially a token of string data that is stored on the user’s machine. While they can be quite useful, there are a few things that you should be aware of:
+</div>
+<ol>
+<li>
+The user’s browser may have cookies disabled, in which case you need to be prepared to work without cookies or tell the user that they need to enable them for your site
+</li>
+<li>
+Cookies are relatively insecure<span class="FootOuter"><span class="SupFootMarker"> [R] </span><span class="HoverFoot"><span class="SupFootMarker"> [R] </span>See <a class="URL" href="http://www.w3.org/Security/Faq/wwwsf2.html">http://www.w3.org/Security/Faq/wwwsf2.html</a> (Q10) and <a class="URL" href="http://www.cookiecentral.com/faq/">http://www.cookiecentral.com/faq/</a> for details on cookies and their security issues.</span></span>. There have been a number of browser bugs related to data in cookies being read by viruses or other sites
+</li>
+<li>
+Cookies are easy to fake, so you need to ensure that you validate any sensitive cookie data
+</li>
+
+</ol>
+<div class="Unindented">
+Using Cookies in Lift is very easy. In a stateful context, everything you need is provided by a few methods on the S object:
+</div>
+<div class="Description">
+<span class="Description-entry">addCookie</span> Adds a cookie to be sent in the response
+</div>
+<div class="Description">
+<span class="Description-entry">deleteCookie</span> Deletes a cookie (technically, this adds a cookie with a maximum age of zero so that the browser removes it). You can either delete a cookie by name, or with a Cookie object
+</div>
+<div class="Description">
+<span class="Description-entry">findCookie</span> Looks for a cookie with a given name and returns a Box[Cookie]. Empty means that the cookie doesn’t exist
+</div>
+<div class="Description">
+<span class="Description-entry">receivedCookies</span> Returns a List[Cookie] of all of the cookies sent in the request
+</div>
+<div class="Description">
+<span class="Description-entry">responseCookies</span> Returns a List[Cookie] of the cookies that will be sent in the response
+</div>
+<div class="Unindented">
+If you need to work with cookies in a stateless context, many of the ListResponse classes (Section <a class="Reference" href="index-9.html#sec:LiftResponse-in-Detail">9.4↓</a>) include a List[Cookie] in their constructor or <tt>apply</tt> arguments. Simply provide a list of the cookies you want to set, and they’ll be sent in the response. If you want to delete a cookie in a LiftResponse, you have to do it manually by adding a cookie with the same name and a <tt>maxage</tt> of zero. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.11">3.11</a> Session and Request State<a class="Label" name="sec:Session-and-Request"> </a>
+</h2>
+<div class="Unindented">
+Lift provides a very easy way to store per-session and per-request data through the SessionVar and RequestVar classes. In true Lift fashion, these classes provide:
+</div>
+<ul>
+<li>
+Type-safe access to the data they hold
+</li>
+<li>
+A mechanism for providing a default value if the session or request doesn’t exist yet
+</li>
+<li>
+A mechanism for cleaning up the data when the variable’s lifecycle ends
+</li>
+
+</ul>
+<div class="Unindented">
+Additionally, Lift provides easy access to HTTP request parameters<a class="IndexReference" name="entry-request-parameters-0" href="index-Index.html#index-request-parameters">↓</a> via the S.param method, which returns a Box[String]. Note that HTTP request parameters (sent via GET or POST) differ from RequestVars in that query parameters are string values sent as part of the request; RequestVars, in contrast, use an internal per-request Map so that they can hold any type, and are initialized entirely in code. At this point you might ask what RequestVars can be used for. A typical example would be sharing state between different snippets, since there is no connection between snippets other than at the template level.
+</div>
+<div class="Indented">
+SessionVars and RequestVars are intended to be implemented as singleton objects so that they’re accessible from anywhere in your code. Listing <a class="Reference" href="index-3.html#lst:Defining-a-RequestVar">3.11↓</a> shows an example definition of a RequestVar used to hold the number of entries to show per page. We start by defining the object as extending the RequestVar. You must provide the type of the RequestVar so that Lift knows what to accept and return. In this instance, the type is an Int. The constructor argument is a by-name parameter which must evaluate to the var’s type. In our case, we attempt to use the HTTP request variable “pageSize,” and if that isn’t present or isn’t an integer, then we default to 25.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining a RequestVar<a class="Label" name="lst:Defining-a-RequestVar"> </a>
+</div>
+<pre class="listing brush: scala">class AccountOps {
+  object pageSize extends RequestVar[Int](S.param("pageSize").map(_.toInt) openOr 25)
+  ...
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Accessing the value of the <tt>RequestVar</tt> is done via the <tt>is</tt> method. You can also set the value using the <tt>apply</tt> method, which in Scala is syntactically like using the <tt>RequestVar</tt> as a function. Common uses of apply in Scala include array element access by index and companion object methods that can approximate custom constructors. For example, the <tt>Loc</tt> object (which we’ll cover in Chapter <a class="Reference" href="index-7.html#cha:SiteMap">7↓</a>), has an overloaded <tt>apply</tt> method that creates a new <tt>Loc</tt> class instance based on input parameters.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Accessing the RequestVar<a class="Label" name="lst:Accessing-the-RequestVar"> </a>
+</div>
+<pre class="listing brush: scala">// get the value contained in the AccountOps.pageSize RequestVar
+query.setMaxResults(AccountOps.pageSize.is)
+​
+// Change the value of the RequestVar. The following two lines
+// of code are equivalent:
+AccountOps.pageSize(50)
+AccountOps.pageSize.apply(50)
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+In addition to taking a parameter that defines a default value for setup, you can also clean up the value when the variable ends it lifecycle. Listing <a class="Reference" href="index-3.html#lst:Defining-a-Cleanup">3.11↓</a> shows an example of opening a socket and closing it at the end of the request. This is all handled by passing a function to the <tt>registerCleanupFunc</tt> method. The type of the function that you need to pass is <span class="formula"><i>CleanUpParam</i> ⇒ <i>Unit</i></span>, where <tt>CleanUpParam</tt> is defined based on whether you’re using a <tt>RequestVar</tt> or a <tt>SessionVar</tt>. With <tt>RequestVar</tt>, <tt>CleanUpParam</tt> is of type <tt>Box[LiftSession]</tt>, reflecting that the session may not be in scope when the cleanup function executes. For a <tt>SessionVar</tt> the <tt>CleanUpParam</tt> is of type <tt>LiftSession</tt>, since the session is always in scope for a <tt>SessionVar</tt> (it holds a reference to the session). In our example in Listing <a class="Reference" href="index-3.html#lst:Defining-a-Cleanup">3.11↓</a> we simply ignore the input parameter to the cleanup function, since closing the socket is independent of any session state. Another important thing to remember is that you’re responsible for handling any exceptions that might be thrown during either default initialization or cleanup. 
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining a Cleanup Function<a class="Label" name="lst:Defining-a-Cleanup"> </a>
+</div>
+<pre class="listing brush: scala">object mySocket extends RequestVar[Socket](new Socket("localhost:23")) {
+  registerCleanupFunc(ignore =&gt; this.is.close)
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The information we’ve covered here is equally applicable to SessionVars; the only difference between them is the scope of their respective lifecycles.
+</div>
+<div class="Indented">
+Another common use of <tt>RequestVar</tt> is to pass state around between different page views (requests). We start by defining a <tt>RequestVar</tt> on an object so that it’s accesible from all of the snippet methods that will read and write to it. It’s also possible to define it on a class if all of the snippets that will access it are in that class. Then, in the parts of your code that will transition to a new page you use the overloaded versions of <tt>SHtml.link</tt> or<tt> S.redirectTo</tt> that take a function as a second argument to “inject” the value you want to pass via the <tt>RequestVar</tt>. This is similar to using a query parameter on the URL to pass data, but there are two important advantages:
+</div>
+<ol>
+<li>
+You can pass any type of data via a <tt>RequestVar</tt>, as opposed to just string data in a query parameter.
+</li>
+<li>
+You’re really only passing a reference to the injector function, as opposed to the data itself. This can be important if you don’t want the user to be able to tamper with the passed data. One example would be passing the cost of an item from a “view item” page to an “add to cart” page.
+</li>
+
+</ol>
+<div class="Unindented">
+Listing <a class="Reference" href="index-3.html#lst:Passing-an-Account">3.11↓</a> shows how we pass an Account from a listing table to a specific Account edit page using <tt>SHtml.link</tt>, as well as how we could transition from an edit page to a view page using <tt>S.redirectTo</tt>. Another example of passing is shown in Listing <a class="Reference" href="index-12.html#lst:Passing-Detached-Instances">12.1.3 on page 1↓</a>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Passing an Account to View<a class="Label" name="lst:Passing-an-Account"> </a>
+</div>
+<pre class="listing brush: scala">class AccountOps {
+  ...
+  object currentAccountVar extends RequestVar[Account](null)
+  ...
+  def manage (xhtml : NodeSeq) ... {
+    ...
+    User.currentUser.map({user =&gt; 
+      user.accounts.flatMap({acct =&gt;
+        bind("acct", chooseTemplate("account", "entry", xhtml),
+          ...
+          // The second argument injects the "acct" val back
+          // into the RequestVar
+          link("/editAcct", () =&gt; currentAccountVar(acct), Text("Edit"))
+      })
+    })
+    ...
+  }
+  def edit (xhtml : NodeSeq) : NodeSeq = {
+    def doSave () {
+      ...
+      val acct = currentAccountVar.is
+      S.redirectTo("/view", () =&gt; currentAccountVar(acct))
+    }
+    ...
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+One important thing to note is that the injector variable is called in the scope of the <i>following</i> request. This means that if you want the value returned by the function at the point where you call the link or redirectTo, you’ll need to capture it in a val. Otherwise, the function will be called <i>after</i> the redirect or link, which may result in a different value than you expect. As you can see in Listing <a class="Reference" href="index-3.html#lst:Passing-an-Account">3.11↑</a>, we set up an acct val in our doSave method prior to redirecting. If we tried to do something like
+</div>
+<pre class="LyX-Code">
+S.redirectTo("/view", () =&gt; currentAccountVar(currentAccountVar.is))
+</pre>
+<div class="Unindented">
+instead, we would get the default value of our RequestVar (null in this case).
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-3.12">3.12</a> Conclusion
+</h2>
+<div class="Unindented">
+We’ve covered a lot of material and we still have a lot more to go. Hopefully this chapter provides a firm basis to start from when exploring the rest of the book.
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-2.html#Next">Previous: Chapter 2</a></span>
+<span class="up"><a class="up" href="index-Part-I.html">Up: Part I</a></span>
+<span class="next"><a class="next" name="Next" href="index-4.html#prev">Next: Chapter 4</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

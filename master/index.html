@@ -1,0 +1,1164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev"> </a></span>
+<span class="up"><a class="up" href="index.html">Up: Main page</a></span>
+<span class="next"><a class="next" name="Next" href="index-Chapter--1.html#prev">Next: Chapter</a></span>
+</div>
+<h1 class="title">
+<span class="giant">Exploring Lift</span>
+</h1>
+<h2 class="author">
+Lift 2.0 Edition
+</h2>
+<h2 class="author">
+Written by 
+</h2>
+<h2 class="author">
+Derek Chen-Becker, Marius Danciu and Tyler Weir
+</h2>
+<div class="Unindented">
+Copyright © 2008, 2009, 2010, 2011 by Derek Chen-Becker, Marius Danciu, David Pollak, and Tyler Weir.<br/>
+This work is licensed under the Creative Commons Attribution-No Derivative Works 3.0 Unported License.
+</div>
+<div class="Indented">
+The home page for <i>Exploring Lift</i> is at <a class="FlexURL" href="http://exploring.liftweb.net">http://exploring.liftweb.net</a>. Here you can find up-to-date copies of the text, as well as links to the mailing list, issue tracking, and source code. 
+</div>
+<div class="fulltoc">
+<div class="tocheader">
+Table of Contents
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-Chapter--1.html#toc-Chapter--1">Chapter: Dedication</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-Chapter--2.html#toc-Chapter--2">Chapter: Acknowledgements</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-Part-I.html#toc-Part-I">Part I: The Basics</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Chapter-1">Chapter 1: Welcome to Lift!</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Section-1.1">Section 1.1: Why Lift?</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Section-1.2">Section 1.2: What You Should Know before Starting</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Section-1.3">Section 1.3: Typographical Conventions</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Section-1.4">Section 1.4: For More Information about Lift</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-1.html#toc-Section-1.5">Section 1.5: Your First Lift Application</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Chapter-2">Chapter 2: PocketChange</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Section-2.1">Section 2.1: Defining the Model</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Section-2.2">Section 2.2: Our First Template</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Section-2.3">Section 2.3: Writing Snippets</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Section-2.4">Section 2.4: A Little AJAX Spice</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#toc-Section-2.5">Section 2.5: Conclusion</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Chapter-3">Chapter 3: Lift Fundamentals</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.1">Section 3.1: Entry into Lift</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.2">Section 3.2: Bootstrap</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Subsection-3.2.1">Subsection 3.2.1: Class Resolution</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.3">Section 3.3: A Note on Standard Imports</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.4">Section 3.4: Lift’s Main Objects</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Subsection-3.4.1">Subsection 3.4.1: S object</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Subsection-3.4.2">Subsection 3.4.2: SHtml</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Subsection-3.4.3">Subsection 3.4.3: LiftRules</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.5">Section 3.5: The Rendering Process</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.6">Section 3.6: Notices, Warnings, and Error Messages</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.7">Section 3.7: URL Rewriting </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.8">Section 3.8: Custom Dispatch Functions </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.9">Section 3.9: HTTP Redirects </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.10">Section 3.10: Cookies</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.11">Section 3.11: Session and Request State</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-3.html#toc-Section-3.12">Section 3.12: Conclusion</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Chapter-4">Chapter 4: Templates in Lift</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.1">Section 4.1: Template XML</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.1.1">Subsection 4.1.1: Locating Template XML</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.1.2">Subsection 4.1.2: Processing Template XML</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.2">Section 4.2: Designer-Friendly Templates</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.2.1">Subsection 4.2.1: Determining the Content Element</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.2.2">Subsection 4.2.2: Invoking Snippets Via the Class Attribute</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.2.3">Subsection 4.2.3: Binding via CSS transforms</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.3">Section 4.3: HTML5 Support</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.4">Section 4.4: Views</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.5">Section 4.5: Tags</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.1">Subsection 4.5.1: a</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.2">Subsection 4.5.2: bind</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.3">Subsection 4.5.3: bind-at</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.4">Subsection 4.5.4: children</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.5">Subsection 4.5.5: comet</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.6">Subsection 4.5.6: CSS</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.7">Subsection 4.5.7: embed </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.8">Subsection 4.5.8: form</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.9">Subsection 4.5.9: HTML5</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.10">Subsection 4.5.10: ignore</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.11">Subsection 4.5.11: lazy-load</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.12">Subsection 4.5.12: loc</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.13">Subsection 4.5.13: Menu</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.14">Subsection 4.5.14: Msgs</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.15">Subsection 4.5.15: SkipDocType</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.16">Subsection 4.5.16: snippet</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.17">Subsection 4.5.17: surround</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.18">Subsection 4.5.18: tail</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.19">Subsection 4.5.19: TestCond</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.20">Subsection 4.5.20: with-param</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.21">Subsection 4.5.21: with-resource-id</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.22">Subsection 4.5.22: VersionInfo</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Subsection-4.5.23">Subsection 4.5.23: XmlGroup</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.6">Section 4.6: Head and Tail Merge</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-4.html#toc-Section-4.7">Section 4.7: Binding</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Chapter-5">Chapter 5: Snippets</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Section-5.1">Section 5.1: The Snippet Tag</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Section-5.2">Section 5.2: Snippet Dispatch</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.2.1">Subsection 5.2.1: Implicit Dispatch Via Reflection</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.2.2">Subsection 5.2.2: Explicit Dispatch</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.2.3">Subsection 5.2.3: Per-request Remapping</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Section-5.3">Section 5.3: Snippet Methods</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.3.1">Subsection 5.3.1: Binding Values in Snippets</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.3.2">Subsection 5.3.2: CSS Selector Transforms</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.3.3">Subsection 5.3.3: Stateless versus Stateful Snippets</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.3.4">Subsection 5.3.4: Eager Evaluation</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Section-5.4">Section 5.4: Handling XHTML Attributes in Snippets</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.4.1">Subsection 5.4.1: Direct Manipulation in Code</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-5.html#toc-Subsection-5.4.2">Subsection 5.4.2: XHTML Attribute Pass-through</a>
+</div>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Chapter-6">Chapter 6: Forms in Lift</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Section-6.1">Section 6.1: Form Fundamentals</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Section-6.2">Section 6.2: Attributes for Form Elements</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Section-6.3">Section 6.3: An Overview of Form Elements</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.1">Subsection 6.3.1: checkbox</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.2">Subsection 6.3.2: hidden</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.3">Subsection 6.3.3: link</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.4">Subsection 6.3.4: text and password</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.5">Subsection 6.3.5: textarea</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.6">Subsection 6.3.6: submit</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.7">Subsection 6.3.7: multiselect</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.8">Subsection 6.3.8: radio</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.9">Subsection 6.3.9: select</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.10">Subsection 6.3.10: selectObj</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Subsection-6.3.11">Subsection 6.3.11: untrustedSelect</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-6.html#toc-Section-6.4">Section 6.4: File Uploads</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Chapter-7">Chapter 7: SiteMap</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.1">Section 7.1: Basic SiteMap Definition</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.1.1">Subsection 7.1.1: The Link Class</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.1.2">Subsection 7.1.2: ExtLink</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.1.3">Subsection 7.1.3: Creating Menu Entries</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.1.4">Subsection 7.1.4: Nested Menus</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.1.5">Subsection 7.1.5: Setting the Global SiteMap</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.2">Section 7.2: Customizing Display</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.2.1">Subsection 7.2.1: Hidden</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.2.2">Subsection 7.2.2: Controlling the Menu Text</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.2.3">Subsection 7.2.3: Using &lt;lift:Menu&gt;</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.3">Section 7.3: Access Control</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.3.1">Subsection 7.3.1: If</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.3.2">Subsection 7.3.2: Unless</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.4">Section 7.4: Page-Specific Rendering</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.4.1">Subsection 7.4.1: The Template Parameter</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.4.2">Subsection 7.4.2: The Snippet and LocSnippets Parameters</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.4.3">Subsection 7.4.3: Title</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.5">Section 7.5: Miscellaneous Menu Functionality</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.5.1">Subsection 7.5.1: Test</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.5.2">Subsection 7.5.2: LocGroup</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.6">Section 7.6: Writing Your Own Loc</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.6.1">Subsection 7.6.1: Corresponding Functions</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.6.2">Subsection 7.6.2: Type Safe Parameters</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.6.3">Subsection 7.6.3: Dynamically Adding Child Menus</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Subsection-7.6.4">Subsection 7.6.4: Binding Your Custom Loc</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-7.html#toc-Section-7.7">Section 7.7: Conclusion</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Chapter-8">Chapter 8: The Mapper and Record Frameworks</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Section-8.1">Section 8.1: Introduction to Mapper and MetaMapper</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.1">Subsection 8.1.1: Adding Mapper to Your Project</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.2">Subsection 8.1.2: Setting Up the Database Connection</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.3">Subsection 8.1.3: Constructing a Mapper-enabled Class</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.4">Subsection 8.1.4: Object Relationships</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.5">Subsection 8.1.5: Indexing</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.6">Subsection 8.1.6: Schema Mapping</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.7">Subsection 8.1.7: Persistence Operations on an Entity</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.8">Subsection 8.1.8: Querying for Entities</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.9">Subsection 8.1.9: Comparison QueryParams</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.10">Subsection 8.1.10: Control QueryParams</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.1.11">Subsection 8.1.11: Making Joins a Little Friendlier</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Section-8.2">Section 8.2: Utility Functionality</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.1">Subsection 8.2.1: Display Generation</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.2">Subsection 8.2.2: Form Generation</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.3">Subsection 8.2.3: Validation</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.4">Subsection 8.2.4: CRUD Support</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.5">Subsection 8.2.5: Lifecycle Callbacks</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.6">Subsection 8.2.6: Base Field Types</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.7">Subsection 8.2.7: Defining Custom Field Types in Mapper</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.2.8">Subsection 8.2.8: ProtoUser and MegaProtoUser</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Section-8.3">Section 8.3: Advanced Features</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.3.1">Subsection 8.3.1: Using Multiple Databases </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.3.2">Subsection 8.3.2: Database Sharding</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Subsection-8.3.3">Subsection 8.3.3: SQL-based Queries</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Section-8.4">Section 8.4: Logging</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-8.html#toc-Section-8.5">Section 8.5: Summary </a>
+</div>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-Part-II.html#toc-Part-II">Part II: Advanced Topics</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Chapter-9">Chapter 9: Advanced Lift Architecture</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.1">Section 9.1: Architectural Overview</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.2">Section 9.2: The Request/Response Lifecycle</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.3">Section 9.3: Lift Function Mapping</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.4">Section 9.4: LiftResponse in Detail</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.4.1">Subsection 9.4.1: InMemoryResponse</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.4.2">Subsection 9.4.2: StreamingResponse</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.4.3">Subsection 9.4.3: Hierarchy</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.4.4">Subsection 9.4.4: RedirectWithState</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.4.5">Subsection 9.4.5: XmlResponse</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.5">Section 9.5: Session Management </a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.5.1">Subsection 9.5.1: Lift garbage collection</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.6">Section 9.6: Miscellaneous Lift Features</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.6.1">Subsection 9.6.1: Wrapping Lift’s processing logic</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.6.2">Subsection 9.6.2: Passing Template Parameters to Snippets </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.6.3">Subsection 9.6.3: Computing Attributes with Snippets</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.6.4">Subsection 9.6.4: Processing Element Attributes</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.7">Section 9.7: Advanced S Object Features</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.1">Subsection 9.7.1: Managing cookies</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.2">Subsection 9.7.2: Localization and Internationalization</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.3">Subsection 9.7.3: Managing the Timezone</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.4">Subsection 9.7.4: Per-session DispatchPF functions </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.5">Subsection 9.7.5: Session re-writers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.6">Subsection 9.7.6: Access to HTTP headers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.7">Subsection 9.7.7: Manage the document type</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.7.8">Subsection 9.7.8: Other functions </a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.8">Section 9.8: ResourceServer</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Section-9.9">Section 9.9: HTTP Authentication</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.9.1">Subsection 9.9.1: Determining which Resources to Protect</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.9.2">Subsection 9.9.2: Providing the Authentication Hook</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#toc-Subsection-9.9.3">Subsection 9.9.3: Role Hierarchies</a>
+</div>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Chapter-10">Chapter 10: Lift and JavaScript</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.1">Section 10.1: JavaScript high level abstractions</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Subsection-10.1.1">Subsection 10.1.1: JsCmd and JsExp overview</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Subsection-10.1.2">Subsection 10.1.2: JavaScript Abstraction Examples</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.2">Section 10.2: JQuery and other JavaScript frameworks</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.3">Section 10.3: XML and JavaScript</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.4">Section 10.4: JSON</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Subsection-10.4.1">Subsection 10.4.1: JSON forms</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.5">Section 10.5: JqSHtml object</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-10.html#toc-Section-10.6">Section 10.6: A recap</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Chapter-11">Chapter 11: AJAX and Comet in Lift</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.1">Section 11.1: What are AJAX and Comet, really?</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.2">Section 11.2: Using AJAX in Lift</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.3">Section 11.3: A more complex AJAX example</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.4">Section 11.4: AJAX Generators in Detail</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.5">Section 11.5: Comet and Lift</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Subsection-11.5.1">Subsection 11.5.1: Actors in Scala</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Subsection-11.5.2">Subsection 11.5.2: Building a Comet Application in Lift</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.6">Section 11.6: Coordinating Between Multiple Comet Clients</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#toc-Section-11.7">Section 11.7: Summary</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Chapter-12">Chapter 12: JPA Integration</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.1">Section 12.1: Introducing JPA</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.1.1">Subsection 12.1.1: Using Entity Classes in Scala</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.1.2">Subsection 12.1.2: Using the orm.xml descriptor</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.1.3">Subsection 12.1.3: Working with Attached and Detached Objects</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.2">Section 12.2: Obtaining a Per-Session EntityManager</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.3">Section 12.3: Handling Transactions</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.4">Section 12.4: ScalaEntityManager and ScalaQuery</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.5">Section 12.5: Operating on Entities</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.1">Subsection 12.5.1: Persisting, Merging and Removing Entities</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.2">Subsection 12.5.2: Loading an Entity</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.3">Subsection 12.5.3: Loading Many Entities</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.4">Subsection 12.5.4: Using Queries Wisely</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.5">Subsection 12.5.5: Converting Collection Properties</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.6">Subsection 12.5.6: The importance of flush() and Exceptions</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Subsection-12.5.7">Subsection 12.5.7: Validating Entities</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.6">Section 12.6: Supporting User Types</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.7">Section 12.7: Running the Application</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-12.html#toc-Section-12.8">Section 12.8: Summing Up</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Chapter-13">Chapter 13: Third Party Integrations</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.1">Section 13.1: OpenID Integration</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.2">Section 13.2: AMQP </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.3">Section 13.3: PayPal</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.4">Section 13.4: Facebook</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.5">Section 13.5: XMPP</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-13.html#toc-Section-13.6">Section 13.6: Lucene/Compass Integration</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Chapter-14">Chapter 14: Lift Widgets</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Section-14.1">Section 14.1: Current Lift Widgets</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.1">Subsection 14.1.1: TableSorter widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.2">Subsection 14.1.2: Calendar widgets</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.3">Subsection 14.1.3: RSS Feed widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.4">Subsection 14.1.4: Gravatar widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.5">Subsection 14.1.5: TreeView widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Subsection-14.1.6">Subsection 14.1.6: Sparklines widget</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#toc-Section-14.2">Section 14.2: How to build a widget</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Chapter-15">Chapter 15: RESTful Web Services</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.1">Section 15.1: Some Background on REST</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.1.1">Subsection 15.1.1: A Little Bit about HTTP</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.1.2">Subsection 15.1.2: Defining REST</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.1.3">Subsection 15.1.3: Comparing XML-RPC to REST Architectures</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.2">Section 15.2: A Simple API for PocketChange</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.3">Section 15.3: Adding REST Helper Methods to our Entities</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.4">Section 15.4: Multiple Approaches to REST Handling</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.4.1">Subsection 15.4.1: Using Custom Dispatch</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.4.2">Subsection 15.4.2: Using the RestHelper Trait</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.5">Section 15.5: Processing Expense PUTs</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.6">Section 15.6: The Request and Response Cycles for Our API</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.7">Section 15.7: Extending the API to Return Atom Feeds</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.7.1">Subsection 15.7.1: An Example Atom Request</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Subsection-15.7.2">Subsection 15.7.2: Add a feed tag for the account page</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-15.html#toc-Section-15.8">Section 15.8: Conclusion</a>
+</div>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-Part-III.html#toc-Part-III">Part III: Appendices</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Appendix-A">Appendix A: A Brief Tour of Maven</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.1">Section A.1: What is Maven?</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.2">Section A.2: Lifecycles, Phases and Goals</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.3">Section A.3: Repositories</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.4">Section A.4: Plugins</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.5">Section A.5: Dependencies</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Subsection-A.5.1">Subsection A.5.1: Adding a Dependency</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.6">Section A.6: Further Resources</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-A.html#toc-Section-A.7">Section A.7: Project Layout</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-B.html#toc-Appendix-B">Appendix B: Message Handling</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-B.html#toc-Section-B.1">Section B.1: Sending Messages</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-B.html#toc-Section-B.2">Section B.2: Displaying Messages</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Appendix-C">Appendix C: Lift Helpers</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.1">Section C.1: Introduction</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.2">Section C.2: Box (or Scala’s Option class on steroids)</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.3">Section C.3: ActorPing</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.4">Section C.4: ClassHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.5">Section C.5: CodeHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.6">Section C.6: ControlHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.7">Section C.7: CSSHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.8">Section C.8: BindHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.9">Section C.9: HttpHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.10">Section C.10: JSON</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.11">Section C.11: LD</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.12">Section C.12: ListHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.13">Section C.13: NamedPartialFunctions</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.14">Section C.14: SecurityHelpers</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-C.html#toc-Section-C.15">Section C.15: TimeHelpers</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Appendix-D">Appendix D: Internationalization</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.1">Section D.1: Localized Templates</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.2">Section D.2: Resource Bundles</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.3">Section D.3: An Important Note on Resource Bundle Resolution</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.4">Section D.4: Localized Strings in Scala Code</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.5">Section D.5: Formatting Localized Strings</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.6">Section D.6: Localized Strings in Templates</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-D.html#toc-Section-D.7">Section D.7: Calculating Locale</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Appendix-E">Appendix E: Logging in Lift</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Section-E.1">Section E.1: Logging Backend</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Section-E.2">Section E.2: Basic Logging</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Subsection-E.2.1">Subsection E.2.1: Logging Setup</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Subsection-E.2.2">Subsection E.2.2: Obtaining a Logger</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Subsection-E.2.3">Subsection E.2.3: Logging Methods</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Section-E.3">Section E.3: Log Level Guards</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-E.html#toc-Section-E.4">Section E.4: Logging Mapper Queries</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-F.html#toc-Appendix-F">Appendix F: Sending Email</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-F.html#toc-Section-F.1">Section F.1: Setup</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-F.html#toc-Section-F.2">Section F.2: Sending Emails</a>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Appendix-G">Appendix G: JPA Code Listings</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Section-G.1">Section G.1: JPA Library Demo</a>
+</div>
+<div class="tocindent">
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Subsection-G.1.1">Subsection G.1.1: Author Entity</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Subsection-G.1.2">Subsection G.1.2: orm.xml Mapping</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Subsection-G.1.3">Subsection G.1.3: Enumv Trait</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Subsection-G.1.4">Subsection G.1.4: EnumerationType</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-G.html#toc-Subsection-G.1.5">Subsection G.1.5: JPA web.xml</a>
+</div>
+</div>
+</div>
+</div>
+<div class="toc">
+<a class="Link" href="index-Index.html#Index">Index</a>
+</div>
+
+</div>
+<div class="fulltoc">
+<div class="tocheader">
+List of Figures
+</div>
+<div class="toc">
+<a class="Link" href="index-2.html#Figure-2.1">Figure 2.1: The PocketChange App</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#fig:Architecture-diagram">Figure 9.1: Architecture</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#Figure-9.2">Figure 9.2: Lift Global Request Processing</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#Figure-9.3">Figure 9.3: Lift HTTP Request Processing</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-9.html#fig:Roles-hierarchy-example">Figure 9.4: Roles hierarchy example</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-11.html#fig:model-comparisons">Figure 11.1: Application Model Comparisons</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#Figure-14.1">Figure 14.1: TableSorter widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#Figure-14.2">Figure 14.2: Calendar Month-View</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#Figure-14.3">Figure 14.3: Calendar Week-View</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#Figure-14.4">Figure 14.4: Calendar Day-View </a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#Figure-14.5">Figure 14.5: RSSFeed widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#fig:TreeView-widget">Figure 14.6: TreeView widget</a>
+</div>
+<div class="toc">
+<a class="Link" href="index-14.html#fig:Sparklines-bar-chart">Figure 14.7: Sparklines bar chart</a>
+</div>
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev"> </a></span>
+<span class="up"><a class="up" href="index.html">Up: Main page</a></span>
+<span class="next"><a class="next" name="Next" href="index-Chapter--1.html#prev">Next: Chapter</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

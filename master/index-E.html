@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-D.html#Next">Previous: Appendix D</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-F.html#prev">Next: Appendix F</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-E">E</a> Logging in Lift<a class="Label" name="cha:Logging-in-Lift"> </a>
+</h1>
+<div class="Unindented">
+Logging is a useful part of any application, Lift app or otherwise. Logging can be used to audit user actions, give insight into runtime performance and operation, and even to troubleshoot and debug issues. Lift comes with a thin logging facade that sits on top of the SLF4J library<span class="FootOuter"><span class="SupFootMarker"> [M] </span><span class="HoverFoot"><span class="SupFootMarker"> [M] </span><a class="FlexURL" href="http://www.slf4j.org/">http://www.slf4j.org/</a></span></span>. This facade provides simple access to most common logging functions and aims to be easy to use, flexible, and most important, inconspicuous. If you do decide that Lift’s logging facilities don’t meet your needs, it’s possible to use any Java logging framework you desire, but it’s still useful to understand Lift’s framework since Lift uses it internally for logging.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-E.1">E.1</a> Logging Backend<a class="Label" name="sec:Logging-Backend"> </a>
+</h2>
+<div class="Unindented">
+The detailed configuration of SLF4J is outside the scope of this book, but we would like to highlight a few key notes concerning SLF4J. First, SLF4J splits the API from the implementation into separate JAR files. This allows you to choose the backing implementation that best suits your deployment. For example, SLF4J contains implementations for JDK logging, log4j, and more. For example, the JBoss application server version 5 and newer comes bundled with its own implementation of the SLF4J API, so you can simply deploy a Lift WAR on JBoss and use the server’s configuration and logging. Similarly, Jetty comes bundled with the SLF4J API.
+</div>
+<div class="Indented">
+Outside of container-provided implementations, the logback logging framework<span class="FootOuter"><span class="SupFootMarker"> [N] </span><span class="HoverFoot"><span class="SupFootMarker"> [N] </span><a class="FlexURL" href="http://logback.qos.ch/">http://logback.qos.ch/</a></span></span> is a very nice implementation of the SLF4J API. It’s written by the same people who wrote log4j and has much improved performance and functionality over log4j<span class="FootOuter"><span class="SupFootMarker"> [O] </span><span class="HoverFoot"><span class="SupFootMarker"> [O] </span><a class="FlexURL" href="http://logback.qos.ch/reasonsToSwitch.html">http://logback.qos.ch/reasonsToSwitch.html</a></span></span>. Because logback-classic implements the SLF4J API, you simply need to drop the logback-classic jar into your classpath, or add it as a dependency in your WAR to use it. One particularly nice feature of logback is that if it can’t locate a configuration file (which can be written in XML, Groovy, or soon, Scala), it will default to logging everything to the console.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-E.2">E.2</a> Basic Logging
+</h2>
+<div class="Unindented">
+Logging in Lift is performed via the <tt>net.liftweb.common.Logger</tt> object and trait. The <tt>Logger</tt> object provides a set of utility methods for configuration and instantiation of logger instances. The <tt>Logger</tt> trait can be mixed into your snippet, comet, or other classes to provide direct methods for logging (we’ll cover these in Section <a class="Reference" href="index-E.html#sub:Logging-Methods">E.2.3↓</a>).
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-E.2.1">E.2.1</a> Logging Setup
+</h3>
+<div class="Unindented">
+The first step in utilizing Lift’s logging is to configure the logger. As we mentioned in Section <a class="Reference" href="index-E.html#sec:Logging-Backend">E.1↑</a>, Lift uses the SLF4J framework. The configuration of SLF4J depends on which backing implementation you use, but Lift comes with helpers for both log4j (<tt>net.liftweb.common.Log4j</tt>) and for logback (<tt>net.liftweb.common.Logback</tt>). These helpers are utilized with the <tt>Logger</tt> object’s <tt>setup</tt> var. The <tt>Log4j</tt> helpers provides methods that can be used to load a configuration from a <tt>String</tt>, a file (either XML or properties), or with Lift’s default (console) logging. The <tt>Logback</tt> helper provides a single method to load a configuration from an XML file. Listing <a class="Reference" href="index-E.html#lst:Configuring-Logback-via">E.2.1↓</a> shows how you could use the <tt>Logback</tt> helper in the <tt>Boot.boot</tt> method to configure logging from the <i>logconfig.xml</i> file.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Configuring Logback via Logger.setup<a class="Label" name="lst:Configuring-Logback-via"> </a>
+</div>
+<pre class="listing brush: scala">def boot {
+  // Get a reference to the config from our classpath
+  val logUrl = LiftRules.getResource("logconfig.xml")
+  
+  // Apply the reference, if found
+  logUrl.foreach { Logger.setup = Logback.withFile(_) }
+  ...
+}
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-E.2.2">E.2.2</a> Obtaining a Logger
+</h3>
+<div class="Unindented">
+There are two basic means of obtaining a logger instance. The first is to mix the <tt>Logger</tt> trait into your class. The second is to instantiate a logger using the <tt>Logger</tt> object’s <tt>apply</tt> methods.
+</div>
+<div class="Indented">
+Mixing the <tt>Logger</tt> trait into your class is a very simple way to add logging methods in your code, as shown in Listing. When you do this, the underlying logger will have a name derived from your class’s dynamic type. For example, Listing <a class="Reference" href="index-E.html#lst:Mixing-Logger-into">E.2.2↓</a> shows the definition of our <tt>Accounts</tt> snippet object with a <tt>Logger</tt> trait mixed in. When we log in the <tt>Accounts</tt> object the name will be the fully-qualified classname, or “com.pocketchangeapp.snippet.Accounts” in our case. When you mix the Logger trait into your class, you can access the logging methods (Section <a class="Reference" href="index-E.html#sub:Logging-Methods">E.2.3↓</a>) directly.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mixing Logger into a Class<a class="Label" name="lst:Mixing-Logger-into"> </a>
+</div>
+<pre class="listing brush: scala">object Accounts extends DispatchSnippet with Logger {
+  ...
+  warn("This is a warning")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+The second basic way to obtain a logger instance is to construct one directly via the <tt>Logger</tt> object’s <tt>apply</tt> method, as shown in Listing <a class="Reference" href="index-E.html#lst:Constructing-a-Logger">E.2.2↓</a>. The <tt>apply</tt> method takes either a <tt>String</tt> or <tt>Class</tt> that will be used to determine the constructed logger’s name. In our example, we use the <tt>classOf[Boot]</tt>, so our logger will be named “bootstrap.liftweb.Boot”. When you obtain a logger via construction you need to access the logging methods via the logger instance.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Constructing a Logger instance<a class="Label" name="lst:Constructing-a-Logger"> </a>
+</div>
+<pre class="listing brush: scala">class Boot {
+  // Set up a logger to use for startup messages
+  val logger = Logger(classOf[Boot])
+  ...
+  logger.warn("This is a warning")
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+There is a third, hybrid, approach to obtaining a <tt>Logger</tt> that allows you to mix in the <tt>Logger</tt> trait while controlling the logger name. Listing <a class="Reference" href="index-E.html#lst:Mixing-in-a-named-logger">E.2.2↓</a> shows how we can mix in th trait and then override the underlying SLF4J logger with our own named instance.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mixing in a named Logger<a class="Label" name="lst:Mixing-in-a-named-logger"> </a>
+</div>
+<pre class="listing brush: scala">class AddEntry extends StatefulSnippet with Logger {
+  // Use a different name for our logger
+  import org.slf4j.LoggerFactory
+  override val _logger = LoggerFactory.getLogger("EntryEdit") 
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-E.2.3">E.2.3</a> Logging Methods<a class="Label" name="sub:Logging-Methods"> </a>
+</h3>
+<div class="Unindented">
+The <tt>Logger</tt> trait provides some basic log methods which we’ll summarize here. Each log method comes in three forms: one with just a <span class="formula"> ⇒ <i>Object</i></span> argument, one with a <span class="formula"> ⇒ <i>Object</i></span> and <tt>Throwable</tt> argument, and one with a <span class="formula"> ⇒ <i>Object</i></span>, <tt>Throwable</tt>, and <tt>Marker</tt> argument. These correspond roughly to the SLF4J log methods, although the order of the parameters is different and the parameters are passed by-name. Pass-by-name arguments are used so that computation of the log message can be deferred. This is useful to avoid processing messages for log statements below the current logging threshold, a topic we’ll cover more in Section <a class="Reference" href="index-E.html#sec:Log-Levels">E.3↓</a>.
+</div>
+<div class="Description">
+<span class="Description-entry">trace</span> This logs a message at trace level. Trace level is generally intended for very detailed “tracing” of processing, even more detailed than debug level.
+</div>
+<div class="Description">
+<span class="Description-entry">debug</span> Logs a message at debug level. This level is usually used to output internal variable values or other information that is useful in debugging and troubleshooting an app.
+</div>
+<div class="Description">
+<span class="Description-entry">info</span> Logs a message at info level. This level is appropriate for general information about the app.
+</div>
+<div class="Description">
+<span class="Description-entry">warn</span> Logs a message at warning level. This level should be used for reporting issues that are in error but can be handled cleanly, such as someone trying to submit a character string for a numeric field value.
+</div>
+<div class="Description">
+<span class="Description-entry">error</span> Logs a message at error level. This level should be used for messages relating to errors that can’t be handled cleanly, such as a failure to connect to a backing database.
+</div>
+<div class="Description">
+<span class="Description-entry">assertLog</span> This allows you to test an assertion condition and if true, logs the assertion as well as a given message.
+</div>
+<div class="Unindented">
+Listing <a class="Reference" href="index-E.html#lst:Some-example-logging">E.2.3↓</a> shows our REST API authentication hook, which uses a few different Logging methods within the handler method.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Some example logging<a class="Label" name="lst:Some-example-logging"> </a>
+</div>
+<pre class="listing brush: scala">LiftRules.authentication = HttpBasicAuthentication("PocketChange") {
+  case (userEmail, userPass, _) =&gt; {
+    logger.debug("Authenticating: " + userEmail)
+    User.find(By(User.email, userEmail)).map { user =&gt;
+      if (user.password.match_?(userPass)) {
+        logger.info("Auth succeeded for " + userEmail)
+        User.logUserIn(user)
+​
+        // Set an MDC for logging purposes
+        MDC.put("user", user.shortName)
+​
+        // Compute all of the user roles
+        userRoles(user.editable.map(acct =&gt; AuthRole("editAcct:" + acct.id)) ++
+                  user.allAccounts.map(acct =&gt; AuthRole("viewAcct:" + acct.id)))
+        true
+      } else {
+        logger.warn("Auth failed for " + userEmail)
+        false
+      }
+    } openOr false
+  }
+}
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-E.3">E.3</a> Log Level Guards<a class="Label" name="sec:Log-Levels"> </a>
+</h2>
+<div class="Unindented">
+We want to provide a brief discussion on the use of log guards and why they’re usually not needed with Lift’s log framework. A log guard is a simple test to see if a given log statement will actually be processed. The Log object provides a test method (returning a boolean) for each log level:
+</div>
+<ul>
+<li>
+isDebugEnabled
+</li>
+<li>
+isErrorEnabled
+</li>
+<li>
+isInfoEnabled
+</li>
+<li>
+isTraceEnabled
+</li>
+<li>
+isWarnEnabled
+</li>
+
+</ul>
+<div class="Unindented">
+Log guards are fairly common in logging frameworks to avoid expensive computation of log message that won’t actually be used. This is particularly relevant with debug logging, since they often cover a large section of code and usually aren’t enabled in production. The Log object can implicitly do log guards for you because of the pass-by-name message parameters. As we showed in listing <a class="Reference" href="index-E.html#lst:Some-example-logging">E.2.3↑</a>, simply converting your log message into a closure allows the Log object decide whether to execute the closure based on the current log level. You get the flexibility and simplicity of adding log statements anywhere you want without explicit log guards, without losing the performance benefit of the guards. To explain it a bit more, let’s assume for instace that the <tt>debug</tt> method would have been declared as <tt>def debug(msg:AnyRef): Unit. </tt>When <tt>debug</tt> would be called the parameter will be first evaluated and then passed to the method. Inside the method we have the test to see if the debug level is enabled to know if we actaully need to trace that message or not. Well in this case even if the debugging level is turned off we still have the evaluation of the parameters and that leads to unnecessary computing and in an application that uses logging heavily that would likely lead to a performance impact.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-E.4">E.4</a> Logging Mapper Queries<a class="Label" name="sec:Logging-Mapper-Queries"> </a>
+</h2>
+<div class="Unindented">
+If you want to log Mapper query activity, there are two main approaches. The first is to utilize the <tt>net.liftweb.mapper.DB.addLogFunc</tt> method to add your own logging function. A logging function is of the type <span class="formula">(<i>DBLog</i>, <i>Long</i>) ⇒ <i>Any</i></span>. The <tt>DBLog</tt> trait contains two separate lists of log entries, one for meta operations (such as <tt>getFetchSize</tt>) and one for actual work statements (such as <tt>executeQuery</tt>). You can access these two log lists via either the <tt>metaEntries</tt> or <tt>statementEntries</tt> methods. You can also access the entire list of both types via the <tt>allEntries</tt> method. Listing <a class="Reference" href="index-E.html#lst:Basic-Mapper-Logging">E.4↓</a> shows how we can hook a log function in the <tt>Boot.boot</tt> method to log Mapper activity for each request.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Basic Mapper Logging<a class="Label" name="lst:Basic-Mapper-Logging"> </a>
+</div>
+<pre class="listing brush: scala">// Add a query logger
+DB.addLogFunc {
+  case (log, duration) =&gt; {
+    logger.debug("Total query time : %d ms".format(duration))
+    log.allEntries.foreach {
+      case DBLogEntry(stmt,duration) =&gt;
+        logger.debug("  %s in %d ms".format(stmt, duration))
+    }
+  }
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Another approach to logging Mapper queries is to use the <tt>DB.queryCollector</tt> logging function and then either use <tt>S.queryLog</tt> to access the query log, or hook into <tt>S.addAnalyzer</tt>. Listing <a class="Reference" href="index-E.html#lst:Mapper-Logging-via-S-queryLog">E.4↓</a> shows how we could use this instead for our logging in <tt>Boot.boot</tt>.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Mapper Logging via S.queryLog<a class="Label" name="lst:Mapper-Logging-via-S-queryLog"> </a>
+</div>
+<pre class="listing brush: scala">// Add a query logger (via S.queryLog)
+DB.addLogFunc(DB.queryCollector)
+​
+S.addAnalyzer {
+  case (Full(req), duration, log) =&gt; {
+    logger.debug(("Total request time on %s: %d ms").format(req.uri, duration))
+    log.foreach {
+      case (stmt,duration) =&gt;
+        logger.debug("  %s in %d ms".format(stmt, duration))
+    }
+  }
+  case _ =&gt; // we don’t log for non-requests
+}
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Note that the duration you get when your analyzer function is called is the time spent in <tt>S</tt>, not necessarily the total duration of your queries. Also, only work statements are logged via <tt>S.queryLog</tt>. If you want meta entries you’ll have to use a direct logging function as in Listing <a class="Reference" href="index-E.html#lst:Basic-Mapper-Logging">E.4↑</a>.
+</div>
+<div class="Indented">
+
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-D.html#Next">Previous: Appendix D</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-F.html#prev">Next: Appendix F</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+

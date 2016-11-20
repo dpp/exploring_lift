@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>
+      Exploring Lift
+    </title>
+    <!-- scripts for highlighter -->
+    <script type="text/javascript" src="scripts/shCore.js"></script>
+    <script type="text/javascript" src="scripts/shBrushXml.js"></script>
+    <script type="text/javascript" src="scripts/shBrushScala.js"></script>
+    <script type="text/javascript" src="scripts/shBrushBash.js"></script>
+    <!-- CSS for highlighter -->
+    <link href="css/shCore.css" rel="stylesheet" type="text/css" />
+    <link href="css/shThemeDefault.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="css/lyx.css" type="text/css" media="screen"/>
+  </head>
+  <body>
+    <div id="globalWrapper">
+      <div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-III.html#Next">Previous: Part III</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-B.html#prev">Next: Appendix B</a></span>
+</div>
+<h1 class="Chapter">
+<a class="toc" name="toc-Appendix-A">A</a> A Brief Tour of Maven<a class="IndexReference" name="entry-Maven-1" href="index-Index.html#index-Maven">↓</a><a class="Label" name="cha:Maven"> </a>
+</h1>
+<div class="Unindented">
+In this chapter we’ll discuss the Maven build tool and some of the basics of configuration and usage. Maven is what Lift uses for build management, so becoming acquainted with Maven is important to getting the most out of Lift. If you’re already familiar with Maven you can safely skip this chapter. 
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.1">A.1</a> What is Maven?
+</h2>
+<div class="Unindented">
+Maven is a project management tool, as opposed to simply a build tool. The Maven site<span class="FootOuter"><span class="SupFootMarker"> [W] </span><span class="HoverFoot"><span class="SupFootMarker"> [W] </span><a class="URL" href="http://maven.apache.org/">http://maven.apache.org/</a></span></span> describes the goals of Maven as:
+</div>
+<ul>
+<li>
+Make the build process easy
+</li>
+<li>
+Provide a uniform build system
+</li>
+<li>
+Provide quality project information
+</li>
+<li>
+Provide guidelines for best practices
+</li>
+<li>
+Allow transparent migration to new features
+</li>
+
+</ul>
+<div class="Unindented">
+As a project management tool, Maven goes beyond just controlling compilation of your code. By default, Maven comes equipped not only to perform development-centric tasks, but it can generate documentation from your code and for your project website. Everything in Maven is controlled via the pom.xml (Project Object Model) file, which contains both information and configuration details on the project. We’ll be covering some of the basic aspects of the POM through the rest of this chapter<span class="FootOuter"><span class="SupFootMarker"> [X] </span><span class="HoverFoot"><span class="SupFootMarker"> [X] </span>A complete POM reference is available at <a class="URL" href="http://maven.apache.org/pom.html">http://maven.apache.org/pom.html</a></span></span>.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.2">A.2</a> Lifecycles, Phases and Goals
+</h2>
+<div class="Unindented">
+Maven is designed around the concept of project lifecycles. While you can define your own, there are three built-in lifecycles: <tt>default, clean</tt> and <tt>site.</tt> The <tt>default</tt> lifecycle builds and deploys your project. The <tt>clean</tt> lifecycle cleans (deletes) compiled objects or anything else that needs to be removed or reset to get the project to a pristine pre-build state. Finally, the <tt>site</tt> lifecycle generates the project documentation.
+</div>
+<div class="Indented">
+Within each lifecycle there are a number of phases that define various points in the development process. The most interesting lifecycle (from the perspective of writing code) is <tt>default</tt>. The most commonly used phases in the default lifecycle are<span class="FootOuter"><span class="SupFootMarker"> [Y] </span><span class="HoverFoot"><span class="SupFootMarker"> [Y] </span>A full listing of lifecycles and their phases is at <a class="URL" href="http://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html">http://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html</a></span></span>:
+</div>
+<ul>
+<li>
+<tt>compile</tt> - compiles the main source code of the project 
+</li>
+<li>
+<tt>test</tt> - tests the main code using a suitable unit testing framework. These tests should not require that the code is packaged or deployed. This phase implicitly calls the testCompile goal to compile the test case source code
+</li>
+<li>
+<tt>package</tt> - packages the compiled code into its distributable format, such as a JAR. The POM controls how a project is packaged through the <tt>&lt;packaging/&gt;</tt> element
+</li>
+<li>
+<tt>install</tt> - installs the package into the local repository (see section <a class="Reference" href="index-A.html#sec:Repositories">A.3↓</a>), for use as a dependency in other projects locally 
+</li>
+<li>
+<tt>deploy</tt> - used in an integration or release environment. Copies the final package to the remote repository for sharing with other developers and projects.
+</li>
+
+</ul>
+<div class="Unindented">
+Maven is typically run from the command line<span class="FootOuter"><span class="SupFootMarker"> [Z] </span><span class="HoverFoot"><span class="SupFootMarker"> [Z] </span>There are IDE plugins for Maven for most major IDEs as well</span></span> by executing command “<tt>mvn &lt;phase&gt;</tt>”, where <tt>&lt;phase&gt;</tt> is one of the phases listed above. Since phases are defined in order, all phases up to the one you specify will be run. For example, if you want to package your code, simply run “<tt>mvn package</tt>” and the <tt>compile</tt> and <tt>test</tt> phases will automatically be run. You can also execute specific goals for the various plugins that Maven uses. Execution of a specific goal is done with the command “<tt>mvn &lt;plugin&gt;:&lt;goal&gt;</tt>”. For instance, the compile phase actually calls the <tt>compiler:compile</tt> goal by default. A common usage of executing a goal for Lift is the <tt>jetty:run</tt> goal, which compiles all of your code and then runs an instance of the Jetty<span class="FootOuter"><span class="SupFootMarker"> [A] </span><span class="HoverFoot"><span class="SupFootMarker"> [A] </span><a class="URL" href="http://www.mortbay.org/jetty/">http://www.mortbay.org/jetty/</a></span></span> web server so that you can exercise your app. The jetty plugin is not directly bound to any lifecycle or phase, so we have to execute the goal directly. 
+</div>
+<div class="Indented">
+One final note is that you can specify multiple phases/goals in one command line, and Maven will execute them in order. This is useful, for instance, if you want to do a clean build of your project. Simply run “<tt>mvn clean jetty:run</tt>” and the <tt>clean</tt> lifecycle will run, followed by the <tt>jetty:run</tt> goal (and all of the prerequisites for jetty:run, such as compile).
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.3">A.3</a> Repositories<a class="Label" name="sec:Repositories"> </a>
+</h2>
+<div class="Unindented">
+Repositories are one of the key features of Maven. A repository is a location that contains plugins and packages for your project to use. There are two types of repository: local and remote. Your local repository is, as the name suggests, local to your machine, and represents a cache of artifacts downloaded from remote repositories as well as packages that you’ve installed from your own projects. The default locations of your local repo will be:
+</div>
+<ul>
+<li>
+Unix: <tt>~/.m2/repository</tt>
+</li>
+<li>
+Windows: <tt>C:\Documents and Settings\&lt;user&gt;\.m2\repository</tt>
+</li>
+
+</ul>
+<div class="Unindented">
+You can override the local repository location by setting the M2_REPO environment variable, or by editing the &lt;home&gt;/.m2/settings.xml file<span class="FootOuter"><span class="SupFootMarker"> [B] </span><span class="HoverFoot"><span class="SupFootMarker"> [B] </span>Details on customizing your Maven installation are available at <a class="URL" href="http://maven.apache.org/settings.html">http://maven.apache.org/settings.html</a></span></span>.
+</div>
+<div class="Indented">
+Remote repositories are repositories that are reachable via protocols like http and ftp and are generally where you will find the dependencies needed for your projects. Repositories are defined in the POM; listing <a class="Reference" href="index-A.html#sec:Repositories">A.3↑</a> shows the definition of the scala-tools.org release repository where Lift is found<span class="FootOuter"><span class="SupFootMarker"> [C] </span><span class="HoverFoot"><span class="SupFootMarker"> [C] </span>scala-tools.org also has a snapshots repository where nightly builds of the scala-tools projects are kept</span></span>. Maven has an internal default set of repositories so usually you don’t need to define too many extra repos.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Defining a repository<a class="Label" name="lst:Defining-a-repository"> </a>
+</div>
+<pre class="listing brush: xml">&lt;repositories&gt;
+  &lt;repository&gt;
+    &lt;id&gt;scala-tools.org&lt;/id&gt;
+    &lt;name&gt;Scala Tools Maven2 Repository&lt;/name&gt;
+    &lt;url&gt;http://scala-tools.org/repo-releases&lt;/url&gt;
+  &lt;/repository&gt;
+&lt;/repositories&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+As a final note, sometimes you may not have net access or the remote repos will be offline for some reason. In this case, make sure to specify the “-o” (offline) flag so that Maven skips checking the remote repos.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.4">A.4</a> Plugins
+</h2>
+<div class="Unindented">
+Plugins add functionality to the Maven build system. Lift is written in Scala, so the first plugin that we need to add is the Maven Scala Plugin; this adds the ability to compile Scala code in your project. Listing <a class="Reference" href="index-A.html#lst:Configuring-the-Maven-scala">A.4↓</a> shows how we configure the plugin in the pom.xml file for a Lift application. You can see the Scala plugin adds a <tt>compile</tt> and <tt>testCompile</tt> goal for the build phase, which makes Maven execute this plugin when those goals are called (explicitly or implicitly). In addition, the configuration element allows you to set properties of the plugin executions; in this case, we’re explicitly specifying the version of Scala that should be used for compilation.
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Configuring the Maven Scala Plugin<a class="Label" name="lst:Configuring-the-Maven-scala"> </a>
+</div>
+<pre class="listing brush: xml">&lt;plugin&gt;         
+  &lt;groupId&gt;org.scala-tools&lt;/groupId&gt;         
+  &lt;artifactId&gt;maven-scala-plugin&lt;/artifactId&gt;         
+  &lt;executions&gt;
+    &lt;execution&gt;
+      &lt;goals&gt;
+        &lt;goal&gt;compile&lt;/goal&gt;               
+        &lt;goal&gt;testCompile&lt;/goal&gt;             
+      &lt;/goals&gt;           
+    &lt;/execution&gt;         
+  &lt;/executions&gt;         
+  &lt;configuration&gt;           
+    &lt;scalaVersion&gt;${scala.version}&lt;/scalaVersion&gt;         
+  &lt;/configuration&gt;       
+&lt;/plugin&gt;
+</pre>
+</div>
+
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.5">A.5</a> Dependencies
+</h2>
+<div class="Unindented">
+Dependency management is one of the more useful features of Maven. Listing <a class="Reference" href="index-A.html#lst:Adding-a-Dependency">A.5↓</a> shows a declaration of the Jetty dependency for the default Lift application. The details of the specification are straightforward:
+</div>
+<ul>
+<li>
+The groupId and artifactId specify the artifact. A given group may have many artifacts under it; for instance, Lift uses net.liftweb for its groupId and the core artifacts are lift-core and life-util
+</li>
+<li>
+The version is specified either directly or with a range, as we’ve used in this example. A range is defined as &lt;left&gt;min,max&lt;right&gt; where left and right indicate an inclusive or exclusive range: [ and ] are inclusive, ( and ) are exclusive. Omitting a version in a range leaves that portion of the range unbounded. Here we configure the pom so that Jetty 6.1.6 or higher is used
+</li>
+<li>
+The scope of the dependency is optional<span class="FootOuter"><span class="SupFootMarker"> [D] </span><span class="HoverFoot"><span class="SupFootMarker"> [D] </span>Scope is discussed in detail at <a class="URL" href="http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html">http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html</a></span></span>, and controls exactly where the dependency is used. In this case we specify a test scope which means that the package will only be available to test phases
+</li>
+
+</ul>
+<div class="Unindented">
+<div class="listing">
+<div class="caption">
+Adding a Dependency<a class="Label" name="lst:Adding-a-Dependency"> </a>
+</div>
+<pre class="listing brush: xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.mortbay.jetty&lt;/groupId&gt;
+  &lt;artifactId&gt;jetty&lt;/artifactId&gt;
+  &lt;version&gt;[6.1.6,)&lt;/version&gt;
+  &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt; 
+</pre>
+</div>
+
+</div>
+<h3 class="Subsection">
+<a class="toc" name="toc-Subsection-A.5.1">A.5.1</a> Adding a Dependency<a class="Label" name="sub:Adding-a-Dependency"> </a>
+</h3>
+<div class="Unindented">
+As an example, let’s say that you’d like to add a new library and you want Maven to make sure you’ve got the most up-to-date version. We’re going to add Configgy<span class="FootOuter"><span class="SupFootMarker"> [E] </span><span class="HoverFoot"><span class="SupFootMarker"> [E] </span>Configgy’s home is <a class="URL" href="http://www.lag.net/configgy/">http://www.lag.net/configgy/</a></span></span> as a dependency. Configgy is “a library for handling config files and logging for a scala daemon. The idea is that it should be simple and straightforward, allowing you to plug it in and get started quickly, writing small useful daemons without entering the shadowy world of java frameworks.”
+</div>
+<div class="Indented">
+First we need to tell Maven where we can get Configgy, so in the <tt>&lt;repositories&gt;</tt> section add the following:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding the Configgy repo<a class="Label" name="lst:Adding-the-Configgy-repo"> </a>
+</div>
+<pre class="listing brush: xml">&lt;repository&gt; 
+  &lt;id&gt;http://www.lag.net/repo/&lt;/id&gt; 
+  &lt;name&gt;http://www.lag.net/repo/&lt;/name&gt; 
+  &lt;url&gt;http://www.lag.net/repo/&lt;/url&gt; 
+&lt;/repository&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+Then in the <tt>&lt;dependencies&gt;</tt> section add:
+</div>
+<div class="Indented">
+<div class="listing">
+<div class="caption">
+Adding the Configgy dependency<a class="Label" name="lst:Adding-the-Configgy-dep"> </a>
+</div>
+<pre class="listing brush: xml">&lt;dependency&gt; 
+  &lt;groupid&gt;net.lag&lt;/groupid&gt; 
+  &lt;artifactid&gt;configgy&lt;/artifactid&gt; 
+  &lt;version&gt;[1.2,)&lt;/version&gt; 
+&lt;/dependency&gt;
+</pre>
+</div>
+
+</div>
+<div class="Indented">
+That’s it, you’re done. The next time you run Maven for your project, it will pull down the Configgy jars into your local repository. Maven will periodically check for new versions of dependencies when you build, but you can always force a check with the “-U” (update) flag.
+</div>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.6">A.6</a> Further Resources
+</h2>
+<div class="Unindented">
+Obviously we’ve only scratched the surface on what you can with Maven and how to configure it. We’ve found the following set of references useful in learning and using Maven:
+</div>
+<ul>
+<li>
+<a class="URL" href="http://maven.apache.org">http://maven.apache.org</a> - The Maven home page
+</li>
+<li>
+<a class="URL" href="http://maven.apache.org/what-is-maven.html">http://maven.apache.org/what-is-maven.html</a> - A brief description of Maven’s goals
+</li>
+<li>
+<a class="URL" href="http://maven.apache.org/guides/introduction/introduction-to-the-pom.html">http://maven.apache.org/guides/introduction/introduction-to-the-pom.html</a> - An introduction to the pom file
+</li>
+<li>
+<a class="URL" href="http://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html">http://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html</a>- An overview of the lifecycles
+</li>
+<li>
+<a class="URL" href="http://suereth.blogspot.com/2008/10/maven-for-beginners.html">http://suereth.blogspot.com/2008/10/maven-for-beginners.html</a>- A brief Maven usage tutorial
+</li>
+<li>
+<a class="URL" href="http://scala-blogs.org/2008/01/maven-for-scala.html">http://scala-blogs.org/2008/01/maven-for-scala.html</a>- A brief tutorial on using Maven geared toward Scala
+</li>
+<li>
+<a class="URL" href="http://mvnrepository.com/">http://mvnrepository.com/</a>- A website that lets you search for Maven dependencies by name. Invaluable when you’re trying to add libraries to your project
+</li>
+
+</ul>
+<h2 class="Section">
+<a class="toc" name="toc-Section-A.7">A.7</a> Project Layout
+</h2>
+<div class="Unindented">
+One of the things that allows Maven to work so well is that there is a standardized layout for projects. We’re not going to cover all of the standard locations for parts of your Maven project, but we do want to highlight a few locations that are important to Lift applications specifically:
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;application_root&gt;/src/main/scala</span> This directory is where you place your Scala source, such as snippets, model objects, and any libraries you write. The subfolder structure follows the traditional Java packaging style.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;application_root&gt;/src/main/resources</span> This directory is where you would place any resources that you want to go into the WAR file. Typically this is used if you want to add entries to the <tt>META-INF</tt> directory in the WAR, since normal web resources should be placed under the <tt>webapp/WEB-INF</tt> directory.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;application_root&gt;/src/main/webapp</span> All of the web and static content for your application, such as images, XHTML templates, JavaScript and CSS are placed under this directory. This is also where your <tt>WEB-INF</tt> directory (and the configuration files it contains) goes. This directory is essentially what is packaged into the WAR in addition to the output from your Scala sources.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;application_root&gt;/src/main/webapp/templates-hidden</span> This is a special location for templates. As we discuss more in sections <a class="Reference" href="index-5.html#sub:snippet-tag">5.1↑</a> and <a class="Reference" href="index-4.html#sub:embed-tag">4.5.7↑</a>, templates placed in this directory cannot be viewed directly by clients, but are available to other templates.
+</div>
+<div class="Description">
+<span class="Description-entry">&lt;application_root&gt;/src/test/scala</span> This directory is where you can put all of your test code. As with <tt>src/main/scala</tt>, the subfolder structure follows the traditional Java packaging style.
+</div>
+<div class="splitheader">
+<span class="prev"><a class="prev" name="prev" href="index-Part-III.html#Next">Previous: Part III</a></span>
+<span class="up"><a class="up" href="index-Part-III.html">Up: Part III</a></span>
+<span class="next"><a class="next" name="Next" href="index-B.html#prev">Next: Appendix B</a></span>
+</div>
+    
+      <p class="bottom">(C) 2012 Lift 2.0 EditionWritten by Derek Chen-Becker, Marius Danciu and Tyler Weir</p>
+    </div>
+    <script type="text/javascript">SyntaxHighlighter.all()</script>
+  </body>
+</html>
+
